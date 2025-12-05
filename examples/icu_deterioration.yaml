@@ -1,0 +1,129 @@
+# PSDL Example: ICU Patient Deterioration Detection
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# This scenario detects early signs of clinical deterioration
+# in ICU patients by monitoring kidney function, lactate trends,
+# and hemodynamic stability.
+#
+# Clinical rationale:
+# - Rising creatinine indicates acute kidney injury
+# - Rising lactate indicates tissue hypoperfusion
+# - Low MAP indicates shock/hypotension
+# - Combination of these predicts poor outcomes
+
+scenario: ICU_Deterioration_v1
+version: "0.1.0"
+description: "Detect early signs of clinical deterioration in ICU patients"
+
+# ── Population Scope ─────────────────────────────
+# Only evaluate for adult ICU patients not on comfort care
+population:
+  include:
+    - age >= 18
+    - unit == "ICU"
+  exclude:
+    - status == "comfort_care_only"
+    - status == "DNR"
+
+# ── Signal Bindings ──────────────────────────────
+# Map logical names to OMOP concepts
+signals:
+  Cr:
+    source: creatinine
+    concept_id: 3016723  # LOINC 2160-0 Creatinine serum/plasma
+    unit: mg/dL
+    domain: measurement
+
+  Lact:
+    source: lactate
+    concept_id: 3047181  # LOINC 2524-7 Lactate blood
+    unit: mmol/L
+    domain: measurement
+
+  MAP:
+    source: mean_arterial_pressure
+    concept_id: 3027598  # Mean arterial pressure
+    unit: mmHg
+    domain: measurement
+
+  HR:
+    source: heart_rate
+    concept_id: 3027018  # Heart rate
+    unit: beats/min
+    domain: measurement
+
+  SpO2:
+    source: oxygen_saturation
+    concept_id: 3016502  # Oxygen saturation
+    unit: "%"
+    domain: measurement
+
+# ── Trend Computations ───────────────────────────
+trends:
+  # Kidney function deterioration
+  renal_rise:
+    expr: delta(Cr, 6h) > 0.3
+    description: "Creatinine increase > 0.3 mg/dL over 6 hours (KDIGO Stage 1)"
+
+  renal_rise_severe:
+    expr: delta(Cr, 24h) > 1.0
+    description: "Creatinine increase > 1.0 mg/dL over 24 hours"
+
+  # Lactate trends
+  lactate_elevated:
+    expr: last(Lact) > 2.0
+    description: "Current lactate > 2.0 mmol/L"
+
+  lactate_rising:
+    expr: slope(Lact, 3h) > 0
+    description: "Positive lactate trajectory over 3 hours"
+
+  lactate_critical:
+    expr: last(Lact) > 4.0
+    description: "Critical lactate > 4.0 mmol/L"
+
+  # Hemodynamic instability
+  hypotension:
+    expr: ema(MAP, 30m) < 65
+    description: "Sustained MAP below 65 mmHg (30-min EMA)"
+
+  tachycardia:
+    expr: ema(HR, 15m) > 110
+    description: "Sustained tachycardia > 110 bpm"
+
+  # Oxygenation
+  hypoxemia:
+    expr: last(SpO2) < 92
+    description: "Oxygen saturation below 92%"
+
+# ── Logic Layer ──────────────────────────────────
+logic:
+  # Stage 1: Early warning
+  early_deterioration:
+    expr: renal_rise AND lactate_rising
+    severity: medium
+    description: "Early signs of deterioration - kidney stress + lactate trend"
+
+  # Stage 2: Significant concern
+  deterioration:
+    expr: (renal_rise AND lactate_elevated) OR (lactate_rising AND hypotension)
+    severity: high
+    description: "Significant deterioration - multiple organ stress"
+
+  # Stage 3: Critical - immediate attention
+  shock_risk:
+    expr: deterioration AND hypotension
+    severity: critical
+    description: "Shock risk - multi-organ dysfunction with hypotension"
+
+  # Sepsis screening
+  sepsis_screen_positive:
+    expr: lactate_elevated AND (tachycardia OR hypotension)
+    severity: high
+    description: "Positive sepsis screening - lactate + hemodynamic instability"
+
+  # Critical combination
+  critical_state:
+    expr: (shock_risk OR lactate_critical) AND hypoxemia
+    severity: critical
+    description: "Critical state requiring immediate intervention"
