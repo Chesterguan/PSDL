@@ -2,7 +2,8 @@
 
 - **RFC Number**: 0002
 - **Author(s)**: PSDL Community
-- **Status**: Draft
+- **Status**: Implementing
+- **GitHub Issue**: [#1](https://github.com/Chesterguan/PSDL/issues/1)
 - **Created**: 2025-12-06
 - **Updated**: 2025-12-06
 
