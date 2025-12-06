@@ -319,7 +319,7 @@ PSDL is an open, community-driven project. We welcome contributions from:
 
 | Resource | Link |
 |----------|------|
-| GitHub Repository | [github.com/psdl-lang/psdl](https://github.com/psdl-lang/psdl) |
+| GitHub Repository | [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL) |
 | Documentation | [Getting Started Guide](./getting-started.md) |
 | Examples | [Example Scenarios](../examples/) |
 | RFCs | [Proposals](../rfcs/) |
@@ -353,7 +353,7 @@ The path from ML model to bedside impact requires a semantic layer. PSDL provide
 <p align="center">
   <strong>Join us in building the standard for clinical decision logic.</strong>
   <br/><br/>
-  <a href="https://github.com/psdl-lang/psdl">GitHub</a> ·
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
   <a href="./getting-started.md">Get Started</a> ·
   <a href="../CONTRIBUTING.md">Contribute</a>
 </p>

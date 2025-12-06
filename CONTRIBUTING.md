@@ -18,7 +18,7 @@ Thank you for your interest in contributing to PSDL (Patient Scenario Definition
 
 ```bash
 # Clone the repository
-git clone https://github.com/psdl-lang/psdl.git
+git clone https://github.com/Chesterguan/PSDL.git
 cd psdl
 
 # Set up Python environment

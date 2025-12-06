@@ -313,7 +313,7 @@ Le chemin du modèle ML à l'impact au chevet du patient nécessite une couche s
 <p align="center">
   <strong>Rejoignez-nous pour construire le standard de la logique de décision clinique.</strong>
   <br/><br/>
-  <a href="https://github.com/psdl-lang/psdl">GitHub</a> ·
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
   <a href="./getting-started.md">Commencer</a> ·
   <a href="../CONTRIBUTING.md">Contribuer</a>
 </p>

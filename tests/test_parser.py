@@ -4,40 +4,42 @@ Tests for PSDL Parser
 Run with: pytest tests/test_parser.py -v
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'runtime', 'python'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "runtime", "python"))
 
-from parser import (
-    PSDLParser, PSDLScenario, PSDLParseError,
-    Signal, TrendExpr, LogicExpr, WindowSpec, Domain, Severity
-)
+from parser import Domain  # noqa: E402
+from parser import PSDLParseError  # noqa: E402
+from parser import PSDLParser  # noqa: E402
+from parser import Severity  # noqa: E402
+from parser import WindowSpec  # noqa: E402
 
 
 class TestWindowSpec:
     """Tests for WindowSpec parsing."""
 
     def test_seconds(self):
-        ws = WindowSpec(30, 's')
+        ws = WindowSpec(30, "s")
         assert ws.seconds == 30
 
     def test_minutes(self):
-        ws = WindowSpec(5, 'm')
+        ws = WindowSpec(5, "m")
         assert ws.seconds == 300
 
     def test_hours(self):
-        ws = WindowSpec(6, 'h')
+        ws = WindowSpec(6, "h")
         assert ws.seconds == 21600
 
     def test_days(self):
-        ws = WindowSpec(1, 'd')
+        ws = WindowSpec(1, "d")
         assert ws.seconds == 86400
 
     def test_str(self):
-        ws = WindowSpec(6, 'h')
+        ws = WindowSpec(6, "h")
         assert str(ws) == "6h"
 
 
@@ -436,10 +438,10 @@ class TestExampleScenarios:
 
     @pytest.fixture
     def examples_dir(self):
-        return os.path.join(os.path.dirname(__file__), '..', 'examples')
+        return os.path.join(os.path.dirname(__file__), "..", "examples")
 
     def test_parse_icu_deterioration(self, examples_dir):
-        filepath = os.path.join(examples_dir, 'icu_deterioration.yaml')
+        filepath = os.path.join(examples_dir, "icu_deterioration.yaml")
         if os.path.exists(filepath):
             parser = PSDLParser()
             scenario = parser.parse_file(filepath)
@@ -450,7 +452,7 @@ class TestExampleScenarios:
             assert len(scenario.logic) >= 3
 
     def test_parse_aki_detection(self, examples_dir):
-        filepath = os.path.join(examples_dir, 'aki_detection.yaml')
+        filepath = os.path.join(examples_dir, "aki_detection.yaml")
         if os.path.exists(filepath):
             parser = PSDLParser()
             scenario = parser.parse_file(filepath)
@@ -460,7 +462,7 @@ class TestExampleScenarios:
             assert "aki_stage1" in scenario.logic
 
     def test_parse_sepsis_screening(self, examples_dir):
-        filepath = os.path.join(examples_dir, 'sepsis_screening.yaml')
+        filepath = os.path.join(examples_dir, "sepsis_screening.yaml")
         if os.path.exists(filepath):
             parser = PSDLParser()
             scenario = parser.parse_file(filepath)

@@ -63,3 +63,4 @@ CLAUDE.md
 # Build artifacts
 *.log
 *.tmp
+tools/generate_diagrams.py

@@ -9,23 +9,24 @@ This module provides:
 5. Cohort-level batch evaluation
 """
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable, Set
-import re
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
-    from .parser import PSDLScenario, TrendExpr, LogicExpr, Signal, WindowSpec
     from .operators import DataPoint, TemporalOperators, apply_operator
+    from .parser import LogicExpr, PSDLScenario, Signal, TrendExpr
 except ImportError:
-    from parser import PSDLScenario, TrendExpr, LogicExpr, Signal, WindowSpec
     from operators import DataPoint, TemporalOperators, apply_operator
+    from parser import LogicExpr, PSDLScenario, Signal, TrendExpr
 
 
 @dataclass
 class EvaluationContext:
     """Context for a single patient evaluation."""
+
     patient_id: Any
     reference_time: datetime
     signal_data: Dict[str, List[DataPoint]] = field(default_factory=dict)
@@ -37,6 +38,7 @@ class EvaluationContext:
 @dataclass
 class EvaluationResult:
     """Result of evaluating a scenario for a patient."""
+
     patient_id: Any
     timestamp: datetime
     triggered_logic: List[str]  # Names of logic expressions that evaluated to True
@@ -67,7 +69,7 @@ class DataBackend(ABC):
         patient_id: Any,
         signal: Signal,
         window_seconds: int,
-        reference_time: datetime
+        reference_time: datetime,
     ) -> List[DataPoint]:
         """
         Fetch time-series data for a signal.
@@ -87,7 +89,7 @@ class DataBackend(ABC):
     def get_patient_ids(
         self,
         population_include: Optional[List[str]] = None,
-        population_exclude: Optional[List[str]] = None
+        population_exclude: Optional[List[str]] = None,
     ) -> List[Any]:
         """
         Get patient IDs matching population criteria.
@@ -134,19 +136,21 @@ class InMemoryBackend(DataBackend):
         patient_id: Any,
         signal: Signal,
         window_seconds: int,
-        reference_time: datetime
+        reference_time: datetime,
     ) -> List[DataPoint]:
         """Fetch signal data from in-memory store."""
         patient_data = self.data.get(patient_id, {})
         signal_data = patient_data.get(signal.name, [])
 
         # Filter by window
-        return TemporalOperators.filter_by_window(signal_data, window_seconds, reference_time)
+        return TemporalOperators.filter_by_window(
+            signal_data, window_seconds, reference_time
+        )
 
     def get_patient_ids(
         self,
         population_include: Optional[List[str]] = None,
-        population_exclude: Optional[List[str]] = None
+        population_exclude: Optional[List[str]] = None,
     ) -> List[Any]:
         """Get all patient IDs (filtering not implemented for in-memory)."""
         return list(self.patients)
@@ -169,12 +173,12 @@ class PSDLEvaluator:
 
     # Comparison operators for trend thresholds
     COMPARATORS = {
-        '<': lambda a, b: a < b,
-        '<=': lambda a, b: a <= b,
-        '>': lambda a, b: a > b,
-        '>=': lambda a, b: a >= b,
-        '==': lambda a, b: abs(a - b) < 1e-10,
-        '!=': lambda a, b: abs(a - b) >= 1e-10,
+        "<": lambda a, b: a < b,
+        "<=": lambda a, b: a <= b,
+        ">": lambda a, b: a > b,
+        ">=": lambda a, b: a >= b,
+        "==": lambda a, b: abs(a - b) < 1e-10,
+        "!=": lambda a, b: abs(a - b) >= 1e-10,
     }
 
     def __init__(self, scenario: PSDLScenario, backend: DataBackend):
@@ -202,9 +206,7 @@ class PSDLEvaluator:
         return max_window
 
     def _fetch_all_signals(
-        self,
-        patient_id: Any,
-        reference_time: datetime
+        self, patient_id: Any, reference_time: datetime
     ) -> Dict[str, List[DataPoint]]:
         """Fetch all signal data for a patient."""
         signal_data = {}
@@ -214,7 +216,7 @@ class PSDLEvaluator:
                 patient_id=patient_id,
                 signal=signal,
                 window_seconds=self._max_window_seconds,
-                reference_time=reference_time
+                reference_time=reference_time,
             )
             signal_data[name] = data
 
@@ -224,8 +226,8 @@ class PSDLEvaluator:
         self,
         trend: TrendExpr,
         signal_data: Dict[str, List[DataPoint]],
-        reference_time: datetime
-    ) -> tuple[Optional[float], bool]:
+        reference_time: datetime,
+    ) -> Tuple[Optional[float], bool]:
         """
         Evaluate a single trend expression.
 
@@ -238,14 +240,16 @@ class PSDLEvaluator:
             return None, False
 
         # Get window in seconds
-        window_seconds = trend.window.seconds if trend.window else self._max_window_seconds
+        window_seconds = (
+            trend.window.seconds if trend.window else self._max_window_seconds
+        )
 
         # Apply operator
         value = apply_operator(
             operator=trend.operator,
             data=data,
             window_seconds=window_seconds,
-            reference_time=reference_time
+            reference_time=reference_time,
         )
 
         if value is None:
@@ -265,7 +269,7 @@ class PSDLEvaluator:
         self,
         logic: LogicExpr,
         trend_results: Dict[str, bool],
-        logic_results: Dict[str, bool]
+        logic_results: Dict[str, bool],
     ) -> bool:
         """
         Evaluate a logic expression.
@@ -285,27 +289,31 @@ class PSDLEvaluator:
                 value = logic_results.get(term, False)
 
             # Replace term with Python boolean
-            pattern = r'\b' + re.escape(term.upper()) + r'\b'
+            pattern = r"\b" + re.escape(term.upper()) + r"\b"
             expr = re.sub(pattern, str(value), expr)
 
         # Convert logic operators to Python
-        expr = expr.replace(' AND ', ' and ')
-        expr = expr.replace(' OR ', ' or ')
-        expr = re.sub(r'\bNOT\s+', 'not ', expr)
+        expr = expr.replace(" AND ", " and ")
+        expr = expr.replace(" OR ", " or ")
+        expr = re.sub(r"\bNOT\s+", "not ", expr)
 
         # Evaluate the expression safely
         try:
             # Only allow boolean operations
-            allowed_names = {'True': True, 'False': False, 'and': None, 'or': None, 'not': None}
+            allowed_names = {
+                "True": True,
+                "False": False,
+                "and": None,
+                "or": None,
+                "not": None,
+            }
             result = eval(expr, {"__builtins__": {}}, allowed_names)
             return bool(result)
         except Exception:
             return False
 
     def evaluate_patient(
-        self,
-        patient_id: Any,
-        reference_time: Optional[datetime] = None
+        self, patient_id: Any, reference_time: Optional[datetime] = None
     ) -> EvaluationResult:
         """
         Evaluate the scenario for a single patient.
@@ -371,13 +379,13 @@ class PSDLEvaluator:
             triggered_logic=triggered_logic,
             trend_values=trend_values,
             trend_results=trend_results,
-            logic_results=logic_results
+            logic_results=logic_results,
         )
 
     def evaluate_cohort(
         self,
         reference_time: Optional[datetime] = None,
-        patient_ids: Optional[List[Any]] = None
+        patient_ids: Optional[List[Any]] = None,
     ) -> List[EvaluationResult]:
         """
         Evaluate the scenario for all patients in the cohort.
@@ -396,7 +404,7 @@ class PSDLEvaluator:
             population = self.scenario.population
             patient_ids = self.backend.get_patient_ids(
                 population_include=population.include if population else None,
-                population_exclude=population.exclude if population else None
+                population_exclude=population.exclude if population else None,
             )
 
         # Evaluate each patient
@@ -410,7 +418,7 @@ class PSDLEvaluator:
     def get_triggered_patients(
         self,
         reference_time: Optional[datetime] = None,
-        logic_filter: Optional[List[str]] = None
+        logic_filter: Optional[List[str]] = None,
     ) -> List[EvaluationResult]:
         """
         Get only patients who triggered at least one logic expression.

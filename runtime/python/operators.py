@@ -13,15 +13,16 @@ These operators form the computational core of PSDL trend expressions:
 - first(signal, window) - First value in window
 """
 
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
-from datetime import datetime, timedelta
 import math
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 
 @dataclass
 class DataPoint:
     """A single time-series data point."""
+
     timestamp: datetime
     value: float
 
@@ -39,7 +40,7 @@ class TemporalOperators:
     def filter_by_window(
         data: List[DataPoint],
         window_seconds: int,
-        reference_time: Optional[datetime] = None
+        reference_time: Optional[datetime] = None,
     ) -> List[DataPoint]:
         """
         Filter data points to those within the time window.
@@ -76,7 +77,11 @@ class TemporalOperators:
         return data[-1].value
 
     @staticmethod
-    def first(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def first(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Get the first value within the window.
 
@@ -88,13 +93,19 @@ class TemporalOperators:
         Returns:
             First value in window, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
         return filtered[0].value
 
     @staticmethod
-    def delta(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def delta(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate absolute change over the window.
         delta = last_value - first_value_in_window
@@ -107,7 +118,9 @@ class TemporalOperators:
         Returns:
             Absolute change, or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if len(filtered) < 2:
             return None
 
@@ -116,7 +129,11 @@ class TemporalOperators:
         return last_val - first_val
 
     @staticmethod
-    def slope(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def slope(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate linear regression slope over the window.
         Uses least squares regression.
@@ -129,7 +146,9 @@ class TemporalOperators:
         Returns:
             Slope (units per second), or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if len(filtered) < 2:
             return None
 
@@ -152,7 +171,11 @@ class TemporalOperators:
         return slope
 
     @staticmethod
-    def sma(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def sma(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate Simple Moving Average over the window.
 
@@ -164,14 +187,20 @@ class TemporalOperators:
         Returns:
             Simple moving average, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
 
         return sum(dp.value for dp in filtered) / len(filtered)
 
     @staticmethod
-    def ema(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def ema(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate Exponential Moving Average over the window.
         Uses span = window_seconds / average_interval for smoothing factor.
@@ -184,7 +213,9 @@ class TemporalOperators:
         Returns:
             Exponential moving average, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
 
@@ -203,7 +234,11 @@ class TemporalOperators:
         return ema
 
     @staticmethod
-    def min_val(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def min_val(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Get minimum value within the window.
 
@@ -215,13 +250,19 @@ class TemporalOperators:
         Returns:
             Minimum value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
         return min(dp.value for dp in filtered)
 
     @staticmethod
-    def max_val(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def max_val(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Get maximum value within the window.
 
@@ -233,13 +274,19 @@ class TemporalOperators:
         Returns:
             Maximum value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
         return max(dp.value for dp in filtered)
 
     @staticmethod
-    def count(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> int:
+    def count(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> int:
         """
         Count observations within the window.
 
@@ -251,11 +298,17 @@ class TemporalOperators:
         Returns:
             Number of observations in window
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         return len(filtered)
 
     @staticmethod
-    def std(data: List[DataPoint], window_seconds: int, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def std(
+        data: List[DataPoint],
+        window_seconds: int,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate standard deviation within the window.
 
@@ -267,7 +320,9 @@ class TemporalOperators:
         Returns:
             Standard deviation, or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if len(filtered) < 2:
             return None
 
@@ -276,7 +331,12 @@ class TemporalOperators:
         return math.sqrt(variance)
 
     @staticmethod
-    def percentile(data: List[DataPoint], window_seconds: int, p: float, reference_time: Optional[datetime] = None) -> Optional[float]:
+    def percentile(
+        data: List[DataPoint],
+        window_seconds: int,
+        p: float,
+        reference_time: Optional[datetime] = None,
+    ) -> Optional[float]:
         """
         Calculate percentile within the window.
 
@@ -289,7 +349,9 @@ class TemporalOperators:
         Returns:
             Percentile value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
+        filtered = TemporalOperators.filter_by_window(
+            data, window_seconds, reference_time
+        )
         if not filtered:
             return None
 
@@ -312,16 +374,16 @@ class TemporalOperators:
 
 # Operator registry for dynamic lookup
 OPERATORS = {
-    'delta': TemporalOperators.delta,
-    'slope': TemporalOperators.slope,
-    'ema': TemporalOperators.ema,
-    'sma': TemporalOperators.sma,
-    'min': TemporalOperators.min_val,
-    'max': TemporalOperators.max_val,
-    'count': TemporalOperators.count,
-    'last': lambda data, *args: TemporalOperators.last(data),
-    'first': TemporalOperators.first,
-    'std': TemporalOperators.std,
+    "delta": TemporalOperators.delta,
+    "slope": TemporalOperators.slope,
+    "ema": TemporalOperators.ema,
+    "sma": TemporalOperators.sma,
+    "min": TemporalOperators.min_val,
+    "max": TemporalOperators.max_val,
+    "count": TemporalOperators.count,
+    "last": lambda data, *args: TemporalOperators.last(data),
+    "first": TemporalOperators.first,
+    "std": TemporalOperators.std,
 }
 
 
@@ -329,7 +391,7 @@ def apply_operator(
     operator: str,
     data: List[DataPoint],
     window_seconds: Optional[int] = None,
-    reference_time: Optional[datetime] = None
+    reference_time: Optional[datetime] = None,
 ) -> Optional[float]:
     """
     Apply a named operator to data.
@@ -348,7 +410,7 @@ def apply_operator(
 
     op_func = OPERATORS[operator]
 
-    if operator == 'last':
+    if operator == "last":
         return op_func(data)
     elif window_seconds is None:
         raise ValueError(f"Operator '{operator}' requires a window specification")

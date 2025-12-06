@@ -313,7 +313,7 @@ MLモデルからベッドサイドインパクトへの道にはセマンティ
 <p align="center">
   <strong>臨床意思決定ロジックの標準を一緒に構築しましょう。</strong>
   <br/><br/>
-  <a href="https://github.com/psdl-lang/psdl">GitHub</a> ·
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
   <a href="./getting-started.md">はじめる</a> ·
   <a href="../CONTRIBUTING.md">貢献する</a>
 </p>

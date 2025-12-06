@@ -1,4 +1,4 @@
-name: Tests
+name: Python Runtime Tests
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -27,7 +28,7 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov
 
-    - name: Run tests
+    - name: Run unit tests
       run: |
         pytest tests/ -v --cov=runtime --cov-report=xml
 
@@ -38,6 +39,7 @@ jobs:
         fail_ci_if_error: false
 
   lint:
+    name: Code Quality Check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

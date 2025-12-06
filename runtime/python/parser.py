@@ -9,14 +9,16 @@ This module handles:
 """
 
 import re
-import yaml
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
 
 
 class Domain(Enum):
     """OMOP CDM domains for signals."""
+
     MEASUREMENT = "measurement"
     CONDITION = "condition"
     DRUG = "drug"
@@ -26,6 +28,7 @@ class Domain(Enum):
 
 class Severity(Enum):
     """Clinical severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -35,6 +38,7 @@ class Severity(Enum):
 @dataclass
 class Signal:
     """A signal binding - maps logical name to data source."""
+
     name: str
     source: str
     concept_id: Optional[int] = None
@@ -45,13 +49,14 @@ class Signal:
 @dataclass
 class WindowSpec:
     """Time window specification (e.g., 6h, 30m, 1d)."""
+
     value: int
     unit: str  # s, m, h, d
 
     @property
     def seconds(self) -> int:
         """Convert window to seconds."""
-        multipliers = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
         return self.value * multipliers.get(self.unit, 1)
 
     def __str__(self) -> str:
@@ -61,6 +66,7 @@ class WindowSpec:
 @dataclass
 class TrendExpr:
     """A parsed trend expression."""
+
     name: str
     operator: str  # delta, slope, ema, sma, min, max, count, last, first
     signal: str
@@ -74,6 +80,7 @@ class TrendExpr:
 @dataclass
 class LogicExpr:
     """A parsed logic expression."""
+
     name: str
     expr: str
     terms: List[str]  # Referenced trend names
@@ -85,6 +92,7 @@ class LogicExpr:
 @dataclass
 class PopulationFilter:
     """Population inclusion/exclusion criteria."""
+
     include: List[str] = field(default_factory=list)
     exclude: List[str] = field(default_factory=list)
 
@@ -92,6 +100,7 @@ class PopulationFilter:
 @dataclass
 class PSDLScenario:
     """A complete parsed PSDL scenario."""
+
     name: str
     version: str
     description: Optional[str]
@@ -120,23 +129,30 @@ class PSDLScenario:
         # Check trend expressions reference valid signals
         for trend_name, trend in self.trends.items():
             if trend.signal not in self.signals:
-                errors.append(f"Trend '{trend_name}' references unknown signal '{trend.signal}'")
+                errors.append(
+                    f"Trend '{trend_name}' references unknown signal '{trend.signal}'"
+                )
 
         # Check logic expressions reference valid trends
         for logic_name, logic in self.logic.items():
             for term in logic.terms:
                 if term not in self.trends and term not in self.logic:
-                    errors.append(f"Logic '{logic_name}' references unknown term '{term}'")
+                    errors.append(
+                        f"Logic '{logic_name}' references unknown term '{term}'"
+                    )
 
         return errors
 
 
 class PSDLParseError(Exception):
     """Exception raised for PSDL parsing errors."""
+
     def __init__(self, message: str, line: Optional[int] = None):
         self.message = message
         self.line = line
-        super().__init__(f"PSDL Parse Error{f' (line {line})' if line else ''}: {message}")
+        super().__init__(
+            f"PSDL Parse Error{f' (line {line})' if line else ''}: {message}"
+        )
 
 
 class PSDLParser:
@@ -151,12 +167,13 @@ class PSDLParser:
     """
 
     # Regex patterns for parsing expressions
-    WINDOW_PATTERN = re.compile(r'^(\d+)(s|m|h|d)$')
+    WINDOW_PATTERN = re.compile(r"^(\d+)(s|m|h|d)$")
     TREND_PATTERN = re.compile(
-        r'^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)(?:\s*,\s*(\d+[smhd]))?\s*\)\s*([<>=!]+)\s*(-?\d+\.?\d*)$'
+        r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)"
+        r"(?:\s*,\s*(\d+[smhd]))?\s*\)\s*([<>=!]+)\s*(-?\d+\.?\d*)$"
     )
-    LOGIC_TERM_PATTERN = re.compile(r'\b(\w+)\b')
-    LOGIC_OPERATOR_PATTERN = re.compile(r'\b(AND|OR|NOT)\b', re.IGNORECASE)
+    LOGIC_TERM_PATTERN = re.compile(r"\b(\w+)\b")
+    LOGIC_OPERATOR_PATTERN = re.compile(r"\b(AND|OR|NOT)\b", re.IGNORECASE)
 
     def __init__(self):
         self.errors: List[str] = []
@@ -164,7 +181,7 @@ class PSDLParser:
 
     def parse_file(self, filepath: str) -> PSDLScenario:
         """Parse a PSDL scenario from a YAML file."""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             content = f.read()
         return self.parse_string(content, source=filepath)
 
@@ -182,29 +199,29 @@ class PSDLParser:
             raise PSDLParseError("PSDL document must be a YAML mapping")
 
         # Parse required fields
-        name = self._require_field(data, 'scenario', str)
-        version = self._require_field(data, 'version', str)
+        name = self._require_field(data, "scenario", str)
+        version = self._require_field(data, "version", str)
 
         # Parse optional fields
-        description = data.get('description')
+        description = data.get("description")
 
         # Parse population
-        population = self._parse_population(data.get('population'))
+        population = self._parse_population(data.get("population"))
 
         # Parse signals (required)
-        signals_data = self._require_field(data, 'signals', dict)
+        signals_data = self._require_field(data, "signals", dict)
         signals = self._parse_signals(signals_data)
 
         # Parse trends (optional)
-        trends_data = data.get('trends', {})
+        trends_data = data.get("trends", {})
         trends = self._parse_trends(trends_data)
 
         # Parse logic (required)
-        logic_data = self._require_field(data, 'logic', dict)
+        logic_data = self._require_field(data, "logic", dict)
         logic = self._parse_logic(logic_data)
 
         # Parse mapping (optional)
-        mapping = data.get('mapping')
+        mapping = data.get("mapping")
 
         scenario = PSDLScenario(
             name=name,
@@ -214,7 +231,7 @@ class PSDLParser:
             signals=signals,
             trends=trends,
             logic=logic,
-            mapping=mapping
+            mapping=mapping,
         )
 
         # Validate semantic correctness
@@ -233,7 +250,9 @@ class PSDLParser:
             raise PSDLParseError(f"Missing required field: '{field}'")
         value = data[field]
         if not isinstance(value, expected_type):
-            raise PSDLParseError(f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}")
+            raise PSDLParseError(
+                f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}"
+            )
         return value
 
     def _parse_population(self, data: Optional[dict]) -> Optional[PopulationFilter]:
@@ -242,8 +261,7 @@ class PSDLParser:
             return None
 
         return PopulationFilter(
-            include=data.get('include', []),
-            exclude=data.get('exclude', [])
+            include=data.get("include", []), exclude=data.get("exclude", [])
         )
 
     def _parse_signals(self, data: dict) -> Dict[str, Signal]:
@@ -255,23 +273,25 @@ class PSDLParser:
                 # Shorthand: just the source
                 signals[name] = Signal(name=name, source=spec)
             elif isinstance(spec, dict):
-                source = spec.get('source')
+                source = spec.get("source")
                 if not source:
                     raise PSDLParseError(f"Signal '{name}' missing 'source'")
 
                 domain = Domain.MEASUREMENT
-                if 'domain' in spec:
+                if "domain" in spec:
                     try:
-                        domain = Domain(spec['domain'])
+                        domain = Domain(spec["domain"])
                     except ValueError:
-                        self.warnings.append(f"Unknown domain '{spec['domain']}' for signal '{name}'")
+                        self.warnings.append(
+                            f"Unknown domain '{spec['domain']}' for signal '{name}'"
+                        )
 
                 signals[name] = Signal(
                     name=name,
                     source=source,
-                    concept_id=spec.get('concept_id'),
-                    unit=spec.get('unit'),
-                    domain=domain
+                    concept_id=spec.get("concept_id"),
+                    unit=spec.get("unit"),
+                    domain=domain,
                 )
             else:
                 raise PSDLParseError(f"Invalid signal specification for '{name}'")
@@ -292,7 +312,10 @@ class PSDLParser:
         match = self.TREND_PATTERN.match(expr)
         if not match:
             # Try simpler pattern without comparison (for boolean trends)
-            simple_pattern = re.compile(r'^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)(?:\s*,\s*(\d+[smhd]))?\s*\)$')
+            simple_pattern = re.compile(
+                r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)"
+                r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
+            )
             simple_match = simple_pattern.match(expr)
             if simple_match:
                 operator, signal, window_str = simple_match.groups()
@@ -302,7 +325,7 @@ class PSDLParser:
                     operator=operator,
                     signal=signal,
                     window=window,
-                    raw_expr=expr
+                    raw_expr=expr,
                 )
             raise PSDLParseError(f"Invalid trend expression: '{expr}'")
 
@@ -316,7 +339,7 @@ class PSDLParser:
             window=window,
             comparator=comparator,
             threshold=float(threshold),
-            raw_expr=expr
+            raw_expr=expr,
         )
 
     def _parse_trends(self, data: dict) -> Dict[str, TrendExpr]:
@@ -328,12 +351,12 @@ class PSDLParser:
                 # Shorthand: just the expression
                 trends[name] = self._parse_trend_expr(name, spec)
             elif isinstance(spec, dict):
-                expr = spec.get('expr')
+                expr = spec.get("expr")
                 if not expr:
                     raise PSDLParseError(f"Trend '{name}' missing 'expr'")
 
                 trend = self._parse_trend_expr(name, expr)
-                trend.description = spec.get('description')
+                trend.description = spec.get("description")
                 trends[name] = trend
             else:
                 raise PSDLParseError(f"Invalid trend specification for '{name}'")
@@ -347,7 +370,7 @@ class PSDLParser:
         operators = [op.upper() for op in operators]
 
         # Find all terms (excluding operators)
-        expr_without_ops = self.LOGIC_OPERATOR_PATTERN.sub(' ', expr)
+        expr_without_ops = self.LOGIC_OPERATOR_PATTERN.sub(" ", expr)
         terms = self.LOGIC_TERM_PATTERN.findall(expr_without_ops)
 
         return terms, operators
@@ -361,24 +384,23 @@ class PSDLParser:
                 # Shorthand: just the expression
                 terms, operators = self._parse_logic_expr(name, spec)
                 logic[name] = LogicExpr(
-                    name=name,
-                    expr=spec,
-                    terms=terms,
-                    operators=operators
+                    name=name, expr=spec, terms=terms, operators=operators
                 )
             elif isinstance(spec, dict):
-                expr = spec.get('expr')
+                expr = spec.get("expr")
                 if not expr:
                     raise PSDLParseError(f"Logic '{name}' missing 'expr'")
 
                 terms, operators = self._parse_logic_expr(name, expr)
 
                 severity = None
-                if 'severity' in spec:
+                if "severity" in spec:
                     try:
-                        severity = Severity(spec['severity'])
+                        severity = Severity(spec["severity"])
                     except ValueError:
-                        self.warnings.append(f"Unknown severity '{spec['severity']}' for logic '{name}'")
+                        self.warnings.append(
+                            f"Unknown severity '{spec['severity']}' for logic '{name}'"
+                        )
 
                 logic[name] = LogicExpr(
                     name=name,
@@ -386,7 +408,7 @@ class PSDLParser:
                     terms=terms,
                     operators=operators,
                     severity=severity,
-                    description=spec.get('description')
+                    description=spec.get("description"),
                 )
             else:
                 raise PSDLParseError(f"Invalid logic specification for '{name}'")
@@ -406,7 +428,7 @@ def parse_scenario(source: str) -> PSDLScenario:
     """
     parser = PSDLParser()
 
-    if source.endswith('.yaml') or source.endswith('.yml'):
+    if source.endswith(".yaml") or source.endswith(".yml"):
         return parser.parse_file(source)
     else:
         return parser.parse_string(source)

@@ -4,17 +4,20 @@ Tests for PSDL Evaluator
 Run with: pytest tests/test_evaluator.py -v
 """
 
-import pytest
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 
-# Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'runtime', 'python'))
+import pytest
 
-from parser import PSDLParser
-from evaluator import PSDLEvaluator, InMemoryBackend, EvaluationResult
-from operators import DataPoint, TemporalOperators
+# Add runtime to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "runtime", "python"))
+
+from evaluator import InMemoryBackend  # noqa: E402
+from evaluator import PSDLEvaluator  # noqa: E402
+from operators import DataPoint  # noqa: E402
+from operators import TemporalOperators  # noqa: E402
+from parser import PSDLParser  # noqa: E402
 
 
 class TestTemporalOperators:
@@ -87,8 +90,7 @@ class TestTemporalOperators:
     def test_slope_flat(self, reference_time):
         # Flat data
         flat_data = [
-            DataPoint(reference_time - timedelta(hours=i), 1.0)
-            for i in range(6, 0, -1)
+            DataPoint(reference_time - timedelta(hours=i), 1.0) for i in range(6, 0, -1)
         ]
         result = TemporalOperators.slope(flat_data, 6 * 3600, reference_time)
         assert abs(result) < 0.01
@@ -108,6 +110,7 @@ class TestInMemoryBackend:
         ]
 
         from parser import Signal
+
         signal = Signal(name="Cr", source="creatinine")
 
         backend.add_data(patient_id=1, signal_name="Cr", data=data)
@@ -117,7 +120,7 @@ class TestInMemoryBackend:
             patient_id=1,
             signal=signal,
             window_seconds=3 * 3600,
-            reference_time=base_time
+            reference_time=base_time,
         )
 
         assert len(result) == 3
@@ -171,7 +174,7 @@ logic:
                 DataPoint(base_time - timedelta(hours=6), 1.0),
                 DataPoint(base_time - timedelta(hours=3), 1.3),
                 DataPoint(base_time, 1.8),  # High (>1.5) and delta=0.8 (>0.3)
-            ]
+            ],
         )
 
         # Patient 2: Normal creatinine (should not trigger)
@@ -182,7 +185,7 @@ logic:
                 DataPoint(base_time - timedelta(hours=6), 0.9),
                 DataPoint(base_time - timedelta(hours=3), 0.95),
                 DataPoint(base_time, 1.0),  # Normal
-            ]
+            ],
         )
 
         # Patient 3: High but stable creatinine
@@ -193,12 +196,14 @@ logic:
                 DataPoint(base_time - timedelta(hours=6), 1.6),
                 DataPoint(base_time - timedelta(hours=3), 1.6),
                 DataPoint(base_time, 1.6),  # High but stable (delta=0)
-            ]
+            ],
         )
 
         return backend, base_time
 
-    def test_evaluate_single_patient_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -212,7 +217,9 @@ logic:
         assert result.trend_results["cr_high"] is True
         assert result.trend_results["cr_rising"] is True
 
-    def test_evaluate_single_patient_not_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_not_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -249,8 +256,7 @@ logic:
         evaluator = PSDLEvaluator(scenario, backend)
 
         results = evaluator.evaluate_cohort(
-            reference_time=base_time,
-            patient_ids=[1, 2, 3]
+            reference_time=base_time, patient_ids=[1, 2, 3]
         )
 
         assert len(results) == 3

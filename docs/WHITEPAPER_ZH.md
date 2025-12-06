@@ -319,7 +319,7 @@ PSDL是一个开放的、社区驱动的项目。我们欢迎以下贡献：
 
 | 资源 | 链接 |
 |------|------|
-| GitHub仓库 | [github.com/psdl-lang/psdl](https://github.com/psdl-lang/psdl) |
+| GitHub仓库 | [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL) |
 | 文档 | [入门指南](./getting-started.md) |
 | 示例 | [示例场景](../examples/) |
 | RFCs | [提案](../rfcs/) |
@@ -353,7 +353,7 @@ PSDL是一个开放的、社区驱动的项目。我们欢迎以下贡献：
 <p align="center">
   <strong>加入我们，共同建设临床决策逻辑的标准。</strong>
   <br/><br/>
-  <a href="https://github.com/psdl-lang/psdl">GitHub</a> ·
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
   <a href="./getting-started.md">入门</a> ·
   <a href="../CONTRIBUTING.md">贡献</a>
 </p>

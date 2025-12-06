@@ -313,7 +313,7 @@ El camino desde el modelo de ML hasta el impacto en la cabecera del paciente req
 <p align="center">
   <strong>Únete a nosotros en la construcción del estándar para la lógica de decisión clínica.</strong>
   <br/><br/>
-  <a href="https://github.com/psdl-lang/psdl">GitHub</a> ·
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
   <a href="./getting-started.md">Comenzar</a> ·
   <a href="../CONTRIBUTING.md">Contribuir</a>
 </p>

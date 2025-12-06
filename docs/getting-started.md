@@ -13,7 +13,7 @@ This guide will help you get started with PSDL (Patient Scenario Definition Lang
 
 ```bash
 # Clone the repository
-git clone https://github.com/psdl-lang/psdl.git
+git clone https://github.com/Chesterguan/PSDL.git
 cd psdl
 
 # Set up virtual environment
@@ -148,11 +148,81 @@ logic:
     expr: (cr_high AND lactate_rising) OR shock_state
 ```
 
+## Using with OMOP CDM
+
+For retrospective research or real-time monitoring with OMOP databases:
+
+```python
+from runtime.python import PSDLParser, PSDLEvaluator
+from runtime.python.backends.omop import create_omop_backend
+
+# Standard OMOP with mapped concepts
+backend = create_omop_backend(
+    connection_string="postgresql://user:pass@localhost/omop_db",
+    cdm_schema="cdm",
+    cdm_version="5.4"
+)
+
+scenario = PSDLParser().parse_file("my_scenario.yaml")
+evaluator = PSDLEvaluator(scenario, backend)
+
+# Evaluate patient from OMOP database
+result = evaluator.evaluate_patient(patient_id=12345)
+```
+
+### OMOP with Unmapped Concepts
+
+For OMOP databases where `concept_id = 0` (common with MIMIC-IV ETL):
+
+```python
+from runtime.python.backends.omop import create_omop_backend
+
+# Use source values instead of concept IDs
+backend = create_omop_backend(
+    connection_string="postgresql://localhost:5434/mimic_omop",
+    cdm_schema="public",
+    use_source_values=True,
+    source_value_mappings={
+        "Cr": "Creatinine",
+        "Lact": "Lactate",
+        "HR": "Heart Rate",
+        "BUN": "Urea Nitrogen",
+    }
+)
+```
+
+See [OMOP Backend Documentation](./backends/omop.md) for detailed setup instructions.
+
+## Using with FHIR R4
+
+For EHR integration using FHIR:
+
+```python
+from runtime.python import PSDLParser, PSDLEvaluator
+from runtime.python.backends import FHIRBackend, FHIRConfig
+
+# Configure FHIR connection
+config = FHIRConfig(
+    base_url="https://fhir.hospital.org/r4",
+    auth_token="your-token-here"
+)
+
+backend = FHIRBackend(config)
+scenario = PSDLParser().parse_file("my_scenario.yaml")
+evaluator = PSDLEvaluator(scenario, backend)
+
+# Evaluate patient from FHIR server
+result = evaluator.evaluate_patient(patient_id="patient-uuid")
+```
+
+See [FHIR Backend Documentation](./backends/fhir.md) for detailed setup instructions.
+
 ## Next Steps
 
 - Browse [example scenarios](../examples/) for clinical use cases
 - Read the [language specification](../spec/schema-v0.1.yaml)
-- Learn about [temporal operators](../spec/operators.md)
+- Connect to [OMOP CDM](./backends/omop.md) for research
+- Connect to [FHIR R4](./backends/fhir.md) for EHR integration
 - Contribute your own scenarios!
 
 ## Running Tests
@@ -164,4 +234,5 @@ pytest tests/ -v
 # Run specific test file
 pytest tests/test_parser.py -v
 pytest tests/test_evaluator.py -v
+pytest tests/test_omop_backend.py -v
 ```
