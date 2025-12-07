@@ -21,19 +21,19 @@
 
 ## Executive Summary
 
-Healthcare AI has a deployment problem. Despite remarkable advances in predictive modeling, the vast majority of clinical AI systems never reach the bedside. The barrier is not model accuracy — it is the absence of a standard way to express *when*, *where*, and *how* these models should operate in clinical workflows.
+Healthcare AI has a deployment problem. Despite remarkable advances in predictive modeling, the vast majority of clinical AI systems never reach the bedside. The barrier is not model accuracy — it is the absence of a standard way to express *when*, *where*, and *how* these models should operate in **real-time** clinical workflows.
 
-**PSDL (Patient Scenario Definition Language)** is an open, vendor-neutral standard that fills this critical gap. It provides a declarative language for expressing clinical scenarios — the logic that connects patient data to clinical actions.
+**PSDL (Patient Scenario Definition Language)** is an open, vendor-neutral standard that fills this critical gap. It provides a **streaming-native** declarative language for expressing clinical scenarios — the logic that detects patient conditions as they happen and triggers clinical actions in real-time.
 
 ### Key Value Propositions
 
 | Stakeholder | Value |
 |-------------|-------|
-| **Hospitals** | Portable clinical logic that works across EHR systems |
-| **Researchers** | Reproducible scenarios that can be shared and validated |
-| **Vendors** | Common format reducing integration complexity |
-| **Regulators** | Auditable, version-controlled decision logic |
-| **Clinicians** | Transparent rules that can be reviewed and understood |
+| **Hospitals** | Real-time detection with portable logic across EHR systems |
+| **Researchers** | Reproducible scenarios with streaming execution guarantees |
+| **Vendors** | Common format for real-time clinical AI deployment |
+| **Regulators** | Auditable, version-controlled detection logic |
+| **Clinicians** | Transparent rules with immediate feedback |
 
 ---
 
@@ -69,13 +69,13 @@ Today, clinical decision logic is scattered across:
 
 | Implementation | Problems |
 |----------------|----------|
-| Python scripts | Non-portable, implicit dependencies, hard to audit |
-| SQL queries | No temporal semantics, tightly coupled to schema |
-| EHR rule editors | Proprietary, vendor-locked, non-exportable |
-| Jupyter notebooks | Non-reproducible, no version control semantics |
-| Configuration files | Ad-hoc formats, no standardization |
+| Python scripts | Non-portable, batch-only, hard to audit |
+| SQL queries | No streaming, no temporal semantics |
+| EHR rule editors | Proprietary, vendor-locked, no real-time |
+| Jupyter notebooks | Non-reproducible, offline analysis only |
+| Configuration files | Ad-hoc formats, no streaming support |
 
-**The result:** Every hospital reinvents the same clinical logic from scratch. Research cannot be reproduced. Regulatory audits require manual documentation. Vendor transitions mean rewriting everything.
+**The result:** Every hospital reinvents the same clinical logic from scratch — usually as batch jobs that run hours behind patient events. Real-time detection requires custom engineering. Research cannot be reproduced. Regulatory audits require manual documentation.
 
 ---
 
@@ -87,7 +87,7 @@ Today, clinical decision logic is scattered across:
   <em>PSDL as the semantic layer in the healthcare AI stack</em>
 </p>
 
-PSDL introduces a **semantic layer** for clinical scenarios — a structured, declarative format that separates *what* to detect from *how* to compute it.
+PSDL introduces a **streaming-native semantic layer** for clinical scenarios — a structured, declarative format that separates *what* to detect from *how* to compute it. Designed from the ground up for real-time execution with Apache Flink and similar streaming engines.
 
 ### Core Concepts
 
@@ -144,7 +144,7 @@ triggers:
         priority: high
 ```
 
-This single YAML file replaces hundreds of lines of scattered Python, SQL, and configuration code — and it's portable, auditable, and version-controlled.
+This single YAML file replaces hundreds of lines of scattered Python, SQL, and configuration code — and it's portable, auditable, version-controlled, and **executes in real-time** as new clinical events arrive.
 
 ---
 
@@ -210,9 +210,9 @@ PSDL follows the precedent of successful open standards:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Temporal Operators
+### Streaming-Native Temporal Operators
 
-PSDL provides first-class support for time-series clinical data:
+PSDL provides first-class support for time-series clinical data with operators designed for real-time streaming execution:
 
 | Operator | Description | Example |
 |----------|-------------|---------|
@@ -230,10 +230,12 @@ PSDL scenarios are runtime-agnostic. The same scenario can execute on:
 
 | Runtime | Use Case | Data Source |
 |---------|----------|-------------|
-| **OMOP SQL** | Retrospective research | CDM databases |
-| **FHIR** | Real-time EHR integration | FHIR servers |
+| **Stream** | **Real-time detection (primary)** | Kafka/Flink |
+| **FHIR** | EHR integration | FHIR servers |
+| **OMOP SQL** | Retrospective validation | CDM databases |
 | **Python** | Development & testing | DataFrames |
-| **Stream** | Real-time monitoring | Kafka/Flink |
+
+**Write once, validate on historical data, deploy in real-time.**
 
 ---
 
@@ -247,11 +249,11 @@ PSDL scenarios are runtime-agnostic. The same scenario can execute on:
 
 | Aspect | Before PSDL | After PSDL |
 |--------|-------------|------------|
+| **Execution** | Batch jobs (hours delay) | Real-time streaming |
 | **Lines of Code** | ~300+ Python/SQL | ~50 lines YAML |
 | **Portability** | Tied to specific systems | Runs anywhere with mapping |
 | **Auditability** | Manual documentation | Built-in, version-controlled |
 | **Reproducibility** | "Works on my machine" | Deterministic execution |
-| **Sharing** | Copy-paste with modifications | Publish exact definitions |
 | **Regulatory** | Ad-hoc compliance | Systematic audit support |
 
 ---
@@ -278,30 +280,29 @@ PSDL is designed with regulatory requirements in mind:
   <em>PSDL development phases</em>
 </p>
 
-### Phase 1: Semantic Foundation [Current]
+### Phase 1: Semantic Foundation ✓
 - Type system and operator specification
 - YAML schema definition
 - Python reference implementation
-- Example clinical scenarios
-- Conformance test suite
+- OMOP CDM and FHIR R4 backends
+- Clinical validation test suite (204 tests)
 
-### Phase 2: Enhanced Runtime
-- OMOP CDM SQL backend
-- FHIR R4 runtime
+### Phase 2: Real-time Execution [Current]
+- **Streaming backend (Apache Flink)** — RFC-0002
 - Trigger/Action system (v0.2)
-- Performance optimization
+- Event-time watermarks and late data handling
+- Performance benchmarking
 
-### Phase 3: Community Building
-- Technical documentation
-- Conference presentations
-- Community infrastructure (Discord, forums)
-- Third-party implementations
+### Phase 3: AI Model Integration
+- **Model deployment bridge** — RFC-0001
+- `predict()`, `forecast()` operators
+- Timeout and fallback handling
+- ONNX model integration
 
 ### Phase 4: Adoption
-- Hospital pilot programs
+- Hospital streaming pilots
 - Standards body engagement (OHDSI, HL7)
 - Vendor partnerships
-- Certification program
 
 ---
 
@@ -328,24 +329,25 @@ PSDL is an open, community-driven project. We welcome contributions from:
 
 ## Conclusion
 
-Healthcare AI deployment is blocked not by model quality, but by the absence of scenario semantics. PSDL fills this gap with:
+Healthcare AI deployment is blocked not by model quality, but by the absence of **real-time** scenario semantics. PSDL fills this gap with:
 
+- **Streaming-native execution** — detect conditions as they happen
 - **A declarative language** for expressing clinical scenarios
 - **Vendor-neutral portability** across institutions and systems
 - **Built-in auditability** for regulatory compliance
-- **Community governance** ensuring the standard evolves with real needs
+- **AI model integration** — bridge from research to real-time deployment
 
-The path from ML model to bedside impact requires a semantic layer. PSDL provides it.
+The path from ML model to bedside impact requires a real-time semantic layer. PSDL provides it.
 
 ---
 
 <p align="center">
   <strong>Clinical AI doesn't fail because models are weak.<br/>
-  It fails because scenario semantics aren't formalized.</strong>
+  It fails because real-time scenario semantics aren't formalized.</strong>
 </p>
 
 <p align="center">
-  <em>PSDL changes that.</em>
+  <em>PSDL changes that — with streaming-native clinical logic.</em>
 </p>
 
 ---
@@ -360,186 +362,93 @@ The path from ML model to bedside impact requires a semantic layer. PSDL provide
 
 ---
 
-## Related Work
+## Positioning
 
-PSDL builds upon decades of research in clinical decision support languages and healthcare informatics. Understanding this landscape helps position PSDL's unique contributions and identifies opportunities for future integration.
+PSDL fills a specific gap in the healthcare technology stack. Understanding where it fits — and where it doesn't — is critical.
 
-### Historical Foundation: Arden Syntax
+### The Healthcare AI Stack
 
-[Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992) is the foundational clinical rule language. Its Medical Logic Modules (MLMs) introduced the event-trigger-action paradigm for clinical alerts. Arden Syntax demonstrated that clinical knowledge could be encoded in shareable, executable form.
+| Layer | Existing Solution | PSDL Role |
+|-------|-------------------|-----------|
+| **Cohort Research** | ATLAS / OMOP | Compatible — PSDL uses OMOP data |
+| **Quality Measures** | CQL (HL7) | Complementary — different focus |
+| **Real-time Detection** | ❌ No open standard | **PSDL fills this gap** |
+| **AI Model Deployment** | Custom code per hospital | **PSDL standardizes this** |
 
-**What PSDL learns:** The event-trigger model, patient data binding, and rule-to-action flow directly influence PSDL's trigger system. However, Arden Syntax focuses on individual rules, while PSDL emphasizes **scenario composition** — combining multiple signals, trends, and logic into cohesive clinical scenarios.
+### What PSDL Is
 
-| Aspect | Arden Syntax | PSDL |
-|--------|--------------|------|
-| Unit of Knowledge | Medical Logic Module (single rule) | Scenario (composed logic) |
-| Temporal Operators | Limited | First-class (`delta`, `slope`, `ema`) |
-| Data Binding | Direct patient data | Abstract signals with mapping layer |
-| Focus | Alert generation | Scenario semantics |
+**PSDL = Real-time clinical scenario detection + AI model deployment bridge**
 
-### Clinical Pathway DSLs: Acadela
+- Streaming-native temporal operators (`delta`, `slope`, `ema`)
+- Vendor-neutral scenario definitions
+- Standard way to connect ML models to clinical triggers
 
-[Acadela](https://wwwmatthes.in.tum.de/pages/a8yka1dz1gsa/Acadela-A-Domain-Specific-Language-for-Modeling-Clinical-Pathways) (TU München, 2023) is a text-based DSL for modeling clinical pathways. It covers workflow, responsibilities, data visualization, and external system communication.
+### What PSDL Is NOT
 
-**What PSDL learns:** Acadela demonstrates the value of a low-tech, text-based approach that enables collaboration between medical and technical experts. Its user studies validate that clinical professionals find declarative DSLs intuitive.
+| PSDL does NOT... | Use instead |
+|------------------|-------------|
+| Replace OMOP/FHIR data standards | PSDL consumes them |
+| Compete with ATLAS for research | Use ATLAS, deploy with PSDL |
+| Replace CQL for quality measures | CQL for reporting, PSDL for real-time |
+| Train ML models | PSDL deploys trained models |
+| Define treatment pathways | Trigger pathway systems from PSDL |
 
-**Key difference:** Acadela models **pathways** (treatment procedures over time), while PSDL models **scenarios** (detection logic at a point in time). These are complementary — PSDL scenarios could trigger Acadela pathways.
+### Historical Context
 
-### Scenario-Based Modeling: SBRM-DSL
+PSDL builds on [Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992), which pioneered shareable clinical rules. Arden's Medical Logic Modules (MLMs) introduced event-trigger-action patterns still relevant today.
 
-[SBRM-DSL](https://ieeexplore.ieee.org/document/8817187/) (ICWS 2019) introduces a four-element model for crossover healthcare services:
+**PSDL's evolution:** Arden handles individual rules; PSDL handles **composed scenarios** with first-class temporal operators and streaming execution.
 
-```
-WHO → SCENARIO → PROCESS → RULE
-```
+### Relationship to CQL
 
-This framework explicitly models multi-actor scenarios in healthcare, where patients, doctors, nurses, and systems interact.
-
-**What PSDL learns:** The WHO-SCENARIO-PROCESS-RULE structure provides a template for PSDL's future extensions into multi-role scenarios. Currently PSDL focuses on patient-centric detection; future versions may incorporate care team roles.
-
-### Quality Measures: Clinical Quality Language (CQL)
-
-[Clinical Quality Language](https://cql.hl7.org/) (HL7) is a high-level language for clinical quality measures and decision support. CQL integrates with FHIR and supports complex clinical logic.
-
-**PSDL's relationship to CQL:**
+[Clinical Quality Language](https://cql.hl7.org/) (HL7) excels at quality measurement and cohort definition. PSDL complements CQL:
 
 | Aspect | CQL | PSDL |
 |--------|-----|------|
-| Primary Focus | Quality measurement, cohort definition | Real-time scenario detection |
-| Temporal Operators | Good support | First-class, streaming-native |
-| Runtime Model | Query-based | Event-driven + query |
-| Complexity | Higher learning curve | Simpler, YAML-based |
-| Adoption | Established standard | Emerging |
+| Focus | Quality reporting | Real-time detection |
+| Execution | Query-based | Event-driven streaming |
+| Temporal | Supported | First-class, streaming-native |
+| Syntax | Verbose | Simple YAML |
 
-PSDL complements CQL rather than competing. CQL excels at quality measurement and reporting; PSDL excels at real-time clinical detection with explicit temporal semantics.
-
-### Clinical Scores: DSML4ClinicalScores
-
-[DSML4ClinicalScores](https://www.researchgate.net/publication/339125394_Model-Driven_Development_Applied_to_Mobile_Health_and_Clinical_Scores) (2020) uses model-driven development to generate mHealth apps from clinical score specifications. Analyzing 89 clinical scores, it creates a metamodel for risk assessment tools.
-
-**Future PSDL integration:** Clinical scores (SOFA, APACHE, NEWS2) could be first-class concepts in PSDL:
-
-```yaml
-# Potential future syntax
-scores:
-  NEWS2:
-    type: clinical_score
-    source: news2_score
-
-trends:
-  news2_critical:
-    expr: last(NEWS2) >= 7
-```
-
-### Prescription DSL: GME Framework
-
-[Prescription DSL](https://www.researchgate.net/publication/344327532_A_Domain_Specific_Modeling_Language_Framework_DSL_for_Representative_Medical_Prescription_by_using_Generic_Modeling_Environment_GME) (2020) uses Generic Modeling Environment (GME) to model medical prescriptions with dosage, frequency, and validation rules.
-
-**Future PSDL integration:** Medication scenarios could become a PSDL module:
-
-```yaml
-# Potential future syntax
-medications:
-  metformin:
-    drug_id: RxNorm:6809
-    current_dose: last(metformin_dose)
-
-trends:
-  dose_interaction_risk:
-    expr: taking(metformin) AND last(Cr) > 1.5
-```
-
-### Virtual Patients: LLM-Based Simulation
-
-Recent advances in [LLM-based virtual patients](https://pubmed.ncbi.nlm.nih.gov/38992981/) (2024-2025) enable scalable, low-cost clinical simulation. Systems like [AIPatient](https://arxiv.org/abs/2409.18924) use retrieval-augmented generation with real patient data (MIMIC-III).
-
-**Future PSDL integration:** PSDL scenarios could drive virtual patient behavior:
-
-```yaml
-# Virtual patient scenario
-scenario: Virtual_Sepsis_Case
-mode: simulation
-
-progression:
-  hour_0:
-    vitals: { HR: 88, RR: 18, Temp: 37.0 }
-  hour_4:
-    vitals: { HR: 105, RR: 22, Temp: 38.5 }
-    trigger: qsofa_positive
-```
-
-This would enable standardized, reproducible clinical simulations for education.
+**Use together:** Define cohorts in CQL/ATLAS → Deploy real-time detection with PSDL.
 
 ---
 
-## Vision: The PSDL Ecosystem
+## Vision
 
-PSDL's current focus on **scenario semantics** (Signals → Trends → Logic → Triggers) establishes a foundation. The long-term vision encompasses a complete clinical AI stack.
-
-### Layered Architecture Vision
+PSDL has a focused two-layer architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      PSDL ECOSYSTEM (Future)                     │
-├─────────────────────────────────────────────────────────────────┤
-│  PSDL.Simulation  │  Virtual patients, case generation          │
-├───────────────────┼─────────────────────────────────────────────┤
-│  PSDL.Pathway     │  Multi-step clinical protocols              │
-├───────────────────┼─────────────────────────────────────────────┤
-│  PSDL.Model       │  AI/ML model integration (RFC-0001)         │
-├───────────────────┼─────────────────────────────────────────────┤
-│  PSDL.Core        │  Scenarios (current focus) ← WE ARE HERE    │
-├───────────────────┼─────────────────────────────────────────────┤
-│  PSDL.Data        │  Signal abstraction, mappings               │
-└─────────────────────────────────────────────────────────────────┘
+│  PSDL.Model   │  AI/ML model integration (predict, forecast)    │
+├───────────────┼─────────────────────────────────────────────────┤
+│  PSDL.Core    │  Real-time scenarios ← CURRENT FOCUS            │
+└───────────────┴─────────────────────────────────────────────────┘
+        ▲                           ▲
+        │                           │
+   ┌────┴────┐                 ┌────┴────┐
+   │  FHIR   │                 │  ONNX   │
+   │  OMOP   │                 │ (models)│
+   └─────────┘                 └─────────┘
 ```
 
-### What PSDL Will NOT Do
+### v1.0 Goal: Real-time Scenario Detection
 
-Being clear about scope is essential. PSDL is designed to excel at:
+The streaming backend (RFC-0002) enables:
+- Sub-second clinical event processing
+- Stateful temporal operators
+- Integration with Kafka/Flink infrastructure
 
-| In Scope | Out of Scope |
-|----------|--------------|
-| Scenario definition | Model training |
-| Temporal logic | Data warehousing |
-| Event detection | EHR workflow |
-| Alert triggering | User interface |
-| Cross-platform portability | Protocol implementation |
+### v1.x Goal: AI Model Deployment Bridge
 
-PSDL intentionally does not replace:
-- **FHIR/OMOP** — Data standards (PSDL uses them)
-- **CQL** — Quality measures (complementary)
-- **Arden Syntax** — Simple rules (PSDL adds composition)
-- **Pathway languages** — Treatment protocols (future integration)
+RFC-0001 enables:
+- Declare model dependencies in scenarios
+- Standard `predict()`, `forecast()` operators
+- Timeout and fallback handling for real-time inference
 
-### Integration Philosophy
+### The Pitch
 
-Rather than reinventing, PSDL integrates:
-
-```
-┌──────────────────────────────────────────────────────┐
-│                   PSDL Scenario                       │
-│  ┌──────────────────────────────────────────────┐   │
-│  │ Signals → Trends → Logic → Triggers          │   │
-│  └──────────────────────────────────────────────┘   │
-│         ▲              ▲              ▲              │
-│         │              │              │              │
-│    ┌────┴────┐   ┌────┴────┐   ┌────┴────┐         │
-│    │  FHIR   │   │   CQL   │   │  ONNX   │         │
-│    │  OMOP   │   │ (logic) │   │ (models)│         │
-│    └─────────┘   └─────────┘   └─────────┘         │
-└──────────────────────────────────────────────────────┘
-```
-
-### Research Opportunities
-
-Based on related work, we identify research directions:
-
-1. **Formal Verification** — Can PSDL scenarios be formally proven safe?
-2. **Scenario Composition** — How do multiple scenarios interact?
-3. **Temporal Extensions** — What operators are missing for clinical use?
-4. **Cross-Institution Portability** — How well do scenarios transfer?
-5. **LLM Integration** — Can LLMs generate/validate PSDL scenarios?
+> **"Use ATLAS for cohort discovery. Use PSDL to deploy that logic in real-time with AI models."**
 
 ---
 
