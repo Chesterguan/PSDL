@@ -360,6 +360,189 @@ The path from ML model to bedside impact requires a semantic layer. PSDL provide
 
 ---
 
+## Related Work
+
+PSDL builds upon decades of research in clinical decision support languages and healthcare informatics. Understanding this landscape helps position PSDL's unique contributions and identifies opportunities for future integration.
+
+### Historical Foundation: Arden Syntax
+
+[Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992) is the foundational clinical rule language. Its Medical Logic Modules (MLMs) introduced the event-trigger-action paradigm for clinical alerts. Arden Syntax demonstrated that clinical knowledge could be encoded in shareable, executable form.
+
+**What PSDL learns:** The event-trigger model, patient data binding, and rule-to-action flow directly influence PSDL's trigger system. However, Arden Syntax focuses on individual rules, while PSDL emphasizes **scenario composition** — combining multiple signals, trends, and logic into cohesive clinical scenarios.
+
+| Aspect | Arden Syntax | PSDL |
+|--------|--------------|------|
+| Unit of Knowledge | Medical Logic Module (single rule) | Scenario (composed logic) |
+| Temporal Operators | Limited | First-class (`delta`, `slope`, `ema`) |
+| Data Binding | Direct patient data | Abstract signals with mapping layer |
+| Focus | Alert generation | Scenario semantics |
+
+### Clinical Pathway DSLs: Acadela
+
+[Acadela](https://wwwmatthes.in.tum.de/pages/a8yka1dz1gsa/Acadela-A-Domain-Specific-Language-for-Modeling-Clinical-Pathways) (TU München, 2023) is a text-based DSL for modeling clinical pathways. It covers workflow, responsibilities, data visualization, and external system communication.
+
+**What PSDL learns:** Acadela demonstrates the value of a low-tech, text-based approach that enables collaboration between medical and technical experts. Its user studies validate that clinical professionals find declarative DSLs intuitive.
+
+**Key difference:** Acadela models **pathways** (treatment procedures over time), while PSDL models **scenarios** (detection logic at a point in time). These are complementary — PSDL scenarios could trigger Acadela pathways.
+
+### Scenario-Based Modeling: SBRM-DSL
+
+[SBRM-DSL](https://ieeexplore.ieee.org/document/8817187/) (ICWS 2019) introduces a four-element model for crossover healthcare services:
+
+```
+WHO → SCENARIO → PROCESS → RULE
+```
+
+This framework explicitly models multi-actor scenarios in healthcare, where patients, doctors, nurses, and systems interact.
+
+**What PSDL learns:** The WHO-SCENARIO-PROCESS-RULE structure provides a template for PSDL's future extensions into multi-role scenarios. Currently PSDL focuses on patient-centric detection; future versions may incorporate care team roles.
+
+### Quality Measures: Clinical Quality Language (CQL)
+
+[Clinical Quality Language](https://cql.hl7.org/) (HL7) is a high-level language for clinical quality measures and decision support. CQL integrates with FHIR and supports complex clinical logic.
+
+**PSDL's relationship to CQL:**
+
+| Aspect | CQL | PSDL |
+|--------|-----|------|
+| Primary Focus | Quality measurement, cohort definition | Real-time scenario detection |
+| Temporal Operators | Good support | First-class, streaming-native |
+| Runtime Model | Query-based | Event-driven + query |
+| Complexity | Higher learning curve | Simpler, YAML-based |
+| Adoption | Established standard | Emerging |
+
+PSDL complements CQL rather than competing. CQL excels at quality measurement and reporting; PSDL excels at real-time clinical detection with explicit temporal semantics.
+
+### Clinical Scores: DSML4ClinicalScores
+
+[DSML4ClinicalScores](https://www.researchgate.net/publication/339125394_Model-Driven_Development_Applied_to_Mobile_Health_and_Clinical_Scores) (2020) uses model-driven development to generate mHealth apps from clinical score specifications. Analyzing 89 clinical scores, it creates a metamodel for risk assessment tools.
+
+**Future PSDL integration:** Clinical scores (SOFA, APACHE, NEWS2) could be first-class concepts in PSDL:
+
+```yaml
+# Potential future syntax
+scores:
+  NEWS2:
+    type: clinical_score
+    source: news2_score
+
+trends:
+  news2_critical:
+    expr: last(NEWS2) >= 7
+```
+
+### Prescription DSL: GME Framework
+
+[Prescription DSL](https://www.researchgate.net/publication/344327532_A_Domain_Specific_Modeling_Language_Framework_DSL_for_Representative_Medical_Prescription_by_using_Generic_Modeling_Environment_GME) (2020) uses Generic Modeling Environment (GME) to model medical prescriptions with dosage, frequency, and validation rules.
+
+**Future PSDL integration:** Medication scenarios could become a PSDL module:
+
+```yaml
+# Potential future syntax
+medications:
+  metformin:
+    drug_id: RxNorm:6809
+    current_dose: last(metformin_dose)
+
+trends:
+  dose_interaction_risk:
+    expr: taking(metformin) AND last(Cr) > 1.5
+```
+
+### Virtual Patients: LLM-Based Simulation
+
+Recent advances in [LLM-based virtual patients](https://pubmed.ncbi.nlm.nih.gov/38992981/) (2024-2025) enable scalable, low-cost clinical simulation. Systems like [AIPatient](https://arxiv.org/abs/2409.18924) use retrieval-augmented generation with real patient data (MIMIC-III).
+
+**Future PSDL integration:** PSDL scenarios could drive virtual patient behavior:
+
+```yaml
+# Virtual patient scenario
+scenario: Virtual_Sepsis_Case
+mode: simulation
+
+progression:
+  hour_0:
+    vitals: { HR: 88, RR: 18, Temp: 37.0 }
+  hour_4:
+    vitals: { HR: 105, RR: 22, Temp: 38.5 }
+    trigger: qsofa_positive
+```
+
+This would enable standardized, reproducible clinical simulations for education.
+
+---
+
+## Vision: The PSDL Ecosystem
+
+PSDL's current focus on **scenario semantics** (Signals → Trends → Logic → Triggers) establishes a foundation. The long-term vision encompasses a complete clinical AI stack.
+
+### Layered Architecture Vision
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      PSDL ECOSYSTEM (Future)                     │
+├─────────────────────────────────────────────────────────────────┤
+│  PSDL.Simulation  │  Virtual patients, case generation          │
+├───────────────────┼─────────────────────────────────────────────┤
+│  PSDL.Pathway     │  Multi-step clinical protocols              │
+├───────────────────┼─────────────────────────────────────────────┤
+│  PSDL.Model       │  AI/ML model integration (RFC-0001)         │
+├───────────────────┼─────────────────────────────────────────────┤
+│  PSDL.Core        │  Scenarios (current focus) ← WE ARE HERE    │
+├───────────────────┼─────────────────────────────────────────────┤
+│  PSDL.Data        │  Signal abstraction, mappings               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### What PSDL Will NOT Do
+
+Being clear about scope is essential. PSDL is designed to excel at:
+
+| In Scope | Out of Scope |
+|----------|--------------|
+| Scenario definition | Model training |
+| Temporal logic | Data warehousing |
+| Event detection | EHR workflow |
+| Alert triggering | User interface |
+| Cross-platform portability | Protocol implementation |
+
+PSDL intentionally does not replace:
+- **FHIR/OMOP** — Data standards (PSDL uses them)
+- **CQL** — Quality measures (complementary)
+- **Arden Syntax** — Simple rules (PSDL adds composition)
+- **Pathway languages** — Treatment protocols (future integration)
+
+### Integration Philosophy
+
+Rather than reinventing, PSDL integrates:
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   PSDL Scenario                       │
+│  ┌──────────────────────────────────────────────┐   │
+│  │ Signals → Trends → Logic → Triggers          │   │
+│  └──────────────────────────────────────────────┘   │
+│         ▲              ▲              ▲              │
+│         │              │              │              │
+│    ┌────┴────┐   ┌────┴────┐   ┌────┴────┐         │
+│    │  FHIR   │   │   CQL   │   │  ONNX   │         │
+│    │  OMOP   │   │ (logic) │   │ (models)│         │
+│    └─────────┘   └─────────┘   └─────────┘         │
+└──────────────────────────────────────────────────────┘
+```
+
+### Research Opportunities
+
+Based on related work, we identify research directions:
+
+1. **Formal Verification** — Can PSDL scenarios be formally proven safe?
+2. **Scenario Composition** — How do multiple scenarios interact?
+3. **Temporal Extensions** — What operators are missing for clinical use?
+4. **Cross-Institution Portability** — How well do scenarios transfer?
+5. **LLM Integration** — Can LLMs generate/validate PSDL scenarios?
+
+---
+
 ## Appendix A: Full Scenario Example
 
 ```yaml
