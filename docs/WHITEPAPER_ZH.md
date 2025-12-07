@@ -39,11 +39,33 @@
 
 ## 问题：为什么临床AI无法部署
 
-<p align="center">
-  <img src="./assets/scenario-semantics-gap.png" alt="场景语义鸿沟" width="800"/>
-  <br/>
-  <em>机器学习模型与临床工作流程之间的鸿沟 — PSDL 架起这座桥梁</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Models["机器学习模型"]
+        M1["恶化<br/>预测器"]
+        M2["脓毒症<br/>模型"]
+        M3["AKI<br/>分类器"]
+    end
+
+    subgraph Gap["❓ 场景语义鸿沟"]
+        Q1["何时运行?"]
+        Q2["哪些患者?"]
+        Q3["什么信号?"]
+        Q4["什么行动?"]
+    end
+
+    subgraph Clinical["临床工作流程"]
+        C1["告警"]
+        C2["医嘱"]
+        C3["会诊"]
+    end
+
+    Models --> Gap
+    Gap -.->|"无标准"| Clinical
+
+    style Gap fill:#ffcccc,stroke:#cc0000
+```
+*机器学习模型与临床工作流程之间的鸿沟 — PSDL 架起这座桥梁*
 
 ### 场景语义鸿沟
 
@@ -59,11 +81,25 @@
 
 ### 当前状态：碎片化的临床逻辑
 
-<p align="center">
-  <img src="./assets/fragmentation-diagram.png" alt="临床逻辑碎片化" width="800"/>
-  <br/>
-  <em>当今的临床逻辑分散在不兼容的系统中</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Hospital["医院系统"]
+        direction TB
+        EHR["EHR规则<br/>(专有)"]
+        SQL["SQL查询<br/>(架构锁定)"]
+        PY["Python脚本<br/>(不可移植)"]
+        NB["Jupyter笔记本<br/>(临时)"]
+        CFG["配置文件<br/>(自定义格式)"]
+    end
+
+    EHR -.->|"❌ 无法共享"| SQL
+    SQL -.->|"❌ 无标准"| PY
+    PY -.->|"❌ 无审计"| NB
+    NB -.->|"❌ 无流处理"| CFG
+
+    style Hospital fill:#fff3cd,stroke:#856404
+```
+*当今的临床逻辑分散在不兼容的系统中*
 
 如今，临床决策逻辑分散在：
 
@@ -81,11 +117,38 @@
 
 ## 解决方案：PSDL
 
-<p align="center">
-  <img src="./assets/layers.jpeg" alt="PSDL架构" width="800"/>
-  <br/>
-  <em>PSDL作为医疗AI技术栈中的语义层</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Apps["临床应用"]
+        A1["告警"]
+        A2["仪表板"]
+        A3["医嘱建议"]
+    end
+
+    subgraph PSDL["PSDL 语义层"]
+        direction LR
+        S["信号"] --> T["趋势"] --> L["逻辑"] --> TR["触发器"]
+    end
+
+    subgraph Runtime["多运行时执行"]
+        R1["流处理<br/>(Flink)"]
+        R2["FHIR<br/>(EHR)"]
+        R3["OMOP<br/>(研究)"]
+    end
+
+    subgraph Data["临床数据源"]
+        D1["EHR"]
+        D2["实验室系统"]
+        D3["监护仪"]
+    end
+
+    Apps --> PSDL
+    PSDL --> Runtime
+    Runtime --> Data
+
+    style PSDL fill:#d4edda,stroke:#28a745
+```
+*PSDL作为医疗AI技术栈中的语义层*
 
 PSDL引入了一个临床场景的**语义层** — 一种结构化的、声明式的格式，将*检测什么*与*如何计算*分离。
 
@@ -162,11 +225,25 @@ PSDL遵循成功开放标准的先例：
 
 ### 开放的好处
 
-<p align="center">
-  <img src="./assets/psdl-ecosystem.png" alt="PSDL生态系统" width="600"/>
-  <br/>
-  <em>PSDL连接临床AI生态系统中的所有利益相关方</em>
-</p>
+```mermaid
+flowchart TB
+    PSDL["PSDL<br/>开放标准"]
+
+    H["医院"]
+    R["研究人员"]
+    V["供应商"]
+    REG["监管机构"]
+    C["临床医生"]
+
+    H -->|"可移植逻辑"| PSDL
+    R -->|"可重现"| PSDL
+    V -->|"通用格式"| PSDL
+    REG -->|"可审计"| PSDL
+    C -->|"透明"| PSDL
+
+    style PSDL fill:#cce5ff,stroke:#004085
+```
+*PSDL连接临床AI生态系统中的所有利益相关方*
 
 | 原则 | 好处 |
 |------|------|
@@ -239,11 +316,30 @@ PSDL场景与运行时无关。同一场景可以在以下环境执行：
 
 ## 对比：使用PSDL前后
 
-<p align="center">
-  <img src="./assets/before-after-psdl.png" alt="使用PSDL前后对比" width="700"/>
-  <br/>
-  <em>PSDL显著简化了临床逻辑管理</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Before["使用PSDL之前"]
+        direction TB
+        B1["300+ 行 Python/SQL"]
+        B2["批处理作业 (延迟数小时)"]
+        B3["手动编写文档"]
+        B4["供应商锁定"]
+    end
+
+    subgraph After["使用PSDL之后"]
+        direction TB
+        A1["~50 行 YAML"]
+        A2["实时流处理"]
+        A3["内置审计追踪"]
+        A4["可移植到任何地方"]
+    end
+
+    Before -->|"PSDL"| After
+
+    style Before fill:#f8d7da,stroke:#721c24
+    style After fill:#d4edda,stroke:#155724
+```
+*PSDL显著简化了临床逻辑管理*
 
 | 方面 | 使用PSDL之前 | 使用PSDL之后 |
 |------|-------------|--------------|
@@ -272,11 +368,21 @@ PSDL的设计考虑了监管要求：
 
 ## 路线图
 
-<p align="center">
-  <img src="./assets/roadmap-timeline.png" alt="PSDL路线图" width="900"/>
-  <br/>
-  <em>PSDL发展阶段</em>
-</p>
+```mermaid
+flowchart LR
+    P1["第一阶段<br/>语义基础<br/>✓ 完成"]
+    P2["第二阶段<br/>实时执行<br/>⟵ 当前"]
+    P3["第三阶段<br/>AI模型集成"]
+    P4["第四阶段<br/>推广应用"]
+
+    P1 --> P2 --> P3 --> P4
+
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#856404
+    style P3 fill:#e2e3e5,stroke:#6c757d
+    style P4 fill:#e2e3e5,stroke:#6c757d
+```
+*PSDL发展阶段*
 
 ### 第一阶段：语义基础 [当前]
 - 类型系统和运算符规范

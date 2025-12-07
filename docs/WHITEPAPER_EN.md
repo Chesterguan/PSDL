@@ -39,11 +39,33 @@ Healthcare AI has a deployment problem. Despite remarkable advances in predictiv
 
 ## The Problem: Why Clinical AI Fails to Deploy
 
-<p align="center">
-  <img src="./assets/scenario-semantics-gap.png" alt="The Scenario Semantics Gap" width="800"/>
-  <br/>
-  <em>The gap between ML models and clinical workflows — PSDL bridges this divide</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Models["ML Models"]
+        M1["Deterioration<br/>Predictor"]
+        M2["Sepsis<br/>Model"]
+        M3["AKI<br/>Classifier"]
+    end
+
+    subgraph Gap["❓ Scenario Semantics Gap"]
+        Q1["When to run?"]
+        Q2["Which patients?"]
+        Q3["What signals?"]
+        Q4["What actions?"]
+    end
+
+    subgraph Clinical["Clinical Workflows"]
+        C1["Alerts"]
+        C2["Orders"]
+        C3["Consults"]
+    end
+
+    Models --> Gap
+    Gap -.->|"No Standard"| Clinical
+
+    style Gap fill:#ffcccc,stroke:#cc0000
+```
+*The gap between ML models and clinical workflows — PSDL bridges this divide*
 
 ### The Scenario Semantics Gap
 
@@ -59,11 +81,25 @@ These are **scenario semantics** — and healthcare has no standard way to expre
 
 ### Current State: Fragmented Clinical Logic
 
-<p align="center">
-  <img src="./assets/fragmentation-diagram.png" alt="Clinical Logic Fragmentation" width="800"/>
-  <br/>
-  <em>Clinical logic today is scattered across incompatible systems</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Hospital["Hospital Systems"]
+        direction TB
+        EHR["EHR Rules<br/>(Proprietary)"]
+        SQL["SQL Queries<br/>(Schema-locked)"]
+        PY["Python Scripts<br/>(Non-portable)"]
+        NB["Jupyter Notebooks<br/>(Ad-hoc)"]
+        CFG["Config Files<br/>(Custom format)"]
+    end
+
+    EHR -.->|"❌ No sharing"| SQL
+    SQL -.->|"❌ No standard"| PY
+    PY -.->|"❌ No audit"| NB
+    NB -.->|"❌ No streaming"| CFG
+
+    style Hospital fill:#fff3cd,stroke:#856404
+```
+*Clinical logic today is scattered across incompatible systems*
 
 Today, clinical decision logic is scattered across:
 
@@ -81,11 +117,38 @@ Today, clinical decision logic is scattered across:
 
 ## The Solution: PSDL
 
-<p align="center">
-  <img src="./assets/layers.jpeg" alt="PSDL Architecture" width="800"/>
-  <br/>
-  <em>PSDL as the semantic layer in the healthcare AI stack</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Apps["Clinical Applications"]
+        A1["Alerts"]
+        A2["Dashboards"]
+        A3["Order Suggestions"]
+    end
+
+    subgraph PSDL["PSDL Semantic Layer"]
+        direction LR
+        S["Signals"] --> T["Trends"] --> L["Logic"] --> TR["Triggers"]
+    end
+
+    subgraph Runtime["Multi-Runtime Execution"]
+        R1["Stream<br/>(Flink)"]
+        R2["FHIR<br/>(EHR)"]
+        R3["OMOP<br/>(Research)"]
+    end
+
+    subgraph Data["Clinical Data Sources"]
+        D1["EHR"]
+        D2["Lab Systems"]
+        D3["Monitors"]
+    end
+
+    Apps --> PSDL
+    PSDL --> Runtime
+    Runtime --> Data
+
+    style PSDL fill:#d4edda,stroke:#28a745
+```
+*PSDL as the semantic layer in the healthcare AI stack*
 
 PSDL introduces a **streaming-native semantic layer** for clinical scenarios — a structured, declarative format that separates *what* to detect from *how* to compute it. Designed from the ground up for real-time execution with Apache Flink and similar streaming engines.
 
@@ -162,11 +225,25 @@ PSDL follows the precedent of successful open standards:
 
 ### Benefits of Openness
 
-<p align="center">
-  <img src="./assets/psdl-ecosystem.png" alt="PSDL Ecosystem" width="600"/>
-  <br/>
-  <em>PSDL connects all stakeholders in the clinical AI ecosystem</em>
-</p>
+```mermaid
+flowchart TB
+    PSDL["PSDL<br/>Open Standard"]
+
+    H["Hospitals"]
+    R["Researchers"]
+    V["Vendors"]
+    REG["Regulators"]
+    C["Clinicians"]
+
+    H -->|"Portable Logic"| PSDL
+    R -->|"Reproducible"| PSDL
+    V -->|"Common Format"| PSDL
+    REG -->|"Auditable"| PSDL
+    C -->|"Transparent"| PSDL
+
+    style PSDL fill:#cce5ff,stroke:#004085
+```
+*PSDL connects all stakeholders in the clinical AI ecosystem*
 
 | Principle | Benefit |
 |-----------|---------|
@@ -175,190 +252,6 @@ PSDL follows the precedent of successful open standards:
 | **Implementation Freedom** | Multiple runtimes can be conformant |
 | **Reproducibility** | Researchers can share exact scenario definitions |
 | **Regulatory Clarity** | Standard format enables systematic auditing |
-
----
-
-## Technical Architecture
-
-### The PSDL Stack
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLINICAL APPLICATIONS                     │
-│         (Alerts, Dashboards, Order Suggestions)             │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                     PSDL SEMANTIC LAYER                      │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-│  │ Signals │→ │ Trends  │→ │  Logic  │→ │Triggers │        │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-    ┌──────────┐        ┌──────────┐        ┌──────────┐
-    │   OMOP   │        │   FHIR   │        │  Stream  │
-    │  Runtime │        │  Runtime │        │  Runtime │
-    └──────────┘        └──────────┘        └──────────┘
-          ▲                   ▲                   ▲
-          │                   │                   │
-┌─────────────────────────────────────────────────────────────┐
-│                      CLINICAL DATA                           │
-│            (EHR, Lab Systems, Monitoring Devices)            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Streaming-Native Temporal Operators
-
-PSDL provides first-class support for time-series clinical data with operators designed for real-time streaming execution:
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `delta(signal, window)` | Change over time window | `delta(Cr, 6h) > 0.3` |
-| `slope(signal, window)` | Linear trend | `slope(lactate, 3h) > 0` |
-| `ema(signal, window)` | Exponential moving average | `ema(MAP, 30m) < 65` |
-| `sma(signal, window)` | Simple moving average | `sma(HR, 1h) > 100` |
-| `min/max(signal, window)` | Extremes in window | `max(temp, 24h) > 38.5` |
-| `last(signal)` | Most recent value | `last(SpO2) < 92` |
-| `count(signal, window)` | Observation count | `count(Cr, 24h) >= 2` |
-
-### Multi-Runtime Support
-
-PSDL scenarios are runtime-agnostic. The same scenario can execute on:
-
-| Runtime | Use Case | Data Source |
-|---------|----------|-------------|
-| **Stream** | **Real-time detection (primary)** | Kafka/Flink |
-| **FHIR** | EHR integration | FHIR servers |
-| **OMOP SQL** | Retrospective validation | CDM databases |
-| **Python** | Development & testing | DataFrames |
-
-**Write once, validate on historical data, deploy in real-time.**
-
----
-
-## Comparison: Before and After PSDL
-
-<p align="center">
-  <img src="./assets/before-after-psdl.png" alt="Before and After PSDL" width="700"/>
-  <br/>
-  <em>PSDL dramatically simplifies clinical logic management</em>
-</p>
-
-| Aspect | Before PSDL | After PSDL |
-|--------|-------------|------------|
-| **Execution** | Batch jobs (hours delay) | Real-time streaming |
-| **Lines of Code** | ~300+ Python/SQL | ~50 lines YAML |
-| **Portability** | Tied to specific systems | Runs anywhere with mapping |
-| **Auditability** | Manual documentation | Built-in, version-controlled |
-| **Reproducibility** | "Works on my machine" | Deterministic execution |
-| **Regulatory** | Ad-hoc compliance | Systematic audit support |
-
----
-
-## Regulatory Alignment
-
-PSDL is designed with regulatory requirements in mind:
-
-| Requirement | FDA | EU MDR | NIST AI RMF | PSDL Support |
-|-------------|:---:|:------:|:-----------:|:------------:|
-| Deterministic Execution | ✓ | ✓ | ✓ | Built-in |
-| Explainability | ✓ | ✓ | ✓ | Declarative logic |
-| Auditability | ✓ | ✓ | ✓ | Version control |
-| Traceability | ✓ | ✓ | ✓ | Audit primitives |
-| Reproducibility | ✓ | ✓ | ✓ | Portable definitions |
-
----
-
-## Roadmap
-
-<p align="center">
-  <img src="./assets/roadmap-timeline.png" alt="PSDL Roadmap" width="900"/>
-  <br/>
-  <em>PSDL development phases</em>
-</p>
-
-### Phase 1: Semantic Foundation ✓
-- Type system and operator specification
-- YAML schema definition
-- Python reference implementation
-- OMOP CDM and FHIR R4 backends
-- Clinical validation test suite (204 tests)
-
-### Phase 2: Real-time Execution [Current]
-- **Streaming backend (Apache Flink)** — RFC-0002
-- Trigger/Action system (v0.2)
-- Event-time watermarks and late data handling
-- Performance benchmarking
-
-### Phase 3: AI Model Integration
-- **Model deployment bridge** — RFC-0001
-- `predict()`, `forecast()` operators
-- Timeout and fallback handling
-- ONNX model integration
-
-### Phase 4: Adoption
-- Hospital streaming pilots
-- Standards body engagement (OHDSI, HL7)
-- Vendor partnerships
-
----
-
-## Get Involved
-
-PSDL is an open, community-driven project. We welcome contributions from:
-
-- **Clinical Informaticists** — Define real-world scenarios and requirements
-- **Software Engineers** — Build runtimes, tools, and integrations
-- **Researchers** — Validate portability and reproducibility
-- **Healthcare Organizations** — Pilot implementations and provide feedback
-- **Standards Bodies** — Help align with existing healthcare standards
-
-### Quick Links
-
-| Resource | Link |
-|----------|------|
-| GitHub Repository | [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL) |
-| Documentation | [Getting Started Guide](./getting-started.md) |
-| Examples | [Example Scenarios](../examples/) |
-| RFCs | [Proposals](../rfcs/) |
-
----
-
-## Conclusion
-
-Healthcare AI deployment is blocked not by model quality, but by the absence of **real-time** scenario semantics. PSDL fills this gap with:
-
-- **Streaming-native execution** — detect conditions as they happen
-- **A declarative language** for expressing clinical scenarios
-- **Vendor-neutral portability** across institutions and systems
-- **Built-in auditability** for regulatory compliance
-- **AI model integration** — bridge from research to real-time deployment
-
-The path from ML model to bedside impact requires a real-time semantic layer. PSDL provides it.
-
----
-
-<p align="center">
-  <strong>Clinical AI doesn't fail because models are weak.<br/>
-  It fails because real-time scenario semantics aren't formalized.</strong>
-</p>
-
-<p align="center">
-  <em>PSDL changes that — with streaming-native clinical logic.</em>
-</p>
-
----
-
-<p align="center">
-  <strong>Join us in building the standard for clinical decision logic.</strong>
-  <br/><br/>
-  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
-  <a href="./getting-started.md">Get Started</a> ·
-  <a href="../CONTRIBUTING.md">Contribute</a>
-</p>
 
 ---
 
@@ -449,6 +342,219 @@ RFC-0001 enables:
 ### The Pitch
 
 > **"Use ATLAS for cohort discovery. Use PSDL to deploy that logic in real-time with AI models."**
+
+---
+
+## Technical Architecture
+
+### The PSDL Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CLINICAL APPLICATIONS                     │
+│         (Alerts, Dashboards, Order Suggestions)             │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                     PSDL SEMANTIC LAYER                      │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│  │ Signals │→ │ Trends  │→ │  Logic  │→ │Triggers │        │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+    ┌──────────┐        ┌──────────┐        ┌──────────┐
+    │   OMOP   │        │   FHIR   │        │  Stream  │
+    │  Runtime │        │  Runtime │        │  Runtime │
+    └──────────┘        └──────────┘        └──────────┘
+          ▲                   ▲                   ▲
+          │                   │                   │
+┌─────────────────────────────────────────────────────────────┐
+│                      CLINICAL DATA                           │
+│            (EHR, Lab Systems, Monitoring Devices)            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Streaming-Native Temporal Operators
+
+PSDL provides first-class support for time-series clinical data with operators designed for real-time streaming execution:
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `delta(signal, window)` | Change over time window | `delta(Cr, 6h) > 0.3` |
+| `slope(signal, window)` | Linear trend | `slope(lactate, 3h) > 0` |
+| `ema(signal, window)` | Exponential moving average | `ema(MAP, 30m) < 65` |
+| `sma(signal, window)` | Simple moving average | `sma(HR, 1h) > 100` |
+| `min/max(signal, window)` | Extremes in window | `max(temp, 24h) > 38.5` |
+| `last(signal)` | Most recent value | `last(SpO2) < 92` |
+| `count(signal, window)` | Observation count | `count(Cr, 24h) >= 2` |
+
+### Multi-Runtime Support
+
+PSDL scenarios are runtime-agnostic. The same scenario can execute on:
+
+| Runtime | Use Case | Data Source |
+|---------|----------|-------------|
+| **Stream** | **Real-time detection (primary)** | Kafka/Flink |
+| **FHIR** | EHR integration | FHIR servers |
+| **OMOP SQL** | Retrospective validation | CDM databases |
+| **Python** | Development & testing | DataFrames |
+
+**Write once, validate on historical data, deploy in real-time.**
+
+---
+
+## Comparison: Before and After PSDL
+
+```mermaid
+flowchart LR
+    subgraph Before["Before PSDL"]
+        direction TB
+        B1["300+ lines Python/SQL"]
+        B2["Batch jobs (hours delay)"]
+        B3["Manual documentation"]
+        B4["Vendor-locked"]
+    end
+
+    subgraph After["After PSDL"]
+        direction TB
+        A1["~50 lines YAML"]
+        A2["Real-time streaming"]
+        A3["Built-in audit trail"]
+        A4["Portable anywhere"]
+    end
+
+    Before -->|"PSDL"| After
+
+    style Before fill:#f8d7da,stroke:#721c24
+    style After fill:#d4edda,stroke:#155724
+```
+*PSDL dramatically simplifies clinical logic management*
+
+| Aspect | Before PSDL | After PSDL |
+|--------|-------------|------------|
+| **Execution** | Batch jobs (hours delay) | Real-time streaming |
+| **Lines of Code** | ~300+ Python/SQL | ~50 lines YAML |
+| **Portability** | Tied to specific systems | Runs anywhere with mapping |
+| **Auditability** | Manual documentation | Built-in, version-controlled |
+| **Reproducibility** | "Works on my machine" | Deterministic execution |
+| **Regulatory** | Ad-hoc compliance | Systematic audit support |
+
+---
+
+## Regulatory Alignment
+
+PSDL is designed with regulatory requirements in mind:
+
+| Requirement | FDA | EU MDR | NIST AI RMF | PSDL Support |
+|-------------|:---:|:------:|:-----------:|:------------:|
+| Deterministic Execution | ✓ | ✓ | ✓ | Built-in |
+| Explainability | ✓ | ✓ | ✓ | Declarative logic |
+| Auditability | ✓ | ✓ | ✓ | Version control |
+| Traceability | ✓ | ✓ | ✓ | Audit primitives |
+| Reproducibility | ✓ | ✓ | ✓ | Portable definitions |
+
+---
+
+## Roadmap
+
+```mermaid
+flowchart LR
+    P1["Phase 1<br/>Semantic Foundation<br/>✓ Complete"]
+    P2["Phase 2<br/>Real-time Execution<br/>⟵ Current"]
+    P3["Phase 3<br/>AI Model Integration"]
+    P4["Phase 4<br/>Adoption"]
+
+    P1 --> P2 --> P3 --> P4
+
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#856404
+    style P3 fill:#e2e3e5,stroke:#6c757d
+    style P4 fill:#e2e3e5,stroke:#6c757d
+```
+*PSDL development phases*
+
+### Phase 1: Semantic Foundation ✓
+- Type system and operator specification
+- YAML schema definition
+- Python reference implementation
+- OMOP CDM and FHIR R4 backends
+- Clinical validation test suite (204 tests)
+
+### Phase 2: Real-time Execution [Current]
+- **Streaming backend (Apache Flink)** — RFC-0002
+- Trigger/Action system (v0.2)
+- Event-time watermarks and late data handling
+- Performance benchmarking
+
+### Phase 3: AI Model Integration
+- **Model deployment bridge** — RFC-0001
+- `predict()`, `forecast()` operators
+- Timeout and fallback handling
+- ONNX model integration
+
+### Phase 4: Adoption
+- Hospital streaming pilots
+- Standards body engagement (OHDSI, HL7)
+- Vendor partnerships
+
+---
+
+## Get Involved
+
+PSDL is an open, community-driven project. We welcome contributions from:
+
+- **Clinical Informaticists** — Define real-world scenarios and requirements
+- **Software Engineers** — Build runtimes, tools, and integrations
+- **Researchers** — Validate portability and reproducibility
+- **Healthcare Organizations** — Pilot implementations and provide feedback
+- **Standards Bodies** — Help align with existing healthcare standards
+
+### Quick Links
+
+| Resource | Link |
+|----------|------|
+| GitHub Repository | [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL) |
+| Documentation | [Getting Started Guide](./getting-started.md) |
+| Examples | [Example Scenarios](../examples/) |
+| RFCs | [Proposals](../rfcs/) |
+
+---
+
+## Conclusion
+
+Healthcare AI deployment is blocked not by model quality, but by the absence of **real-time** scenario semantics. PSDL fills this gap with:
+
+- **Streaming-native execution** — detect conditions as they happen
+- **A declarative language** for expressing clinical scenarios
+- **Vendor-neutral portability** across institutions and systems
+- **Built-in auditability** for regulatory compliance
+- **AI model integration** — bridge from research to real-time deployment
+
+The path from ML model to bedside impact requires a real-time semantic layer. PSDL provides it.
+
+---
+
+<p align="center">
+  <strong>Clinical AI doesn't fail because models are weak.<br/>
+  It fails because real-time scenario semantics aren't formalized.</strong>
+</p>
+
+<p align="center">
+  <em>PSDL changes that — with streaming-native clinical logic.</em>
+</p>
+
+---
+
+<p align="center">
+  <strong>Join us in building the standard for clinical decision logic.</strong>
+  <br/><br/>
+  <a href="https://github.com/Chesterguan/PSDL">GitHub</a> ·
+  <a href="./getting-started.md">Get Started</a> ·
+  <a href="../CONTRIBUTING.md">Contribute</a>
+</p>
 
 ---
 

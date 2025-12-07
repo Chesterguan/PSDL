@@ -39,11 +39,33 @@
 
 ## 問題：なぜ臨床AIは導入に失敗するのか
 
-<p align="center">
-  <img src="./assets/scenario-semantics-gap.png" alt="シナリオセマンティクスギャップ" width="800"/>
-  <br/>
-  <em>MLモデルと臨床ワークフローの間のギャップ — PSDLがこの橋を架けます</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Models["MLモデル"]
+        M1["悪化<br/>予測"]
+        M2["敗血症<br/>モデル"]
+        M3["AKI<br/>分類"]
+    end
+
+    subgraph Gap["❓ シナリオセマンティクスギャップ"]
+        Q1["いつ実行?"]
+        Q2["どの患者?"]
+        Q3["どのシグナル?"]
+        Q4["どのアクション?"]
+    end
+
+    subgraph Clinical["臨床ワークフロー"]
+        C1["アラート"]
+        C2["オーダー"]
+        C3["コンサルト"]
+    end
+
+    Models --> Gap
+    Gap -.->|"標準なし"| Clinical
+
+    style Gap fill:#ffcccc,stroke:#cc0000
+```
+*MLモデルと臨床ワークフローの間のギャップ — PSDLがこの橋を架けます*
 
 ### シナリオセマンティクスギャップ
 
@@ -59,11 +81,25 @@
 
 ### 現状：断片化した臨床ロジック
 
-<p align="center">
-  <img src="./assets/fragmentation-diagram.png" alt="臨床ロジックの断片化" width="800"/>
-  <br/>
-  <em>今日の臨床ロジックは互換性のないシステムに散在しています</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Hospital["病院システム"]
+        direction TB
+        EHR["EHRルール<br/>(プロプライエタリ)"]
+        SQL["SQLクエリ<br/>(スキーマ固定)"]
+        PY["Pythonスクリプト<br/>(非ポータブル)"]
+        NB["Jupyterノートブック<br/>(アドホック)"]
+        CFG["設定ファイル<br/>(カスタム形式)"]
+    end
+
+    EHR -.->|"❌ 共有不可"| SQL
+    SQL -.->|"❌ 標準なし"| PY
+    PY -.->|"❌ 監査不可"| NB
+    NB -.->|"❌ ストリーミング不可"| CFG
+
+    style Hospital fill:#fff3cd,stroke:#856404
+```
+*今日の臨床ロジックは互換性のないシステムに散在しています*
 
 今日、臨床意思決定ロジックは以下に散在しています：
 
@@ -81,11 +117,38 @@
 
 ## ソリューション：PSDL
 
-<p align="center">
-  <img src="./assets/layers.jpeg" alt="PSDLアーキテクチャ" width="800"/>
-  <br/>
-  <em>医療AIスタックにおけるセマンティックレイヤーとしてのPSDL</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Apps["臨床アプリケーション"]
+        A1["アラート"]
+        A2["ダッシュボード"]
+        A3["オーダー提案"]
+    end
+
+    subgraph PSDL["PSDL セマンティックレイヤー"]
+        direction LR
+        S["シグナル"] --> T["トレンド"] --> L["ロジック"] --> TR["トリガー"]
+    end
+
+    subgraph Runtime["マルチランタイム実行"]
+        R1["ストリーム<br/>(Flink)"]
+        R2["FHIR<br/>(EHR)"]
+        R3["OMOP<br/>(研究)"]
+    end
+
+    subgraph Data["臨床データソース"]
+        D1["EHR"]
+        D2["検査システム"]
+        D3["モニター"]
+    end
+
+    Apps --> PSDL
+    PSDL --> Runtime
+    Runtime --> Data
+
+    style PSDL fill:#d4edda,stroke:#28a745
+```
+*医療AIスタックにおけるセマンティックレイヤーとしてのPSDL*
 
 PSDLは臨床シナリオのための**セマンティックレイヤー**を導入します — *何を*検出するかと*どのように*計算するかを分離する構造化された宣言型フォーマットです。
 
@@ -162,11 +225,25 @@ PSDLは成功したオープンスタンダードの先例に従います：
 
 ### オープン性のメリット
 
-<p align="center">
-  <img src="./assets/psdl-ecosystem.png" alt="PSDLエコシステム" width="600"/>
-  <br/>
-  <em>PSDLは臨床AIエコシステムのすべてのステークホルダーを接続します</em>
-</p>
+```mermaid
+flowchart TB
+    PSDL["PSDL<br/>オープン標準"]
+
+    H["病院"]
+    R["研究者"]
+    V["ベンダー"]
+    REG["規制当局"]
+    C["臨床医"]
+
+    H -->|"ポータブルロジック"| PSDL
+    R -->|"再現可能"| PSDL
+    V -->|"共通フォーマット"| PSDL
+    REG -->|"監査可能"| PSDL
+    C -->|"透明"| PSDL
+
+    style PSDL fill:#cce5ff,stroke:#004085
+```
+*PSDLは臨床AIエコシステムのすべてのステークホルダーを接続します*
 
 | 原則 | メリット |
 |------|---------|
@@ -222,11 +299,30 @@ PSDLは時系列臨床データのファーストクラスサポートを提供�
 
 ## 比較：PSDL導入前と導入後
 
-<p align="center">
-  <img src="./assets/before-after-psdl.png" alt="PSDL導入前と導入後" width="700"/>
-  <br/>
-  <em>PSDLは臨床ロジック管理を劇的に簡素化します</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Before["PSDL導入前"]
+        direction TB
+        B1["300+ 行 Python/SQL"]
+        B2["バッチ処理（数時間遅延）"]
+        B3["手動ドキュメント"]
+        B4["ベンダーロック"]
+    end
+
+    subgraph After["PSDL導入後"]
+        direction TB
+        A1["〜50行 YAML"]
+        A2["リアルタイムストリーミング"]
+        A3["内蔵監査証跡"]
+        A4["どこでもポータブル"]
+    end
+
+    Before -->|"PSDL"| After
+
+    style Before fill:#f8d7da,stroke:#721c24
+    style After fill:#d4edda,stroke:#155724
+```
+*PSDLは臨床ロジック管理を劇的に簡素化します*
 
 | 側面 | PSDL導入前 | PSDL導入後 |
 |------|-----------|-----------|
@@ -241,11 +337,21 @@ PSDLは時系列臨床データのファーストクラスサポートを提供�
 
 ## ロードマップ
 
-<p align="center">
-  <img src="./assets/roadmap-timeline.png" alt="PSDLロードマップ" width="900"/>
-  <br/>
-  <em>PSDL開発フェーズ</em>
-</p>
+```mermaid
+flowchart LR
+    P1["Phase 1<br/>セマンティック基盤<br/>✓ 完了"]
+    P2["Phase 2<br/>リアルタイム実行<br/>⟵ 現在"]
+    P3["Phase 3<br/>AIモデル統合"]
+    P4["Phase 4<br/>導入"]
+
+    P1 --> P2 --> P3 --> P4
+
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#856404
+    style P3 fill:#e2e3e5,stroke:#6c757d
+    style P4 fill:#e2e3e5,stroke:#6c757d
+```
+*PSDL開発フェーズ*
 
 ### フェーズ1：セマンティック基盤 [現在]
 - 型システムと演算子仕様

@@ -39,11 +39,33 @@ L'IA de santé a un problème de déploiement. Malgré des avancées remarquable
 
 ## Le Problème : Pourquoi l'IA Clinique Échoue à se Déployer
 
-<p align="center">
-  <img src="./assets/scenario-semantics-gap.png" alt="Le Fossé de Sémantique des Scénarios" width="800"/>
-  <br/>
-  <em>Le fossé entre les modèles ML et les workflows cliniques — PSDL construit ce pont</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Models["Modèles ML"]
+        M1["Prédiction<br/>Détérioration"]
+        M2["Modèle<br/>Sepsis"]
+        M3["Classifieur<br/>AKI"]
+    end
+
+    subgraph Gap["❓ Fossé Sémantique"]
+        Q1["Quand exécuter?"]
+        Q2["Quels patients?"]
+        Q3["Quels signaux?"]
+        Q4["Quelles actions?"]
+    end
+
+    subgraph Clinical["Workflows Cliniques"]
+        C1["Alertes"]
+        C2["Prescriptions"]
+        C3["Consultations"]
+    end
+
+    Models --> Gap
+    Gap -.->|"Pas de Standard"| Clinical
+
+    style Gap fill:#ffcccc,stroke:#cc0000
+```
+*Le fossé entre les modèles ML et les workflows cliniques — PSDL construit ce pont*
 
 ### Le Fossé de Sémantique des Scénarios
 
@@ -59,11 +81,25 @@ Ce sont les **sémantiques de scénario** — et la santé n'a pas de façon sta
 
 ### État Actuel : Logique Clinique Fragmentée
 
-<p align="center">
-  <img src="./assets/fragmentation-diagram.png" alt="Fragmentation de la Logique Clinique" width="800"/>
-  <br/>
-  <em>La logique clinique aujourd'hui est dispersée dans des systèmes incompatibles</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Hospital["Systèmes Hospitaliers"]
+        direction TB
+        EHR["Règles EHR<br/>(Propriétaire)"]
+        SQL["Requêtes SQL<br/>(Verrouillé)"]
+        PY["Scripts Python<br/>(Non portable)"]
+        NB["Notebooks Jupyter<br/>(Ad-hoc)"]
+        CFG["Fichiers Config<br/>(Format custom)"]
+    end
+
+    EHR -.->|"❌ Pas de partage"| SQL
+    SQL -.->|"❌ Pas de standard"| PY
+    PY -.->|"❌ Pas d'audit"| NB
+    NB -.->|"❌ Pas de streaming"| CFG
+
+    style Hospital fill:#fff3cd,stroke:#856404
+```
+*La logique clinique aujourd'hui est dispersée dans des systèmes incompatibles*
 
 Aujourd'hui, la logique de décision clinique est dispersée dans :
 
@@ -81,11 +117,38 @@ Aujourd'hui, la logique de décision clinique est dispersée dans :
 
 ## La Solution : PSDL
 
-<p align="center">
-  <img src="./assets/layers.jpeg" alt="Architecture PSDL" width="800"/>
-  <br/>
-  <em>PSDL comme couche sémantique dans la pile de l'IA de santé</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Apps["Applications Cliniques"]
+        A1["Alertes"]
+        A2["Tableaux de bord"]
+        A3["Suggestions"]
+    end
+
+    subgraph PSDL["Couche Sémantique PSDL"]
+        direction LR
+        S["Signaux"] --> T["Tendances"] --> L["Logique"] --> TR["Déclencheurs"]
+    end
+
+    subgraph Runtime["Exécution Multi-Runtime"]
+        R1["Stream<br/>(Flink)"]
+        R2["FHIR<br/>(EHR)"]
+        R3["OMOP<br/>(Recherche)"]
+    end
+
+    subgraph Data["Sources de Données Cliniques"]
+        D1["EHR"]
+        D2["Systèmes Labo"]
+        D3["Moniteurs"]
+    end
+
+    Apps --> PSDL
+    PSDL --> Runtime
+    Runtime --> Data
+
+    style PSDL fill:#d4edda,stroke:#28a745
+```
+*PSDL comme couche sémantique dans la pile de l'IA de santé*
 
 PSDL introduit une **couche sémantique** pour les scénarios cliniques — un format structuré et déclaratif qui sépare *quoi* détecter de *comment* le calculer.
 
@@ -162,11 +225,25 @@ PSDL suit le précédent des standards ouverts réussis :
 
 ### Bénéfices de l'Ouverture
 
-<p align="center">
-  <img src="./assets/psdl-ecosystem.png" alt="Écosystème PSDL" width="600"/>
-  <br/>
-  <em>PSDL connecte toutes les parties prenantes de l'écosystème de l'IA clinique</em>
-</p>
+```mermaid
+flowchart TB
+    PSDL["PSDL<br/>Standard Ouvert"]
+
+    H["Hôpitaux"]
+    R["Chercheurs"]
+    V["Fournisseurs"]
+    REG["Régulateurs"]
+    C["Cliniciens"]
+
+    H -->|"Logique Portable"| PSDL
+    R -->|"Reproductible"| PSDL
+    V -->|"Format Commun"| PSDL
+    REG -->|"Auditable"| PSDL
+    C -->|"Transparent"| PSDL
+
+    style PSDL fill:#cce5ff,stroke:#004085
+```
+*PSDL connecte toutes les parties prenantes de l'écosystème de l'IA clinique*
 
 | Principe | Bénéfice |
 |----------|----------|
@@ -222,11 +299,30 @@ PSDL fournit un support de premier ordre pour les données cliniques de séries 
 
 ## Comparaison : Avant et Après PSDL
 
-<p align="center">
-  <img src="./assets/before-after-psdl.png" alt="Avant et Après PSDL" width="700"/>
-  <br/>
-  <em>PSDL simplifie dramatiquement la gestion de la logique clinique</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Before["Avant PSDL"]
+        direction TB
+        B1["300+ lignes Python/SQL"]
+        B2["Jobs batch - délai heures"]
+        B3["Documentation manuelle"]
+        B4["Verrouillé fournisseur"]
+    end
+
+    subgraph After["Après PSDL"]
+        direction TB
+        A1["~50 lignes YAML"]
+        A2["Streaming temps réel"]
+        A3["Piste audit intégrée"]
+        A4["Portable partout"]
+    end
+
+    Before -->|"PSDL"| After
+
+    style Before fill:#f8d7da,stroke:#721c24
+    style After fill:#d4edda,stroke:#155724
+```
+*PSDL simplifie dramatiquement la gestion de la logique clinique*
 
 | Aspect | Avant PSDL | Après PSDL |
 |--------|------------|------------|
@@ -241,11 +337,21 @@ PSDL fournit un support de premier ordre pour les données cliniques de séries 
 
 ## Feuille de Route
 
-<p align="center">
-  <img src="./assets/roadmap-timeline.png" alt="Feuille de Route PSDL" width="900"/>
-  <br/>
-  <em>Phases de développement de PSDL</em>
-</p>
+```mermaid
+flowchart LR
+    P1["Phase 1<br/>Fondation Sémantique<br/>✓ Terminé"]
+    P2["Phase 2<br/>Exécution Temps Réel<br/>⟵ Actuel"]
+    P3["Phase 3<br/>Intégration Modèles IA"]
+    P4["Phase 4<br/>Adoption"]
+
+    P1 --> P2 --> P3 --> P4
+
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#856404
+    style P3 fill:#e2e3e5,stroke:#6c757d
+    style P4 fill:#e2e3e5,stroke:#6c757d
+```
+*Phases de développement de PSDL*
 
 ### Phase 1 : Fondation Sémantique [Actuelle]
 - Système de types et spécification des opérateurs

@@ -132,31 +132,24 @@ patient = backend.get_patient(patients[0])
 **Resources:**
 - [HAPI FHIR](https://hapi.fhir.org/)
 
-### 2. HL7 Public Test Servers
+### 2. Public FHIR Test Servers
 
 Multiple servers maintained by the FHIR community.
 
 | Server | URL | Notes |
 |--------|-----|-------|
-| Grahame's Test Server | http://test.fhir.org/r4 | All resources, full operations |
-| AEGIS WildFHIR | https://wildfhir.wildfhir.org/r4 | R4 v4.0.1, all operations |
+| AEGIS WildFHIR | https://wildfhir.wildfhir.org/r4 | R4 v4.0.1, all operations, TLS 1.2 |
+| AEGIS WildFHIR Enterprise | https://wildfhir4.wildfhir.org/fhir4-0-1 | Enterprise edition |
+| Firely Server | https://server.fire.ly | Reliable public server |
+| Spark Server | https://spark.incendi.no/ | Supports DSTU2, STU3, R4 |
+| Telstra Health | http://sqlonfhir-r4.azurewebsites.net/fhir | R4, all resource types |
 
 **Resources:**
-- [HL7 Public Test Servers](https://confluence.hl7.org/spaces/FHIR/pages/35718859/Public+Test+Servers)
+- [HL7 Public Test Servers](https://confluence.hl7.org/display/FHIR/Public+Test+Servers)
 
-### 3. Logica Health Sandbox
+> **Note:** Some servers like `http://test.fhir.org/r4` (Grahame's Test Server) may experience connectivity issues. Use AEGIS WildFHIR or Firely as alternatives.
 
-SMART on FHIR enabled sandbox for app development.
-
-**Features:**
-- SMART on FHIR authentication
-- Pre-installed apps
-- Patient context launch
-
-**Resources:**
-- [Logica Sandbox](https://sandbox.logicahealth.org/)
-
-### 4. Epic Sandbox
+### 3. Epic Sandbox
 
 For testing Epic-specific integrations.
 
@@ -168,7 +161,7 @@ For testing Epic-specific integrations.
 **Resources:**
 - [Epic on FHIR](https://open.epic.com/)
 
-### 5. Crucible Testing Tools
+### 4. Crucible Testing Tools
 
 FHIR conformance testing and synthetic data generation.
 

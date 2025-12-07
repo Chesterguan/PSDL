@@ -39,11 +39,33 @@ La IA sanitaria tiene un problema de implementación. A pesar de los notables av
 
 ## El Problema: Por Qué la IA Clínica No Se Implementa
 
-<p align="center">
-  <img src="./assets/scenario-semantics-gap.png" alt="La Brecha de Semántica de Escenarios" width="800"/>
-  <br/>
-  <em>La brecha entre los modelos de ML y los flujos de trabajo clínicos — PSDL tiende este puente</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Models["Modelos ML"]
+        M1["Predictor<br/>Deterio"]
+        M2["Modelo<br/>Sepsis"]
+        M3["Clasificador<br/>AKI"]
+    end
+
+    subgraph Gap["❓ Brecha Semántica"]
+        Q1["¿Cuándo ejecutar?"]
+        Q2["¿Qué pacientes?"]
+        Q3["¿Qué señales?"]
+        Q4["¿Qué acciones?"]
+    end
+
+    subgraph Clinical["Flujos Clínicos"]
+        C1["Alertas"]
+        C2["Órdenes"]
+        C3["Consultas"]
+    end
+
+    Models --> Gap
+    Gap -.->|"Sin Estándar"| Clinical
+
+    style Gap fill:#ffcccc,stroke:#cc0000
+```
+*La brecha entre los modelos de ML y los flujos de trabajo clínicos — PSDL tiende este puente*
 
 ### La Brecha de Semántica de Escenarios
 
@@ -59,11 +81,25 @@ Estas son **semánticas de escenario** — y la sanidad no tiene una forma está
 
 ### Estado Actual: Lógica Clínica Fragmentada
 
-<p align="center">
-  <img src="./assets/fragmentation-diagram.png" alt="Fragmentación de la Lógica Clínica" width="800"/>
-  <br/>
-  <em>La lógica clínica hoy está dispersa en sistemas incompatibles</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Hospital["Sistemas Hospitalarios"]
+        direction TB
+        EHR["Reglas EHR<br/>(Propietario)"]
+        SQL["Consultas SQL<br/>(Bloqueado)"]
+        PY["Scripts Python<br/>(No portable)"]
+        NB["Notebooks Jupyter<br/>(Ad-hoc)"]
+        CFG["Archivos Config<br/>(Formato custom)"]
+    end
+
+    EHR -.->|"❌ Sin compartir"| SQL
+    SQL -.->|"❌ Sin estándar"| PY
+    PY -.->|"❌ Sin auditoría"| NB
+    NB -.->|"❌ Sin streaming"| CFG
+
+    style Hospital fill:#fff3cd,stroke:#856404
+```
+*La lógica clínica hoy está dispersa en sistemas incompatibles*
 
 Hoy, la lógica de decisión clínica está dispersa en:
 
@@ -81,11 +117,38 @@ Hoy, la lógica de decisión clínica está dispersa en:
 
 ## La Solución: PSDL
 
-<p align="center">
-  <img src="./assets/layers.jpeg" alt="Arquitectura PSDL" width="800"/>
-  <br/>
-  <em>PSDL como la capa semántica en la pila de IA sanitaria</em>
-</p>
+```mermaid
+flowchart TB
+    subgraph Apps["Aplicaciones Clínicas"]
+        A1["Alertas"]
+        A2["Paneles"]
+        A3["Sugerencias"]
+    end
+
+    subgraph PSDL["Capa Semántica PSDL"]
+        direction LR
+        S["Señales"] --> T["Tendencias"] --> L["Lógica"] --> TR["Disparadores"]
+    end
+
+    subgraph Runtime["Ejecución Multi-Runtime"]
+        R1["Stream<br/>(Flink)"]
+        R2["FHIR<br/>(EHR)"]
+        R3["OMOP<br/>(Investigación)"]
+    end
+
+    subgraph Data["Fuentes de Datos Clínicos"]
+        D1["EHR"]
+        D2["Sistemas Lab"]
+        D3["Monitores"]
+    end
+
+    Apps --> PSDL
+    PSDL --> Runtime
+    Runtime --> Data
+
+    style PSDL fill:#d4edda,stroke:#28a745
+```
+*PSDL como la capa semántica en la pila de IA sanitaria*
 
 PSDL introduce una **capa semántica** para escenarios clínicos — un formato estructurado y declarativo que separa *qué* detectar de *cómo* calcularlo.
 
@@ -162,11 +225,25 @@ PSDL sigue el precedente de estándares abiertos exitosos:
 
 ### Beneficios de la Apertura
 
-<p align="center">
-  <img src="./assets/psdl-ecosystem.png" alt="Ecosistema PSDL" width="600"/>
-  <br/>
-  <em>PSDL conecta a todas las partes interesadas en el ecosistema de IA clínica</em>
-</p>
+```mermaid
+flowchart TB
+    PSDL["PSDL<br/>Estándar Abierto"]
+
+    H["Hospitales"]
+    R["Investigadores"]
+    V["Proveedores"]
+    REG["Reguladores"]
+    C["Clínicos"]
+
+    H -->|"Lógica Portable"| PSDL
+    R -->|"Reproducible"| PSDL
+    V -->|"Formato Común"| PSDL
+    REG -->|"Auditable"| PSDL
+    C -->|"Transparente"| PSDL
+
+    style PSDL fill:#cce5ff,stroke:#004085
+```
+*PSDL conecta a todas las partes interesadas en el ecosistema de IA clínica*
 
 | Principio | Beneficio |
 |-----------|-----------|
@@ -222,11 +299,30 @@ PSDL proporciona soporte de primera clase para datos clínicos de series tempora
 
 ## Comparación: Antes y Después de PSDL
 
-<p align="center">
-  <img src="./assets/before-after-psdl.png" alt="Antes y Después de PSDL" width="700"/>
-  <br/>
-  <em>PSDL simplifica dramáticamente la gestión de lógica clínica</em>
-</p>
+```mermaid
+flowchart LR
+    subgraph Before["Antes de PSDL"]
+        direction TB
+        B1["300+ líneas Python/SQL"]
+        B2["Jobs batch - horas retraso"]
+        B3["Documentación manual"]
+        B4["Bloqueado proveedor"]
+    end
+
+    subgraph After["Después de PSDL"]
+        direction TB
+        A1["~50 líneas YAML"]
+        A2["Streaming tiempo real"]
+        A3["Pista auditoría integrada"]
+        A4["Portable en cualquier lugar"]
+    end
+
+    Before -->|"PSDL"| After
+
+    style Before fill:#f8d7da,stroke:#721c24
+    style After fill:#d4edda,stroke:#155724
+```
+*PSDL simplifica dramáticamente la gestión de lógica clínica*
 
 | Aspecto | Antes de PSDL | Después de PSDL |
 |---------|---------------|-----------------|
@@ -241,11 +337,21 @@ PSDL proporciona soporte de primera clase para datos clínicos de series tempora
 
 ## Hoja de Ruta
 
-<p align="center">
-  <img src="./assets/roadmap-timeline.png" alt="Hoja de Ruta PSDL" width="900"/>
-  <br/>
-  <em>Fases de desarrollo de PSDL</em>
-</p>
+```mermaid
+flowchart LR
+    P1["Fase 1<br/>Fundación Semántica<br/>✓ Completo"]
+    P2["Fase 2<br/>Ejecución Tiempo Real<br/>⟵ Actual"]
+    P3["Fase 3<br/>Integración Modelos IA"]
+    P4["Fase 4<br/>Adopción"]
+
+    P1 --> P2 --> P3 --> P4
+
+    style P1 fill:#d4edda,stroke:#28a745
+    style P2 fill:#fff3cd,stroke:#856404
+    style P3 fill:#e2e3e5,stroke:#6c757d
+    style P4 fill:#e2e3e5,stroke:#6c757d
+```
+*Fases de desarrollo de PSDL*
 
 ### Fase 1: Fundamento Semántico [Actual]
 - Sistema de tipos y especificación de operadores
