@@ -255,6 +255,96 @@ flowchart TB
 
 ---
 
+## Posicionamiento
+
+PSDL llena un vacío específico en la pila tecnológica sanitaria. Comprender dónde encaja — y dónde no — es fundamental.
+
+### La Pila de IA Sanitaria
+
+| Capa | Solución Existente | Rol de PSDL |
+|------|-------------------|-------------|
+| **Investigación de Cohortes** | ATLAS / OMOP | Compatible — PSDL usa datos de OMOP |
+| **Medidas de Calidad** | CQL (HL7) | Complementario — enfoque diferente |
+| **Detección en Tiempo Real** | ❌ Sin estándar abierto | **PSDL llena este vacío** |
+| **Despliegue de Modelos IA** | Código personalizado por hospital | **PSDL lo estandariza** |
+
+### Qué Es PSDL
+
+**PSDL = Detección de escenarios clínicos en tiempo real + Puente de despliegue de modelos IA**
+
+- Operadores temporales nativos de streaming (`delta`, `slope`, `ema`)
+- Definiciones de escenarios neutrales al proveedor
+- Forma estándar de conectar modelos ML a disparadores clínicos
+
+### Qué NO Es PSDL
+
+| PSDL NO... | Usa en su lugar |
+|------------|-----------------|
+| Reemplaza los estándares de datos OMOP/FHIR | PSDL los consume |
+| Compite con ATLAS para investigación | Usa ATLAS, despliega con PSDL |
+| Reemplaza CQL para medidas de calidad | CQL para informes, PSDL para tiempo real |
+| Entrena modelos de ML | PSDL despliega modelos entrenados |
+| Define rutas de tratamiento | Dispara sistemas de rutas desde PSDL |
+
+### Contexto Histórico
+
+PSDL se basa en [Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992), que fue pionero en reglas clínicas compartibles. Los Medical Logic Modules (MLMs) de Arden introdujeron patrones evento-disparador-acción que siguen siendo relevantes hoy.
+
+**La evolución de PSDL:** Arden maneja reglas individuales; PSDL maneja **escenarios compuestos** con operadores temporales de primera clase y ejecución en streaming.
+
+### Relación con CQL
+
+[Clinical Quality Language](https://cql.hl7.org/) (HL7) destaca en medición de calidad y definición de cohortes. PSDL complementa a CQL:
+
+| Aspecto | CQL | PSDL |
+|---------|-----|------|
+| Enfoque | Informes de calidad | Detección tiempo real |
+| Ejecución | Basada en consultas | Streaming por eventos |
+| Temporal | Soportado | Primera clase, nativo streaming |
+| Sintaxis | Verboso | YAML simple |
+
+**Usar juntos:** Definir cohortes en CQL/ATLAS → Desplegar detección en tiempo real con PSDL.
+
+---
+
+## Visión
+
+PSDL tiene una arquitectura enfocada de dos capas:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  PSDL.Model   │  Integración modelos IA/ML (predict, forecast)  │
+├───────────────┼─────────────────────────────────────────────────┤
+│  PSDL.Core    │  Escenarios tiempo real ← ENFOQUE ACTUAL        │
+└───────────────┴─────────────────────────────────────────────────┘
+        ▲                           ▲
+        │                           │
+   ┌────┴────┐                 ┌────┴────┐
+   │  FHIR   │                 │  ONNX   │
+   │  OMOP   │                 │(modelos)│
+   └─────────┘                 └─────────┘
+```
+
+### Objetivo v1.0: Detección de Escenarios en Tiempo Real
+
+El backend de streaming (RFC-0002) permite:
+- Procesamiento de eventos clínicos en menos de un segundo
+- Operadores temporales con estado
+- Integración con infraestructura Kafka/Flink
+
+### Objetivo v1.x: Puente de Despliegue de Modelos IA
+
+RFC-0001 permite:
+- Declarar dependencias de modelos en escenarios
+- Operadores estándar `predict()`, `forecast()`
+- Manejo de timeouts y fallbacks para inferencia en tiempo real
+
+### El Pitch
+
+> **«Usa ATLAS para el descubrimiento de cohortes. Usa PSDL para desplegar esa lógica en tiempo real con modelos de IA.»**
+
+---
+
 ## Arquitectura Técnica
 
 ### La Pila PSDL
