@@ -177,7 +177,9 @@ if result.is_triggered:
 
 ## Project Structure
 
-PSDL follows industry-standard patterns (like GraphQL, CQL, ONNX): **Specification** defines WHAT, **Reference Implementation** shows HOW.
+PSDL follows industry-standard patterns (like GraphQL, CQL, ONNX): 
+ - **Specification** defines WHAT
+ - **Reference Implementation** shows HOW.
 
 ```
 psdl/
