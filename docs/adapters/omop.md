@@ -1,10 +1,10 @@
-# OMOP CDM Backend
+# OMOP CDM Data Adapter
 
 Connect PSDL to [OMOP Common Data Model](https://ohdsi.github.io/CommonDataModel/) databases for retrospective research and real-time clinical decision support.
 
 ## Overview
 
-The OMOP backend allows PSDL scenarios to query clinical data from any OMOP CDM database, enabling:
+The OMOP adapter allows PSDL scenarios to query clinical data from any OMOP CDM database, enabling:
 
 - **Retrospective Research**: Identify historical cohorts matching clinical scenarios
 - **Real-time Monitoring**: Evaluate scenarios against live patient data
@@ -36,8 +36,8 @@ pip install cx_Oracle       # Oracle
 ## Quick Start
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.backends import OMOPBackend, OMOPConfig
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.adapters import OMOPBackend, OMOPConfig
 
 # 1. Configure connection
 config = OMOPConfig(
@@ -247,7 +247,7 @@ Reference table for frequently used clinical signals:
 
 ```python
 # Check if concept_id is correct
-from runtime.python.parser import Signal, Domain
+from reference.python.parser import Signal, Domain
 
 signal = Signal(
     name="Cr",

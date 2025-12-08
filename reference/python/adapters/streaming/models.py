@@ -6,12 +6,13 @@ Defines the event schema and result types used throughout the streaming pipeline
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class Severity(Enum):
     """Alert severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -26,6 +27,7 @@ class ClinicalEvent:
     All events share this common envelope for consistent processing.
     Maps to Flink's event schema requirements.
     """
+
     patient_id: str
     timestamp: datetime
     signal_type: str
@@ -69,10 +71,7 @@ class ClinicalEvent:
             concept_id=data.get("concept_id"),
             fhir_resource_id=data.get("fhir_resource_id"),
             location=data.get("location"),
-            ingestion_time=(
-                datetime.fromisoformat(data["ingestion_time"])
-                if data.get("ingestion_time") else None
-            ),
+            ingestion_time=(datetime.fromisoformat(data["ingestion_time"]) if data.get("ingestion_time") else None),
         )
 
 
@@ -83,6 +82,7 @@ class TrendResult:
 
     Emitted by window/process functions after computing temporal operators.
     """
+
     patient_id: str
     trend_name: str
     value: float  # Computed value (e.g., delta, slope, ema)
@@ -117,6 +117,7 @@ class LogicResult:
 
     Emitted after combining multiple trend results.
     """
+
     patient_id: str
     logic_name: str
     result: bool
@@ -153,6 +154,7 @@ class Alert:
 
     Final output of the streaming pipeline for clinical action.
     """
+
     alert_id: str
     patient_id: str
     trigger_name: str
@@ -193,6 +195,7 @@ class WindowSpec:
 
     Parsed from PSDL expressions like delta(HR, 1h, 30s).
     """
+
     size_ms: int  # Window size in milliseconds
     slide_ms: int  # Slide interval in milliseconds
 

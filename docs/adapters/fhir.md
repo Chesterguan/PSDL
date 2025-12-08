@@ -1,10 +1,10 @@
-# FHIR R4 Backend
+# FHIR R4 Data Adapter
 
-The FHIR R4 backend enables PSDL to connect to FHIR-compliant Electronic Health Record (EHR) systems for real-time clinical data access.
+The FHIR R4 adapter enables PSDL to connect to FHIR-compliant Electronic Health Record (EHR) systems for real-time clinical data access.
 
 ## Overview
 
-FHIR (Fast Healthcare Interoperability Resources) is the modern standard for healthcare data exchange. The PSDL FHIR backend:
+FHIR (Fast Healthcare Interoperability Resources) is the modern standard for healthcare data exchange. The PSDL FHIR adapter:
 
 - Connects to FHIR R4 compliant servers
 - Maps PSDL signals to FHIR resources via LOINC codes
@@ -13,7 +13,7 @@ FHIR (Fast Healthcare Interoperability Resources) is the modern standard for hea
 
 ## Installation
 
-The FHIR backend requires the `requests` library:
+The FHIR adapter requires the `requests` library:
 
 ```bash
 pip install requests
@@ -22,8 +22,8 @@ pip install requests
 ## Quick Start
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.backends import FHIRBackend, FHIRConfig
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.adapters import FHIRBackend, FHIRConfig
 
 # Configure FHIR connection
 config = FHIRConfig(
@@ -155,8 +155,8 @@ signals:
 ### Real-Time ICU Monitoring
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.backends import FHIRBackend, FHIRConfig
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.adapters import FHIRBackend, FHIRConfig
 from datetime import datetime
 
 # FHIR connection
@@ -381,7 +381,7 @@ for patient_id in patient_ids:
 ### Convenience Functions
 
 ```python
-from runtime.python.backends import create_fhir_backend
+from reference.python.adapters import create_fhir_backend
 
 # Quick setup
 backend = create_fhir_backend(
@@ -395,5 +395,5 @@ backend = create_fhir_backend(
 - [FHIR R4 Specification](https://hl7.org/fhir/R4/)
 - [SMART on FHIR](https://docs.smarthealthit.org/)
 - [LOINC Database](https://loinc.org/)
-- [OMOP Backend](./omop.md) - For research databases
+- [OMOP Adapter](./omop.md) - For research databases
 - [Getting Started](../getting-started.md) - PSDL basics

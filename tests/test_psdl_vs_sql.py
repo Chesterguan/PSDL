@@ -19,9 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from runtime.python.parser import PSDLParser
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend
-from runtime.python.operators import DataPoint
+from reference.python.parser import PSDLParser
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.operators import DataPoint
 
 
 class SQLEmulator:
@@ -36,9 +36,7 @@ class SQLEmulator:
         """
         self.data = data
 
-    def execute_aki_detection_sql(
-        self, patient_id: str, reference_time: datetime
-    ) -> Dict[str, Any]:
+    def execute_aki_detection_sql(self, patient_id: str, reference_time: datetime) -> Dict[str, Any]:
         """
         Pure SQL-style logic for AKI detection.
 
@@ -86,14 +84,8 @@ class SQLEmulator:
         window_48h = reference_time - timedelta(hours=48)
         window_7d = reference_time - timedelta(days=7)
 
-        recent_cr = [
-            dp for dp in cr_data
-            if window_48h <= dp.timestamp <= reference_time
-        ]
-        baseline_cr = [
-            dp for dp in cr_data
-            if window_7d <= dp.timestamp < window_48h
-        ]
+        recent_cr = [dp for dp in cr_data if window_48h <= dp.timestamp <= reference_time]
+        baseline_cr = [dp for dp in cr_data if window_7d <= dp.timestamp < window_48h]
 
         if len(recent_cr) < 2:
             return {"triggered": False, "reason": "insufficient_recent_data"}
@@ -136,9 +128,7 @@ class SQLEmulator:
 
         return result
 
-    def execute_icu_deterioration_sql(
-        self, patient_id: str, reference_time: datetime
-    ) -> Dict[str, Any]:
+    def execute_icu_deterioration_sql(self, patient_id: str, reference_time: datetime) -> Dict[str, Any]:
         """
         Pure SQL-style logic for ICU deterioration.
 
@@ -162,9 +152,7 @@ class SQLEmulator:
         }
 
         # Check MAP
-        recent_map = [
-            dp for dp in map_data if dp.timestamp <= reference_time
-        ]
+        recent_map = [dp for dp in map_data if dp.timestamp <= reference_time]
         if recent_map:
             latest_map = max(recent_map, key=lambda x: x.timestamp).value
             result["latest_map"] = latest_map
@@ -172,9 +160,7 @@ class SQLEmulator:
                 result["conditions_met"].append("hypotension")
 
         # Check HR
-        recent_hr = [
-            dp for dp in hr_data if dp.timestamp <= reference_time
-        ]
+        recent_hr = [dp for dp in hr_data if dp.timestamp <= reference_time]
         if recent_hr:
             latest_hr = max(recent_hr, key=lambda x: x.timestamp).value
             result["latest_hr"] = latest_hr
@@ -182,10 +168,7 @@ class SQLEmulator:
                 result["conditions_met"].append("tachycardia")
 
         # Check Lactate delta
-        recent_lactate = [
-            dp for dp in lactate_data
-            if window_4h <= dp.timestamp <= reference_time
-        ]
+        recent_lactate = [dp for dp in lactate_data if window_4h <= dp.timestamp <= reference_time]
         if len(recent_lactate) >= 2:
             recent_lactate.sort(key=lambda x: x.timestamp)
             lactate_delta = recent_lactate[-1].value - recent_lactate[0].value
@@ -320,8 +303,9 @@ class TestPSDLvsSQLEquivalence:
         print(f"PSDL rules: {psdl_result.triggered_logic}")
 
         # Both should detect AKI
-        assert sql_result["triggered"] == psdl_result.is_triggered, \
-            f"Mismatch: SQL={sql_result['triggered']}, PSDL={psdl_result.is_triggered}"
+        assert (
+            sql_result["triggered"] == psdl_result.is_triggered
+        ), f"Mismatch: SQL={sql_result['triggered']}, PSDL={psdl_result.is_triggered}"
 
         # Both should identify stage 1
         if sql_result["triggered"]:
@@ -403,8 +387,10 @@ class TestPSDLvsSQLEquivalence:
         print(f"\n=== ICU Deterioration Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}")
         print(f"SQL conditions: {sql_result['conditions_met']}")
-        print(f"SQL values: MAP={sql_result['latest_map']}, HR={sql_result['latest_hr']}, "
-              f"Lact delta={sql_result['lactate_delta']}")
+        print(
+            f"SQL values: MAP={sql_result['latest_map']}, HR={sql_result['latest_hr']}, "
+            f"Lact delta={sql_result['lactate_delta']}"
+        )
         print(f"PSDL triggered: {psdl_result.is_triggered}")
         print(f"PSDL rules: {psdl_result.triggered_logic}")
 
@@ -423,6 +409,7 @@ class TestBatchComparison:
     def generate_random_patients(self, n: int) -> List[Tuple[str, Dict, datetime]]:
         """Generate n patients with random creatinine patterns."""
         import random
+
         random.seed(42)  # Reproducible
 
         patients = []
@@ -477,12 +464,14 @@ class TestBatchComparison:
             if sql_result["triggered"] == psdl_result.is_triggered:
                 matches += 1
             else:
-                mismatches.append({
-                    "patient_id": patient_id,
-                    "pattern": pattern,
-                    "sql": sql_result,
-                    "psdl_triggered": psdl_result.is_triggered,
-                })
+                mismatches.append(
+                    {
+                        "patient_id": patient_id,
+                        "pattern": pattern,
+                        "sql": sql_result,
+                        "psdl_triggered": psdl_result.is_triggered,
+                    }
+                )
 
         print(f"\n=== Batch Comparison Results ===")
         print(f"Total patients: {len(patients)}")
@@ -492,8 +481,9 @@ class TestBatchComparison:
         if mismatches:
             print("\nMismatch details:")
             for m in mismatches[:5]:  # Show first 5
-                print(f"  {m['patient_id']} ({m['pattern']}): "
-                      f"SQL={m['sql']['triggered']}, PSDL={m['psdl_triggered']}")
+                print(
+                    f"  {m['patient_id']} ({m['pattern']}): " f"SQL={m['sql']['triggered']}, PSDL={m['psdl_triggered']}"
+                )
 
         # Allow some tolerance due to edge cases in temporal calculations
         # But should be >90% match

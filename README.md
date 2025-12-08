@@ -10,15 +10,18 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Chesterguan/PSDL/actions/workflows/tests.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.1.0-blue?style=flat-square" alt="Spec Version"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" alt="License"></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
+  <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8-3.12">
 </p>
 
 ---
 
 <p align="center">
-  <strong>What SQL became for data queries, PSDL aims to become for clinical logic.</strong>
+  <strong>What SQL became for data queries, ONNX for ML models, and GraphQL for APIs —<br/>
+  PSDL is becoming the <em>semantic layer</em> for clinical AI.</strong>
 </p>
 
 ---
@@ -106,7 +109,7 @@ pip install -r requirements.txt
 ### Parse a Scenario
 
 ```python
-from runtime.python import PSDLParser
+from reference.python import PSDLParser
 
 parser = PSDLParser()
 scenario = parser.parse_file("examples/aki_detection.yaml")
@@ -119,8 +122,8 @@ print(f"Logic rules: {list(scenario.logic.keys())}")
 ### Evaluate Against Patient Data
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator, InMemoryBackend
-from runtime.python.operators import DataPoint
+from reference.python import PSDLParser, PSDLEvaluator, InMemoryBackend
+from reference.python.operators import DataPoint
 from datetime import datetime, timedelta
 
 # Parse scenario
@@ -174,18 +177,23 @@ if result.is_triggered:
 
 ## Project Structure
 
+PSDL follows industry-standard patterns (like GraphQL, CQL, ONNX): **Specification** defines WHAT, **Reference Implementation** shows HOW.
+
 ```
 psdl/
 ├── README.md              # This file
-├── spec/
-│   └── schema-v0.1.yaml   # YAML schema specification
-├── runtime/
-│   └── python/            # Python reference implementation
+├── spec/                  # SPECIFICATION
+│   └── schema-v0.1.yaml   # YAML schema + operator semantics
+├── reference/             # REFERENCE IMPLEMENTATION (Python)
+│   └── python/
 │       ├── __init__.py
 │       ├── parser.py      # YAML parser
-│       ├── evaluator.py   # Scenario evaluator
-│       └── operators.py   # Temporal operators
-├── examples/
+│       ├── evaluator.py   # Batch execution mode
+│       ├── operators.py   # Temporal operators
+│       └── adapters/      # Data Adapters
+│           ├── omop.py    # OMOP CDM adapter (SQL)
+│           └── fhir.py    # FHIR R4 adapter (REST)
+├── examples/              # Example scenarios
 │   ├── icu_deterioration.yaml
 │   ├── aki_detection.yaml
 │   └── sepsis_screening.yaml
@@ -198,6 +206,14 @@ psdl/
     └── test_evaluator.py
 ```
 
+| Component | Description |
+|-----------|-------------|
+| **Specification** | PSDL language definition (YAML schema + operator semantics) |
+| **Reference Implementation** | Python implementation demonstrating the spec |
+| **Parser** | Parses PSDL YAML into internal representation |
+| **Evaluator** | Executes parsed scenarios (batch mode) |
+| **Data Adapter** | Interface to clinical data sources (OMOP, FHIR) |
+
 ## Running Tests
 
 ```bash
@@ -208,7 +224,7 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 204 Tests (192 pass, 12 skip)
+### Test Coverage: 238 Tests (238 pass, 7 skip)
 
 | Test Suite | Tests | Description |
 |------------|-------|-------------|
@@ -282,7 +298,7 @@ OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
 - [x] Unit tests
 - [x] OMOP SQL backend
 - [x] FHIR backend
-- [x] Clinical validation suite (174 tests)
+- [x] Clinical validation suite (238 tests)
 - [x] Real data validation (Synthea, MIMIC-IV)
 
 ### Phase 2: Enhanced Runtime [Current]
@@ -318,15 +334,19 @@ OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
 | [Schema](spec/schema-v0.1.yaml) | YAML schema definition |
 | [Changelog](CHANGELOG.md) | Version history |
 
-### Whitepaper Translations
+### Whitepaper — Available in 5 Languages
 
-| Language | Link |
-|----------|------|
-| English | [WHITEPAPER_EN.md](docs/WHITEPAPER_EN.md) |
-| 简体中文 | [WHITEPAPER_ZH.md](docs/WHITEPAPER_ZH.md) |
-| Español | [WHITEPAPER_ES.md](docs/WHITEPAPER_ES.md) |
-| Français | [WHITEPAPER_FR.md](docs/WHITEPAPER_FR.md) |
-| 日本語 | [WHITEPAPER_JA.md](docs/WHITEPAPER_JA.md) |
+We're building a global community! Read the whitepaper in your preferred language:
+
+<p align="center">
+  <a href="docs/WHITEPAPER_EN.md"><strong>English</strong></a> ·
+  <a href="docs/WHITEPAPER_ZH.md"><strong>简体中文</strong></a> ·
+  <a href="docs/WHITEPAPER_ES.md"><strong>Español</strong></a> ·
+  <a href="docs/WHITEPAPER_FR.md"><strong>Français</strong></a> ·
+  <a href="docs/WHITEPAPER_JA.md"><strong>日本語</strong></a>
+</p>
+
+Want to contribute a translation? We welcome translations to additional languages! See [docs/WHITEPAPER.md](docs/WHITEPAPER.md) for guidelines.
 
 ## Contributing
 
@@ -347,8 +367,12 @@ Apache 2.0 - See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <strong>Clinical AI does not fail because models are weak.<br/>
-  It fails because scenario semantics are not formalized.</strong>
+  <strong>Clinical AI doesn't fail because models are weak.<br/>
+  It fails because there's no semantic layer to express clinical logic portably.</strong>
+</p>
+
+<p align="center">
+  <em>PSDL is the semantic layer for clinical AI — like SQL for databases.</em>
 </p>
 
 <p align="center">

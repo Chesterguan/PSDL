@@ -13,8 +13,8 @@
 ---
 
 <p align="center">
-  <strong>What SQL became for data queries, and ONNX became for ML models —<br/>
-  PSDL aims to become for clinical scenario logic.</strong>
+  <strong>What SQL became for data queries, ONNX became for ML models, and GraphQL became for APIs —<br/>
+  PSDL is becoming the <em>semantic layer</em> for clinical AI.</strong>
 </p>
 
 ---
@@ -125,15 +125,21 @@ flowchart TB
         A3["Order Suggestions"]
     end
 
-    subgraph PSDL["PSDL Semantic Layer"]
+    subgraph Spec["PSDL SPECIFICATION"]
         direction LR
         S["Signals"] --> T["Trends"] --> L["Logic"] --> TR["Triggers"]
     end
 
-    subgraph Runtime["Multi-Runtime Execution"]
-        R1["Stream<br/>(Flink)"]
-        R2["FHIR<br/>(EHR)"]
-        R3["OMOP<br/>(Research)"]
+    subgraph Impl["REFERENCE IMPLEMENTATION"]
+        direction TB
+        subgraph Exec["Execution Modes"]
+            E1["Batch"]
+            E2["Streaming"]
+        end
+        subgraph Adapt["Data Adapters"]
+            A["OMOP"]
+            B["FHIR"]
+        end
     end
 
     subgraph Data["Clinical Data Sources"]
@@ -142,15 +148,18 @@ flowchart TB
         D3["Monitors"]
     end
 
-    Apps --> PSDL
-    PSDL --> Runtime
-    Runtime --> Data
+    Apps --> Spec
+    Spec --> Impl
+    Impl --> Data
 
-    style PSDL fill:#d4edda,stroke:#28a745
+    style Spec fill:#cce5ff,stroke:#004085
+    style Impl fill:#d4edda,stroke:#28a745
 ```
-*PSDL as the semantic layer in the healthcare AI stack*
+*PSDL Specification + Reference Implementation architecture*
 
-PSDL introduces a **streaming-native semantic layer** for clinical scenarios — a structured, declarative format that separates *what* to detect from *how* to compute it. Designed from the ground up for real-time execution with Apache Flink and similar streaming engines.
+PSDL introduces a **semantic layer** for clinical AI — like SQL for databases, GraphQL for APIs, or dbt for data transformation. It provides a structured, declarative format that separates *what* to detect from *how* to compute it. Designed from the ground up for both batch analysis and real-time streaming execution with Apache Flink and similar engines.
+
+> **The Semantic Layer Pattern**: Just as SQL abstracts database implementation details, and GraphQL abstracts API complexity, PSDL abstracts the complexity of clinical scenario detection. Write logic once, execute anywhere — from Jupyter notebooks to production streaming systems.
 
 ### Core Concepts
 
@@ -255,7 +264,44 @@ flowchart TB
 
 ---
 
-## Positioning
+## Positioning: PSDL as the Semantic Layer
+
+Every mature technology stack develops a semantic layer — an abstraction that separates *intent* from *implementation*:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    THE SEMANTIC LAYER PATTERN                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   DATA        SQL         "What data do I need?"               │
+│   QUERIES     ────→       (Not: How do I traverse B-trees?)    │
+│                                                                 │
+│   API         GraphQL     "What shape of data do I want?"      │
+│   ACCESS      ────→       (Not: How do I make REST calls?)     │
+│                                                                 │
+│   DATA        dbt/        "How should data transform?"         │
+│   TRANSFORM   Metrics     (Not: How do I write ETL pipelines?) │
+│                                                                 │
+│   ML          ONNX        "What does my model compute?"        │
+│   MODELS      ────→       (Not: How do I run on GPU/CPU?)      │
+│                                                                 │
+│   CLINICAL    PSDL        "What clinical logic should apply?"  │
+│   SCENARIOS   ────→       (Not: How do I query OMOP/FHIR?)     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**PSDL is the missing semantic layer for clinical AI.** It allows clinicians and informaticists to express *what* they want to detect without worrying about *how* to query databases, handle streaming, or integrate with specific EHR systems.
+
+### Why Semantic Layers Win
+
+| Benefit | Without Semantic Layer | With PSDL |
+|---------|------------------------|-----------|
+| **Portability** | Rewrite for each database/EHR | Write once, deploy anywhere |
+| **Collaboration** | Only engineers can modify | Clinicians can read and validate |
+| **Testing** | Test against live systems | Test against spec with mocked data |
+| **Versioning** | Hidden in application code | First-class, auditable definitions |
+| **Optimization** | Manual tuning per system | Execution engine optimizes automatically |
 
 PSDL fills a specific gap in the healthcare technology stack. Understanding where it fits — and where it doesn't — is critical.
 
@@ -347,35 +393,82 @@ RFC-0001 enables:
 
 ## Technical Architecture
 
-### The PSDL Stack
+PSDL follows industry-standard patterns established by GraphQL, CQL, and ONNX: a clear separation between **Specification** and **Reference Implementation**.
+
+### Specification vs Implementation
+
+| Project | Specification | Reference Implementation |
+|---------|---------------|-------------------------|
+| GraphQL | SDL (Schema Definition Language) | Apollo, GraphQL-Java, etc. |
+| CQL | CQL Spec + ELM | cql-execution (JavaScript) |
+| ONNX | ONNX IR (Intermediate Representation) | ONNX Runtime (separate project) |
+| **PSDL** | **YAML Schema + Operator Semantics** | **Python Reference Implementation** |
+
+### The PSDL Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLINICAL APPLICATIONS                     │
-│         (Alerts, Dashboards, Order Suggestions)             │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
+┌─────────────────────────────────────────────────────────────────┐
+│                    PSDL SPECIFICATION                            │
+│                (The Language Definition)                         │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    YAML Schema                            │  │
+│  │                                                           │  │
+│  │  Signals      - Time-series data bindings                │  │
+│  │  Trends       - Temporal computations                    │  │
+│  │  Logic        - Boolean combinations                     │  │
+│  │  Population   - Patient criteria                         │  │
+│  │  Triggers     - Event-condition-action (v0.2)            │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              Operator Semantics                           │  │
+│  │                                                           │  │
+│  │  delta, slope, ema, sma, min, max, count, last, first    │  │
+│  │  (Mathematical definitions, not code)                     │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Platform-agnostic. Implementation-independent.                 │
+└─────────────────────────────────────────────────────────────────┘
                               │
-┌─────────────────────────────────────────────────────────────┐
-│                     PSDL SEMANTIC LAYER                      │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-│  │ Signals │→ │ Trends  │→ │  Logic  │→ │Triggers │        │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-    ┌──────────┐        ┌──────────┐        ┌──────────┐
-    │   OMOP   │        │   FHIR   │        │  Stream  │
-    │  Runtime │        │  Runtime │        │  Runtime │
-    └──────────┘        └──────────┘        └──────────┘
-          ▲                   ▲                   ▲
-          │                   │                   │
-┌─────────────────────────────────────────────────────────────┐
-│                      CLINICAL DATA                           │
-│            (EHR, Lab Systems, Monitoring Devices)            │
-└─────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              REFERENCE IMPLEMENTATION (Python)                   │
+│                                                                  │
+│  Core Components:                                                │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐                │
+│  │   Parser   │  │  Operators │  │  Evaluator │                │
+│  │            │  │            │  │            │                │
+│  │ YAML → AST │  │ Math impl  │  │ Execution  │                │
+│  └────────────┘  └────────────┘  └────────────┘                │
+│                                                                  │
+│  Execution Modes:                                                │
+│  ┌─────────────────┐    ┌─────────────────┐                    │
+│  │      Batch      │    │    Streaming    │                    │
+│  │   (Evaluator)   │    │    (Flink)      │                    │
+│  └─────────────────┘    └─────────────────┘                    │
+│                                                                  │
+│  Data Adapters:                                                  │
+│  ┌─────────────────┐    ┌─────────────────┐                    │
+│  │      OMOP       │    │      FHIR       │                    │
+│  │    (SQL)        │    │    (REST)       │                    │
+│  └─────────────────┘    └─────────────────┘                    │
+│                                                                  │
+│  This is ONE implementation. Others can exist (Java, Rust, etc.)│
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Key Terminology
+
+| Term | Definition |
+|------|------------|
+| **Specification** | PSDL language definition (YAML schema + operator semantics) |
+| **Reference Implementation** | Python implementation that demonstrates the spec |
+| **Parser** | Parses PSDL YAML into internal representation |
+| **Operators** | Implementation of temporal operators |
+| **Evaluator** | Executes parsed scenarios |
+| **Execution Mode** | How scenarios run (Batch vs Streaming) |
+| **Data Adapter** | Interface to clinical data (OMOP, FHIR) |
 
 ### Streaming-Native Temporal Operators
 
@@ -391,16 +484,20 @@ PSDL provides first-class support for time-series clinical data with operators d
 | `last(signal)` | Most recent value | `last(SpO2) < 92` |
 | `count(signal, window)` | Observation count | `count(Cr, 24h) >= 2` |
 
-### Multi-Runtime Support
+### Execution Modes and Data Adapters
 
-PSDL scenarios are runtime-agnostic. The same scenario can execute on:
+The same PSDL scenario can execute in different modes and connect to different data sources:
 
-| Runtime | Use Case | Data Source |
-|---------|----------|-------------|
-| **Stream** | **Real-time detection (primary)** | Kafka/Flink |
-| **FHIR** | EHR integration | FHIR servers |
-| **OMOP SQL** | Retrospective validation | CDM databases |
-| **Python** | Development & testing | DataFrames |
+| Execution Mode | Description | Use Case |
+|----------------|-------------|----------|
+| **Batch** | Evaluator processes historical data | Development, validation |
+| **Streaming** | Flink processes real-time events | Production deployment |
+
+| Data Adapter | Protocol | Use Case |
+|--------------|----------|----------|
+| **OMOP** | SQL | Research databases, retrospective analysis |
+| **FHIR** | REST | EHR integration, clinical systems |
+| **In-Memory** | Direct | Testing, development |
 
 **Write once, validate on historical data, deploy in real-time.**
 
@@ -525,25 +622,27 @@ PSDL is an open, community-driven project. We welcome contributions from:
 
 ## Conclusion
 
-Healthcare AI deployment is blocked not by model quality, but by the absence of **real-time** scenario semantics. PSDL fills this gap with:
+Healthcare AI deployment is blocked not by model quality, but by the absence of a **semantic layer** for clinical logic. Just as SQL unlocked database portability and GraphQL simplified API integration, PSDL unlocks clinical AI portability.
 
-- **Streaming-native execution** — detect conditions as they happen
-- **A declarative language** for expressing clinical scenarios
-- **Vendor-neutral portability** across institutions and systems
-- **Built-in auditability** for regulatory compliance
+PSDL provides:
+
+- **A true semantic layer** — abstract clinical logic from implementation details
+- **Write once, run anywhere** — batch development, streaming production
+- **Vendor-neutral portability** — across institutions, EHRs, and data formats
+- **Built-in auditability** — version-controlled, traceable decisions
 - **AI model integration** — bridge from research to real-time deployment
 
-The path from ML model to bedside impact requires a real-time semantic layer. PSDL provides it.
+The modern AI stack has semantic layers for data (SQL), APIs (GraphQL), ML models (ONNX), and data transformation (dbt). Clinical AI deserves the same. **PSDL is that semantic layer.**
 
 ---
 
 <p align="center">
   <strong>Clinical AI doesn't fail because models are weak.<br/>
-  It fails because real-time scenario semantics aren't formalized.</strong>
+  It fails because there's no semantic layer to express clinical logic portably.</strong>
 </p>
 
 <p align="center">
-  <em>PSDL changes that — with streaming-native clinical logic.</em>
+  <em>PSDL is the semantic layer for clinical AI — like SQL for databases.</em>
 </p>
 
 ---
@@ -709,12 +808,17 @@ audit:
 
 | Term | Definition |
 |------|------------|
+| **Specification** | The PSDL language definition (YAML schema + operator semantics) |
+| **Reference Implementation** | A conformant implementation that demonstrates the spec (Python) |
 | **Signal** | A binding between a logical name and a clinical data source |
 | **Trend** | A temporal computation over a signal (e.g., delta, slope) |
 | **Logic** | A boolean expression combining trends |
 | **Trigger** | An event-condition-action rule |
 | **Scenario** | A complete PSDL definition combining all components |
-| **Runtime** | An execution environment that evaluates PSDL scenarios |
+| **Parser** | Component that parses PSDL YAML into internal representation |
+| **Evaluator** | Component that executes parsed scenarios |
+| **Execution Mode** | How scenarios run (Batch vs Streaming) |
+| **Data Adapter** | Interface to clinical data sources (OMOP, FHIR) |
 | **Mapping** | Configuration that adapts a scenario to a specific data source |
 
 ---

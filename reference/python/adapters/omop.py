@@ -101,9 +101,7 @@ class OMOPConfig:
         if self.vocab_schema is None:
             self.vocab_schema = self.cdm_schema
         if self.cdm_version not in ["5.3", "5.4"]:
-            raise ValueError(
-                f"Unsupported CDM version: {self.cdm_version}. Use '5.3' or '5.4'"
-            )
+            raise ValueError(f"Unsupported CDM version: {self.cdm_version}. Use '5.3' or '5.4'")
 
 
 class OMOPBackend(DataBackend):
@@ -150,10 +148,7 @@ class OMOPBackend(DataBackend):
 
                 self._engine = create_engine(self.config.connection_string)
             except ImportError:
-                raise ImportError(
-                    "SQLAlchemy is required for OMOP backend. "
-                    "Install with: pip install sqlalchemy"
-                )
+                raise ImportError("SQLAlchemy is required for OMOP backend. " "Install with: pip install sqlalchemy")
         return self._engine
 
     def _execute_query(self, query: str, params: Dict[str, Any]) -> List[Dict]:
@@ -177,33 +172,15 @@ class OMOPBackend(DataBackend):
     def _get_datetime_column(self, domain: str) -> str:
         """Get the appropriate datetime column based on domain and config."""
         if domain == "measurement":
-            return (
-                "measurement_datetime"
-                if self.config.use_datetime
-                else "measurement_date"
-            )
+            return "measurement_datetime" if self.config.use_datetime else "measurement_date"
         elif domain == "observation":
-            return (
-                "observation_datetime"
-                if self.config.use_datetime
-                else "observation_date"
-            )
+            return "observation_datetime" if self.config.use_datetime else "observation_date"
         elif domain == "condition":
-            return (
-                "condition_start_datetime"
-                if self.config.use_datetime
-                else "condition_start_date"
-            )
+            return "condition_start_datetime" if self.config.use_datetime else "condition_start_date"
         elif domain == "drug":
-            return (
-                "drug_exposure_start_datetime"
-                if self.config.use_datetime
-                else "drug_exposure_start_date"
-            )
+            return "drug_exposure_start_datetime" if self.config.use_datetime else "drug_exposure_start_date"
         elif domain == "procedure":
-            return (
-                "procedure_datetime" if self.config.use_datetime else "procedure_date"
-            )
+            return "procedure_datetime" if self.config.use_datetime else "procedure_date"
         return "measurement_datetime"
 
     def _get_value_column(self, domain: str) -> str:

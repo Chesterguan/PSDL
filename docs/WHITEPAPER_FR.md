@@ -13,8 +13,8 @@
 ---
 
 <p align="center">
-  <strong>Ce que SQL est devenu pour les requêtes de données, et ONNX pour les modèles ML —<br/>
-  PSDL aspire à le devenir pour la logique des scénarios cliniques.</strong>
+  <strong>Ce que SQL est devenu pour les requêtes de données, ONNX pour les modèles ML, et GraphQL pour les API —<br/>
+  PSDL devient la <em>couche sémantique</em> pour l'IA clinique.</strong>
 </p>
 
 ---
@@ -125,15 +125,21 @@ flowchart TB
         A3["Suggestions"]
     end
 
-    subgraph PSDL["Couche Sémantique PSDL"]
+    subgraph Spec["SPÉCIFICATION PSDL"]
         direction LR
         S["Signaux"] --> T["Tendances"] --> L["Logique"] --> TR["Déclencheurs"]
     end
 
-    subgraph Runtime["Exécution Multi-Runtime"]
-        R1["Stream<br/>(Flink)"]
-        R2["FHIR<br/>(EHR)"]
-        R3["OMOP<br/>(Recherche)"]
+    subgraph Impl["IMPLÉMENTATION DE RÉFÉRENCE"]
+        direction TB
+        subgraph Exec["Modes d'Exécution"]
+            E1["Batch"]
+            E2["Streaming"]
+        end
+        subgraph Adapt["Adaptateurs de Données"]
+            A["OMOP"]
+            B["FHIR"]
+        end
     end
 
     subgraph Data["Sources de Données Cliniques"]
@@ -142,15 +148,18 @@ flowchart TB
         D3["Moniteurs"]
     end
 
-    Apps --> PSDL
-    PSDL --> Runtime
-    Runtime --> Data
+    Apps --> Spec
+    Spec --> Impl
+    Impl --> Data
 
-    style PSDL fill:#d4edda,stroke:#28a745
+    style Spec fill:#cce5ff,stroke:#004085
+    style Impl fill:#d4edda,stroke:#28a745
 ```
-*PSDL comme couche sémantique dans la pile de l'IA de santé*
+*Architecture Spécification PSDL + Implémentation de Référence*
 
-PSDL introduit une **couche sémantique** pour les scénarios cliniques — un format structuré et déclaratif qui sépare *quoi* détecter de *comment* le calculer.
+PSDL introduit une **couche sémantique** pour l'IA clinique — comme SQL pour les bases de données, GraphQL pour les API, ou dbt pour la transformation de données. Il fournit un format structuré et déclaratif qui sépare *quoi* détecter de *comment* le calculer. Conçu dès le départ pour l'analyse batch et l'exécution streaming en temps réel avec Apache Flink et des moteurs similaires.
+
+> **Le Pattern Couche Sémantique** : Tout comme SQL abstrait les détails d'implémentation des bases de données, et GraphQL abstrait la complexité des API, PSDL abstrait la complexité de la détection de scénarios cliniques. Écrivez une fois, exécutez partout — des notebooks Jupyter aux systèmes de streaming en production.
 
 ### Concepts Fondamentaux
 
@@ -255,7 +264,45 @@ flowchart TB
 
 ---
 
-## Positionnement
+## Positionnement : PSDL comme Couche Sémantique
+
+Chaque pile technologique mature développe une couche sémantique — une abstraction qui sépare l'*intention* de l'*implémentation* :
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                LE PATTERN COUCHE SÉMANTIQUE                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   REQUÊTES     SQL         "De quelles données ai-je besoin?"  │
+│   DONNÉES      ────→       (Pas : Comment parcourir les B-trees?)│
+│                                                                 │
+│   ACCÈS        GraphQL     "Quelle forme de données je veux?"   │
+│   API          ────→       (Pas : Comment faire des appels REST?)│
+│                                                                 │
+│   TRANSFORM.   dbt/        "Comment les données doivent-elles se│
+│   DONNÉES      Metrics     transformer?" (Pas : Comment écrire  │
+│                            des pipelines ETL?)                  │
+│                                                                 │
+│   MODÈLES      ONNX        "Que calcule mon modèle?"            │
+│   ML           ────→       (Pas : Comment exécuter sur GPU/CPU?)│
+│                                                                 │
+│   SCÉNARIOS    PSDL        "Quelle logique clinique appliquer?" │
+│   CLINIQUES    ────→       (Pas : Comment interroger OMOP/FHIR?)│
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**PSDL est la couche sémantique manquante pour l'IA clinique.** Elle permet aux cliniciens et informaticiens d'exprimer *ce qu'ils* veulent détecter sans se soucier de *comment* interroger les bases de données, gérer le streaming, ou s'intégrer à des systèmes EHR spécifiques.
+
+### Pourquoi les Couches Sémantiques Gagnent
+
+| Avantage | Sans Couche Sémantique | Avec PSDL |
+|----------|------------------------|-----------|
+| **Portabilité** | Réécrire pour chaque base de données/EHR | Écrire une fois, déployer partout |
+| **Collaboration** | Seuls les ingénieurs peuvent modifier | Les cliniciens peuvent lire et valider |
+| **Tests** | Tester contre les systèmes de production | Tester contre les spécifications avec des données simulées |
+| **Versionnement** | Caché dans le code applicatif | Définitions de première classe, auditables |
+| **Optimisation** | Réglage manuel par système | Le moteur d'exécution optimise automatiquement |
 
 PSDL comble un vide spécifique dans la pile technologique de la santé. Comprendre où il s'intègre — et où il ne s'intègre pas — est essentiel.
 
@@ -347,29 +394,82 @@ RFC-0001 permet :
 
 ## Architecture Technique
 
-### La Pile PSDL
+PSDL suit les modèles standard de l'industrie établis par GraphQL, CQL et ONNX : une séparation claire entre **Spécification** et **Implémentation de Référence**.
+
+### Spécification vs Implémentation
+
+| Projet | Spécification | Implémentation de Référence |
+|--------|---------------|-----------------------------|
+| GraphQL | SDL (Langage de Définition de Schéma) | Apollo, GraphQL-Java, etc. |
+| CQL | Spécification CQL + ELM | cql-execution (JavaScript) |
+| ONNX | ONNX IR (Représentation Intermédiaire) | ONNX Runtime (projet séparé) |
+| **PSDL** | **Schéma YAML + Sémantique des Opérateurs** | **Implémentation de Référence Python** |
+
+### Architecture PSDL
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   APPLICATIONS CLINIQUES                     │
-│        (Alertes, Tableaux de Bord, Suggestions de Prescriptions)│
-└─────────────────────────────────────────────────────────────┘
-                              ▲
+┌─────────────────────────────────────────────────────────────────┐
+│                      SPÉCIFICATION PSDL                          │
+│               (Définition du Langage)                            │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                    Schéma YAML                            │  │
+│  │                                                           │  │
+│  │  Signaux     - Liaisons de données de séries temporelles │  │
+│  │  Tendances   - Calculs temporels                         │  │
+│  │  Logique     - Combinaisons booléennes                   │  │
+│  │  Population  - Critères de patients                      │  │
+│  │  Déclencheurs - Événement-condition-action (v0.2)        │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              Sémantique des Opérateurs                    │  │
+│  │                                                           │  │
+│  │  delta, slope, ema, sma, min, max, count, last, first    │  │
+│  │  (Définitions mathématiques, pas du code)                 │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Indépendant de la plateforme. Indépendant de l'implémentation. │
+└─────────────────────────────────────────────────────────────────┘
                               │
-┌─────────────────────────────────────────────────────────────┐
-│                    COUCHE SÉMANTIQUE PSDL                    │
-│  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌────────────┐    │
-│  │ Signaux │→ │Tendances │→ │ Logique │→ │Déclencheurs│    │
-│  └─────────┘  └──────────┘  └─────────┘  └────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-    ┌──────────┐        ┌──────────┐        ┌──────────┐
-    │   OMOP   │        │   FHIR   │        │  Stream  │
-    │  Runtime │        │  Runtime │        │  Runtime │
-    └──────────┘        └──────────┘        └──────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              IMPLÉMENTATION DE RÉFÉRENCE (Python)                │
+│                                                                  │
+│  Composants Principaux :                                         │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐                │
+│  │  Parseur   │  │ Opérateurs │  │ Évaluateur │                │
+│  │            │  │            │  │            │                │
+│  │ YAML → AST │  │ Impl. math │  │ Exécution  │                │
+│  └────────────┘  └────────────┘  └────────────┘                │
+│                                                                  │
+│  Modes d'Exécution :                                             │
+│  ┌─────────────────┐    ┌─────────────────┐                    │
+│  │      Batch      │    │    Streaming    │                    │
+│  │   (Évaluateur)  │    │    (Flink)      │                    │
+│  └─────────────────┘    └─────────────────┘                    │
+│                                                                  │
+│  Adaptateurs de Données :                                        │
+│  ┌─────────────────┐    ┌─────────────────┐                    │
+│  │      OMOP       │    │      FHIR       │                    │
+│  │    (SQL)        │    │    (REST)       │                    │
+│  └─────────────────┘    └─────────────────┘                    │
+│                                                                  │
+│  C'est UNE implémentation. D'autres peuvent exister (Java, Rust) │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Terminologie Clé
+
+| Terme | Définition |
+|-------|------------|
+| **Spécification** | Définition du langage PSDL (schéma YAML + sémantique des opérateurs) |
+| **Implémentation de Référence** | Implémentation Python démontrant la spécification |
+| **Parseur** | Parse le YAML PSDL en représentation interne |
+| **Opérateurs** | Implémentation des opérateurs temporels |
+| **Évaluateur** | Exécute les scénarios parsés |
+| **Mode d'Exécution** | Comment les scénarios s'exécutent (Batch vs Streaming) |
+| **Adaptateur de Données** | Interface vers les données cliniques (OMOP, FHIR) |
 
 ### Opérateurs Temporels
 
@@ -384,6 +484,23 @@ PSDL fournit un support de premier ordre pour les données cliniques de séries 
 | `min/max(signal, window)` | Extrêmes dans la fenêtre | `max(temp, 24h) > 38.5` |
 | `last(signal)` | Valeur la plus récente | `last(SpO2) < 92` |
 | `count(signal, window)` | Nombre d'observations | `count(Cr, 24h) >= 2` |
+
+### Modes d'Exécution et Adaptateurs de Données
+
+Le même scénario PSDL peut s'exécuter dans différents modes et se connecter à différentes sources de données :
+
+| Mode d'Exécution | Description | Cas d'Usage |
+|------------------|-------------|-------------|
+| **Batch** | L'évaluateur traite les données historiques | Développement, validation |
+| **Streaming** | Flink traite les événements en temps réel | Déploiement en production |
+
+| Adaptateur de Données | Protocole | Cas d'Usage |
+|-----------------------|-----------|-------------|
+| **OMOP** | SQL | Bases de données de recherche, analyse rétrospective |
+| **FHIR** | REST | Intégration EHR, systèmes cliniques |
+| **En Mémoire** | Direct | Tests, développement |
+
+**Écrire une fois, valider sur des données historiques, déployer en temps réel.**
 
 ---
 
@@ -484,24 +601,27 @@ PSDL est un projet ouvert, piloté par la communauté. Nous accueillons les cont
 
 ## Conclusion
 
-Le déploiement de l'IA de santé est bloqué non pas par la qualité des modèles, mais par l'absence de sémantique de scénarios. PSDL comble ce vide avec :
+Le déploiement de l'IA de santé est bloqué non pas par la qualité des modèles, mais par l'absence d'une **couche sémantique** pour la logique clinique. Tout comme SQL a libéré la portabilité des bases de données et GraphQL a simplifié l'intégration des API, PSDL libère la portabilité de l'IA clinique.
 
-- **Un langage déclaratif** pour exprimer les scénarios cliniques
-- **Une portabilité neutre vis-à-vis des fournisseurs** entre institutions et systèmes
-- **Une auditabilité intégrée** pour la conformité réglementaire
-- **Une gouvernance communautaire** assurant que le standard évolue avec les besoins réels
+PSDL fournit :
 
-Le chemin du modèle ML à l'impact au chevet du patient nécessite une couche sémantique. PSDL la fournit.
+- **Une vraie couche sémantique** — abstraire la logique clinique des détails d'implémentation
+- **Écrire une fois, exécuter partout** — développement batch, production streaming
+- **Portabilité neutre vis-à-vis des fournisseurs** — entre institutions, EHR et formats de données
+- **Auditabilité intégrée** — décisions versionnées et traçables
+- **Intégration de modèles IA** — pont de la recherche au déploiement temps réel
+
+La pile IA moderne a des couches sémantiques pour les données (SQL), les API (GraphQL), les modèles ML (ONNX) et la transformation de données (dbt). L'IA clinique mérite la même chose. **PSDL est cette couche sémantique.**
 
 ---
 
 <p align="center">
   <strong>L'IA clinique n'échoue pas parce que les modèles sont faibles.<br/>
-  Elle échoue parce que la sémantique des scénarios n'est pas formalisée.</strong>
+  Elle échoue parce qu'il n'y a pas de couche sémantique pour exprimer la logique clinique de façon portable.</strong>
 </p>
 
 <p align="center">
-  <em>PSDL change cela.</em>
+  <em>PSDL est la couche sémantique pour l'IA clinique — comme SQL pour les bases de données.</em>
 </p>
 
 ---

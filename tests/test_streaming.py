@@ -8,22 +8,32 @@ from datetime import datetime, timedelta
 
 # Import streaming components
 import sys
-sys.path.insert(0, 'runtime/python')
 
-from backends.streaming.models import (
-    ClinicalEvent, TrendResult, WindowSpec, Severity
+sys.path.insert(0, "reference/python")
+
+from adapters.streaming.models import ClinicalEvent, TrendResult, WindowSpec, Severity
+from adapters.streaming.operators import (
+    DeltaWindowFunction,
+    SlopeWindowFunction,
+    SMAWindowFunction,
+    MinWindowFunction,
+    MaxWindowFunction,
+    CountWindowFunction,
+    LastProcessFunction,
+    EMAProcessFunction,
 )
-from backends.streaming.operators import (
-    DeltaWindowFunction, SlopeWindowFunction, SMAWindowFunction,
-    MinWindowFunction, MaxWindowFunction, CountWindowFunction,
-    LastProcessFunction, EMAProcessFunction,
+from adapters.streaming.compiler import (
+    ExpressionParser,
+    LogicEvaluator,
+    StreamingCompiler,
+    LogicJoinFunction,
+    StreamingEvaluator,
+    OperatorType,
 )
-from backends.streaming.compiler import (
-    ExpressionParser, LogicEvaluator, StreamingCompiler,
-    LogicJoinFunction, StreamingEvaluator, OperatorType,
-)
-from backends.streaming.config import (
-    StreamingConfig, ExecutionMode, CheckpointMode,
+from adapters.streaming.config import (
+    StreamingConfig,
+    ExecutionMode,
+    CheckpointMode,
 )
 
 
@@ -78,7 +88,7 @@ class TestClinicalEvent:
             signal_type="HR",
             value=85.0,
             unit="bpm",
-            source="monitor"
+            source="monitor",
         )
         assert event.patient_id == "P123"
         assert event.value == 85.0
@@ -90,7 +100,7 @@ class TestClinicalEvent:
             signal_type="HR",
             value=85.0,
             unit="bpm",
-            source="monitor"
+            source="monitor",
         )
         d = event.to_dict()
         assert d["patient_id"] == "P123"
@@ -104,7 +114,7 @@ class TestClinicalEvent:
             "signal_type": "HR",
             "value": 85.0,
             "unit": "bpm",
-            "source": "monitor"
+            "source": "monitor",
         }
         event = ClinicalEvent.from_dict(d)
         assert event.patient_id == "P123"
@@ -121,14 +131,16 @@ class TestWindowFunctions:
 
         events = []
         for i, value in enumerate(values):
-            events.append(ClinicalEvent(
-                patient_id="P123",
-                timestamp=start_time + timedelta(minutes=i * interval_minutes),
-                signal_type="HR",
-                value=value,
-                unit="bpm",
-                source="test"
-            ))
+            events.append(
+                ClinicalEvent(
+                    patient_id="P123",
+                    timestamp=start_time + timedelta(minutes=i * interval_minutes),
+                    signal_type="HR",
+                    value=value,
+                    unit="bpm",
+                    source="test",
+                )
+            )
         return events
 
     def test_delta_rising(self):
@@ -136,10 +148,7 @@ class TestWindowFunctions:
         fn = DeltaWindowFunction("hr_rise", threshold=20, comparison=">")
         events = self.create_events([80, 85, 90, 95, 105])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == 25  # 105 - 80
         assert result.result is True  # 25 > 20
@@ -149,10 +158,7 @@ class TestWindowFunctions:
         fn = DeltaWindowFunction("bp_drop", threshold=-15, comparison="<")
         events = self.create_events([120, 115, 110, 105, 100])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == -20  # 100 - 120
         assert result.result is True  # -20 < -15
@@ -160,10 +166,7 @@ class TestWindowFunctions:
     def test_delta_empty(self):
         """Test delta with no events."""
         fn = DeltaWindowFunction("hr_rise", threshold=20, comparison=">")
-        result = fn.process(
-            "P123", [],
-            datetime.now(), datetime.now()
-        )
+        result = fn.process("P123", [], datetime.now(), datetime.now())
 
         assert result.result is False
         assert result.input_count == 0
@@ -174,10 +177,7 @@ class TestWindowFunctions:
         # Linear increase: 80 -> 100 over 60 minutes = 20/hour
         events = self.create_events([80, 85, 90, 95, 100, 105, 110])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         # Slope should be approximately 30 per hour (5 per 10 min)
         assert result.value > 20
@@ -188,10 +188,7 @@ class TestWindowFunctions:
         fn = SlopeWindowFunction("hr_trend", threshold=5, comparison=">")
         events = self.create_events([80, 80, 81, 79, 80, 80, 80])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         # Slope should be near 0
         assert abs(result.value) < 5
@@ -202,10 +199,7 @@ class TestWindowFunctions:
         fn = MinWindowFunction("hr_low", threshold=60, comparison="<")
         events = self.create_events([80, 75, 65, 70, 85])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == 65
         assert result.result is False  # 65 is not < 60
@@ -215,10 +209,7 @@ class TestWindowFunctions:
         fn = MaxWindowFunction("hr_high", threshold=100, comparison=">")
         events = self.create_events([80, 95, 110, 100, 85])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == 110
         assert result.result is True  # 110 > 100
@@ -228,10 +219,7 @@ class TestWindowFunctions:
         fn = CountWindowFunction("enough_data", threshold=5, comparison=">=")
         events = self.create_events([80, 85, 90, 95, 100, 105])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == 6
         assert result.result is True
@@ -241,10 +229,7 @@ class TestWindowFunctions:
         fn = SMAWindowFunction("hr_avg", threshold=90, comparison=">")
         events = self.create_events([80, 85, 90, 95, 100])
 
-        result = fn.process(
-            "P123", events,
-            events[0].timestamp, events[-1].timestamp
-        )
+        result = fn.process("P123", events, events[0].timestamp, events[-1].timestamp)
 
         assert result.value == 90  # (80+85+90+95+100)/5
         assert result.result is False  # 90 is not > 90
@@ -258,12 +243,7 @@ class TestProcessFunctions:
         fn = LastProcessFunction("hypoxia", threshold=92, comparison="<")
 
         event = ClinicalEvent(
-            patient_id="P123",
-            timestamp=datetime.now(),
-            signal_type="SpO2",
-            value=88.0,
-            unit="%",
-            source="test"
+            patient_id="P123", timestamp=datetime.now(), signal_type="SpO2", value=88.0, unit="%", source="test"
         )
 
         result, state = fn.process_element(event, {})
@@ -275,23 +255,13 @@ class TestProcessFunctions:
     def test_ema_function(self):
         """Test exponential moving average."""
         # 1 hour window -> alpha = 2/(60+1) ≈ 0.0328
-        fn = EMAProcessFunction(
-            "hr_smoothed",
-            window_ms=60 * 60 * 1000,
-            threshold=100,
-            comparison=">"
-        )
+        fn = EMAProcessFunction("hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">")
 
         state = {}
 
         # First event initializes EMA
         event1 = ClinicalEvent(
-            patient_id="P123",
-            timestamp=datetime.now(),
-            signal_type="HR",
-            value=80.0,
-            unit="bpm",
-            source="test"
+            patient_id="P123", timestamp=datetime.now(), signal_type="HR", value=80.0, unit="bpm", source="test"
         )
         result1, state = fn.process_element(event1, state)
         assert result1.value == 80.0  # First value = EMA
@@ -303,7 +273,7 @@ class TestProcessFunctions:
             signal_type="HR",
             value=120.0,
             unit="bpm",
-            source="test"
+            source="test",
         )
         result2, state = fn.process_element(event2, state)
 
@@ -371,38 +341,23 @@ class TestLogicEvaluator:
     """Test logic expression evaluation."""
 
     def test_and_true(self):
-        result = LogicEvaluator.evaluate(
-            "a AND b",
-            {"a": True, "b": True}
-        )
+        result = LogicEvaluator.evaluate("a AND b", {"a": True, "b": True})
         assert result is True
 
     def test_and_false(self):
-        result = LogicEvaluator.evaluate(
-            "a AND b",
-            {"a": True, "b": False}
-        )
+        result = LogicEvaluator.evaluate("a AND b", {"a": True, "b": False})
         assert result is False
 
     def test_or_true(self):
-        result = LogicEvaluator.evaluate(
-            "a OR b",
-            {"a": True, "b": False}
-        )
+        result = LogicEvaluator.evaluate("a OR b", {"a": True, "b": False})
         assert result is True
 
     def test_complex_expression(self):
-        result = LogicEvaluator.evaluate(
-            "(a AND b) OR c",
-            {"a": False, "b": True, "c": True}
-        )
+        result = LogicEvaluator.evaluate("(a AND b) OR c", {"a": False, "b": True, "c": True})
         assert result is True
 
     def test_not_expression(self):
-        result = LogicEvaluator.evaluate(
-            "a AND NOT b",
-            {"a": True, "b": False}
-        )
+        result = LogicEvaluator.evaluate("a AND NOT b", {"a": True, "b": False})
         assert result is True
 
 
@@ -413,24 +368,10 @@ class TestStreamingCompiler:
         scenario = {
             "scenario": "Test_Scenario",
             "version": "0.2.0",
-            "execution": {
-                "mode": "streaming"
-            },
-            "signals": {
-                "HR": {"source": "heart_rate"}
-            },
-            "trends": {
-                "hr_rising": {
-                    "expr": "delta(HR, 1h) > 20",
-                    "description": "Heart rate rising"
-                }
-            },
-            "logic": {
-                "alert": {
-                    "expr": "hr_rising",
-                    "severity": "high"
-                }
-            }
+            "execution": {"mode": "streaming"},
+            "signals": {"HR": {"source": "heart_rate"}},
+            "trends": {"hr_rising": {"expr": "delta(HR, 1h) > 20", "description": "Heart rate rising"}},
+            "logic": {"alert": {"expr": "hr_rising", "severity": "high"}},
         }
 
         compiler = StreamingCompiler()
@@ -446,20 +387,9 @@ class TestStreamingCompiler:
         scenario = {
             "scenario": "ICU_Deterioration",
             "version": "0.2.0",
-            "signals": {
-                "HR": {"source": "heart_rate"},
-                "SBP": {"source": "systolic_bp"}
-            },
-            "trends": {
-                "hr_rising": {"expr": "delta(HR, 1h) > 20"},
-                "bp_dropping": {"expr": "delta(SBP, 30m) < -15"}
-            },
-            "logic": {
-                "deterioration": {
-                    "expr": "hr_rising AND bp_dropping",
-                    "severity": "critical"
-                }
-            }
+            "signals": {"HR": {"source": "heart_rate"}, "SBP": {"source": "systolic_bp"}},
+            "trends": {"hr_rising": {"expr": "delta(HR, 1h) > 20"}, "bp_dropping": {"expr": "delta(SBP, 30m) < -15"}},
+            "logic": {"deterioration": {"expr": "hr_rising AND bp_dropping", "severity": "critical"}},
         }
 
         compiler = StreamingCompiler()
@@ -477,36 +407,19 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"SpO2": {}},
-            "trends": {
-                "hypoxia": {
-                    "expr": "last(SpO2) < 92",
-                    "description": "Low oxygen"
-                }
-            },
-            "logic": {
-                "alert": {
-                    "expr": "hypoxia",
-                    "severity": "high"
-                }
-            }
+            "trends": {"hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}},
+            "logic": {"alert": {"expr": "hypoxia", "severity": "high"}},
         }
 
         evaluator = StreamingEvaluator()
         compiled = evaluator.compile(scenario)
 
         event = ClinicalEvent(
-            patient_id="P123",
-            timestamp=datetime.now(),
-            signal_type="SpO2",
-            value=88.0,
-            unit="%",
-            source="test"
+            patient_id="P123", timestamp=datetime.now(), signal_type="SpO2", value=88.0, unit="%", source="test"
         )
 
         state = {}
-        trend_results, logic_results, state = evaluator.evaluate_event(
-            compiled, event, state
-        )
+        trend_results, logic_results, state = evaluator.evaluate_event(compiled, event, state)
 
         assert len(trend_results) == 1
         assert trend_results[0].trend_name == "hypoxia"
@@ -521,16 +434,8 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"HR": {}, "SpO2": {}},
-            "trends": {
-                "tachycardia": {"expr": "last(HR) > 100"},
-                "hypoxia": {"expr": "last(SpO2) < 92"}
-            },
-            "logic": {
-                "critical": {
-                    "expr": "tachycardia AND hypoxia",
-                    "severity": "critical"
-                }
-            }
+            "trends": {"tachycardia": {"expr": "last(HR) > 100"}, "hypoxia": {"expr": "last(SpO2) < 92"}},
+            "logic": {"critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}},
         }
 
         evaluator = StreamingEvaluator()
@@ -539,12 +444,7 @@ class TestStreamingEvaluator:
 
         # First event: high HR
         event1 = ClinicalEvent(
-            patient_id="P123",
-            timestamp=datetime.now(),
-            signal_type="HR",
-            value=110.0,
-            unit="bpm",
-            source="test"
+            patient_id="P123", timestamp=datetime.now(), signal_type="HR", value=110.0, unit="bpm", source="test"
         )
         _, logic1, state = evaluator.evaluate_event(compiled, event1, state)
 
@@ -558,7 +458,7 @@ class TestStreamingEvaluator:
             signal_type="SpO2",
             value=88.0,
             unit="%",
-            source="test"
+            source="test",
         )
         _, logic2, state = evaluator.evaluate_event(compiled, event2, state)
 
@@ -581,13 +481,8 @@ class TestStreamingConfig:
             "execution": {
                 "mode": "streaming",
                 "state_ttl": "24h",
-                "watermark": {
-                    "max_lateness": "10m"
-                },
-                "checkpointing": {
-                    "interval": "30s",
-                    "mode": "exactly_once"
-                }
+                "watermark": {"max_lateness": "10m"},
+                "checkpointing": {"interval": "30s", "mode": "exactly_once"},
             }
         }
 
@@ -604,32 +499,15 @@ class TestLogicJoinFunction:
     """Test logic join functionality."""
 
     def test_join_all_trends_present(self):
-        from backends.streaming.compiler import CompiledLogic
+        from adapters.streaming.compiler import CompiledLogic
 
-        logic = CompiledLogic(
-            name="test_logic",
-            expr="a AND b",
-            trend_refs=["a", "b"],
-            severity=Severity.HIGH
-        )
+        logic = CompiledLogic(name="test_logic", expr="a AND b", trend_refs=["a", "b"], severity=Severity.HIGH)
 
         join_fn = LogicJoinFunction(logic, "TestScenario", "0.1.0")
 
         trend_results = {
-            "a": TrendResult(
-                patient_id="P123",
-                trend_name="a",
-                value=1.0,
-                result=True,
-                timestamp=datetime.now()
-            ),
-            "b": TrendResult(
-                patient_id="P123",
-                trend_name="b",
-                value=1.0,
-                result=True,
-                timestamp=datetime.now()
-            )
+            "a": TrendResult(patient_id="P123", trend_name="a", value=1.0, result=True, timestamp=datetime.now()),
+            "b": TrendResult(patient_id="P123", trend_name="b", value=1.0, result=True, timestamp=datetime.now()),
         }
 
         result = join_fn.process("P123", trend_results, datetime.now())
@@ -639,26 +517,15 @@ class TestLogicJoinFunction:
         assert result.logic_name == "test_logic"
 
     def test_join_missing_trend(self):
-        from backends.streaming.compiler import CompiledLogic
+        from adapters.streaming.compiler import CompiledLogic
 
-        logic = CompiledLogic(
-            name="test_logic",
-            expr="a AND b",
-            trend_refs=["a", "b"],
-            severity=Severity.HIGH
-        )
+        logic = CompiledLogic(name="test_logic", expr="a AND b", trend_refs=["a", "b"], severity=Severity.HIGH)
 
         join_fn = LogicJoinFunction(logic, "TestScenario", "0.1.0")
 
         # Only 'a' is present
         trend_results = {
-            "a": TrendResult(
-                patient_id="P123",
-                trend_name="a",
-                value=1.0,
-                result=True,
-                timestamp=datetime.now()
-            )
+            "a": TrendResult(patient_id="P123", trend_name="a", value=1.0, result=True, timestamp=datetime.now())
         }
 
         result = join_fn.process("P123", trend_results, datetime.now())

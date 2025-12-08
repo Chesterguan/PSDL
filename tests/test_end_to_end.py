@@ -15,9 +15,9 @@ from io import StringIO  # noqa: E402
 
 import pytest  # noqa: E402
 
-from runtime.python.parser import PSDLParser  # noqa: E402
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
-from runtime.python.operators import DataPoint  # noqa: E402
+from reference.python.parser import PSDLParser  # noqa: E402
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.operators import DataPoint  # noqa: E402
 
 
 class TestFullWorkflow:
@@ -55,10 +55,7 @@ class TestFullWorkflow:
 
         # Step 3: Create evaluator and evaluate
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id="patient-001",
-            reference_time=now
-        )
+        result = evaluator.evaluate_patient(patient_id="patient-001", reference_time=now)
 
         # Step 4: Verify results
         assert result.is_triggered, "AKI should be detected"
@@ -108,40 +105,61 @@ Triggered Rules:
 
         # Patient presenting with sepsis signs
         # Tachypnea, hypotension, fever, elevated lactate
-        backend.add_data("sepsis-patient", "RR", [
-            DataPoint(now - timedelta(hours=4), 18),
-            DataPoint(now - timedelta(hours=2), 22),
-            DataPoint(now, 26),
-        ])
-        backend.add_data("sepsis-patient", "SBP", [
-            DataPoint(now - timedelta(hours=4), 115),
-            DataPoint(now - timedelta(hours=2), 100),
-            DataPoint(now, 92),
-        ])
-        backend.add_data("sepsis-patient", "Temp", [
-            DataPoint(now - timedelta(hours=4), 37.2),
-            DataPoint(now - timedelta(hours=2), 38.0),
-            DataPoint(now, 38.8),
-        ])
-        backend.add_data("sepsis-patient", "HR", [
-            DataPoint(now - timedelta(hours=4), 85),
-            DataPoint(now - timedelta(hours=2), 100),
-            DataPoint(now, 115),
-        ])
-        backend.add_data("sepsis-patient", "Lactate", [
-            DataPoint(now - timedelta(hours=4), 1.2),
-            DataPoint(now - timedelta(hours=2), 2.0),
-            DataPoint(now, 3.2),
-        ])
-        backend.add_data("sepsis-patient", "WBC", [
-            DataPoint(now, 16.5),
-        ])
+        backend.add_data(
+            "sepsis-patient",
+            "RR",
+            [
+                DataPoint(now - timedelta(hours=4), 18),
+                DataPoint(now - timedelta(hours=2), 22),
+                DataPoint(now, 26),
+            ],
+        )
+        backend.add_data(
+            "sepsis-patient",
+            "SBP",
+            [
+                DataPoint(now - timedelta(hours=4), 115),
+                DataPoint(now - timedelta(hours=2), 100),
+                DataPoint(now, 92),
+            ],
+        )
+        backend.add_data(
+            "sepsis-patient",
+            "Temp",
+            [
+                DataPoint(now - timedelta(hours=4), 37.2),
+                DataPoint(now - timedelta(hours=2), 38.0),
+                DataPoint(now, 38.8),
+            ],
+        )
+        backend.add_data(
+            "sepsis-patient",
+            "HR",
+            [
+                DataPoint(now - timedelta(hours=4), 85),
+                DataPoint(now - timedelta(hours=2), 100),
+                DataPoint(now, 115),
+            ],
+        )
+        backend.add_data(
+            "sepsis-patient",
+            "Lactate",
+            [
+                DataPoint(now - timedelta(hours=4), 1.2),
+                DataPoint(now - timedelta(hours=2), 2.0),
+                DataPoint(now, 3.2),
+            ],
+        )
+        backend.add_data(
+            "sepsis-patient",
+            "WBC",
+            [
+                DataPoint(now, 16.5),
+            ],
+        )
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id="sepsis-patient",
-            reference_time=now
-        )
+        result = evaluator.evaluate_patient(patient_id="sepsis-patient", reference_time=now)
 
         print(f"\nSepsis workflow result:")
         print(f"  Triggered: {result.is_triggered}")
@@ -198,10 +216,14 @@ logic:
         now = datetime.now()
 
         # Add comprehensive patient data
-        backend.add_data(1, "Cr", [
-            DataPoint(now - timedelta(hours=24), 1.0),
-            DataPoint(now, 1.5),
-        ])
+        backend.add_data(
+            1,
+            "Cr",
+            [
+                DataPoint(now - timedelta(hours=24), 1.0),
+                DataPoint(now, 1.5),
+            ],
+        )
         backend.add_data(1, "MAP", [DataPoint(now, 68)])
         backend.add_data(1, "Lactate", [DataPoint(now, 2.5)])
         backend.add_data(1, "RR", [DataPoint(now, 24)])
@@ -280,11 +302,13 @@ class TestCohortEvaluation:
         for patient_id in cohort:
             result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=now)
             if result.is_triggered:
-                at_risk.append({
-                    "patient_id": patient_id,
-                    "rules": result.triggered_logic,
-                    "values": result.trend_values,
-                })
+                at_risk.append(
+                    {
+                        "patient_id": patient_id,
+                        "rules": result.triggered_logic,
+                        "values": result.trend_values,
+                    }
+                )
             else:
                 not_triggered.append(patient_id)
 
@@ -358,8 +382,8 @@ class TestTimeSeriesEvaluation:
         base_time = datetime(2024, 1, 15, 8, 0, 0)
 
         creatinine_progression = [
-            (0, 1.0),   # Day 1 morning
-            (8, 1.0),   # Day 1 afternoon
+            (0, 1.0),  # Day 1 morning
+            (8, 1.0),  # Day 1 afternoon
             (24, 1.1),  # Day 2 morning
             (32, 1.2),  # Day 2 afternoon
             (48, 1.4),  # Day 3 morning
@@ -376,16 +400,15 @@ class TestTimeSeriesEvaluation:
         timeline = []
         for hours, _ in creatinine_progression:
             eval_time = base_time + timedelta(hours=hours)
-            result = evaluator.evaluate_patient(
-                patient_id="aki-progression",
-                reference_time=eval_time
+            result = evaluator.evaluate_patient(patient_id="aki-progression", reference_time=eval_time)
+            timeline.append(
+                {
+                    "time": eval_time.isoformat(),
+                    "hours": hours,
+                    "triggered": result.is_triggered,
+                    "rules": result.triggered_logic,
+                }
             )
-            timeline.append({
-                "time": eval_time.isoformat(),
-                "hours": hours,
-                "triggered": result.is_triggered,
-                "rules": result.triggered_logic,
-            })
 
         print("\nAKI progression timeline:")
         for point in timeline:
@@ -408,13 +431,10 @@ class TestErrorRecovery:
         # Missing: Lactate, Cr, UO
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id="partial-patient",
-            reference_time=now
-        )
+        result = evaluator.evaluate_patient(patient_id="partial-patient", reference_time=now)
 
         # Should not crash, missing data treated as unavailable
-        assert hasattr(result, 'is_triggered')
+        assert hasattr(result, "is_triggered")
         print(f"\nPartial data result: triggered={result.is_triggered}")
 
     def test_invalid_patient_id(self):
@@ -424,10 +444,7 @@ class TestErrorRecovery:
         backend = InMemoryBackend()
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id="non-existent-patient",
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id="non-existent-patient", reference_time=datetime.now())
 
         # Should return a valid result (not triggered)
         assert not result.is_triggered
@@ -446,10 +463,7 @@ class TestErrorRecovery:
 
         # Evaluate with a future time (data would be "in the past")
         future_time = now + timedelta(days=7)
-        result = evaluator.evaluate_patient(
-            patient_id="test-patient",
-            reference_time=future_time
-        )
+        result = evaluator.evaluate_patient(patient_id="test-patient", reference_time=future_time)
 
         # Data is outside the window, so should not trigger
         print(f"\nFuture reference time result: {result.is_triggered}")
@@ -465,10 +479,14 @@ class TestResultSerialization:
         backend = InMemoryBackend()
         now = datetime.now()
 
-        backend.add_data("test", "Cr", [
-            DataPoint(now - timedelta(hours=24), 1.0),
-            DataPoint(now, 1.5),
-        ])
+        backend.add_data(
+            "test",
+            "Cr",
+            [
+                DataPoint(now - timedelta(hours=24), 1.0),
+                DataPoint(now, 1.5),
+            ],
+        )
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id="test", reference_time=now)
@@ -485,6 +503,7 @@ class TestResultSerialization:
         }
 
         import json
+
         json_str = json.dumps(result_dict, indent=2)
         print(f"\nResult JSON:\n{json_str}")
 

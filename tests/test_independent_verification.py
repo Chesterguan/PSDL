@@ -21,9 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from runtime.python.parser import PSDLParser
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend
-from runtime.python.operators import DataPoint, TemporalOperators
+from reference.python.parser import PSDLParser
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.operators import DataPoint, TemporalOperators
 
 
 class TestManualDeltaVerification:
@@ -61,8 +61,7 @@ class TestManualDeltaVerification:
         print(f"Manual calculation: 1.4 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
 
-        assert abs(psdl_delta - EXPECTED_DELTA) < 0.001, \
-            f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
+        assert abs(psdl_delta - EXPECTED_DELTA) < 0.001, f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
 
     def test_delta_with_partial_window(self):
         """
@@ -81,7 +80,7 @@ class TestManualDeltaVerification:
             DataPoint(now - timedelta(hours=60), 1.5),  # Outside window
             DataPoint(now - timedelta(hours=36), 2.0),  # Inside window (first)
             DataPoint(now - timedelta(hours=12), 2.5),  # Inside window
-            DataPoint(now, 3.0),                         # Inside window (last)
+            DataPoint(now, 3.0),  # Inside window (last)
         ]
 
         # Manual calculation
@@ -447,7 +446,7 @@ class TestClinicalReferenceCases:
         cr_data = [
             DataPoint(now - timedelta(hours=24), 0.9),  # Admission
             DataPoint(now - timedelta(hours=12), 1.1),  # Rising
-            DataPoint(now, 1.3),                         # Current
+            DataPoint(now, 1.3),  # Current
         ]
 
         backend = InMemoryBackend()
@@ -480,7 +479,7 @@ class TestClinicalReferenceCases:
         cr_data = [
             DataPoint(now - timedelta(hours=48), 1.0),  # Pre-cath
             DataPoint(now - timedelta(hours=24), 1.2),  # 24h post
-            DataPoint(now, 1.5),                         # 48h post
+            DataPoint(now, 1.5),  # 48h post
         ]
 
         backend = InMemoryBackend()

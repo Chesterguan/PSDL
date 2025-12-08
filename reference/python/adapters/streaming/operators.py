@@ -14,7 +14,7 @@ These classes are designed for PyFlink but can be tested in isolation.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .models import ClinicalEvent, TrendResult
 
@@ -22,8 +22,13 @@ from .models import ClinicalEvent, TrendResult
 class WindowFunction(ABC):
     """Base class for window-based operators."""
 
-    def __init__(self, trend_name: str, threshold: Optional[float] = None,
-                 comparison: str = ">", description: Optional[str] = None):
+    def __init__(
+        self,
+        trend_name: str,
+        threshold: Optional[float] = None,
+        comparison: str = ">",
+        description: Optional[str] = None,
+    ):
         """
         Initialize window function.
 
@@ -63,8 +68,9 @@ class WindowFunction(ABC):
         else:
             raise ValueError(f"Unknown comparison operator: {self.comparison}")
 
-    def process(self, patient_id: str, events: List[ClinicalEvent],
-                window_start: datetime, window_end: datetime) -> TrendResult:
+    def process(
+        self, patient_id: str, events: List[ClinicalEvent], window_start: datetime, window_end: datetime
+    ) -> TrendResult:
         """
         Process a window of events and produce a TrendResult.
 
@@ -74,7 +80,7 @@ class WindowFunction(ABC):
             return TrendResult(
                 patient_id=patient_id,
                 trend_name=self.trend_name,
-                value=float('nan'),
+                value=float("nan"),
                 result=False,
                 timestamp=window_end,
                 window_start=window_start,
@@ -176,7 +182,7 @@ class MinWindowFunction(WindowFunction):
     def compute(self, events: List[ClinicalEvent]) -> float:
         """Compute minimum value in window."""
         if not events:
-            return float('inf')
+            return float("inf")
         return min(e.value for e in events)
 
 
@@ -192,7 +198,7 @@ class MaxWindowFunction(WindowFunction):
     def compute(self, events: List[ClinicalEvent]) -> float:
         """Compute maximum value in window."""
         if not events:
-            return float('-inf')
+            return float("-inf")
         return max(e.value for e in events)
 
 
@@ -229,8 +235,13 @@ class SMAWindowFunction(WindowFunction):
 class ProcessFunction(ABC):
     """Base class for stateful process functions."""
 
-    def __init__(self, trend_name: str, threshold: Optional[float] = None,
-                 comparison: str = ">", description: Optional[str] = None):
+    def __init__(
+        self,
+        trend_name: str,
+        threshold: Optional[float] = None,
+        comparison: str = ">",
+        description: Optional[str] = None,
+    ):
         """Initialize process function."""
         self.trend_name = trend_name
         self.threshold = threshold
@@ -238,9 +249,7 @@ class ProcessFunction(ABC):
         self.description = description
 
     @abstractmethod
-    def process_element(
-        self, event: ClinicalEvent, state: Dict[str, Any]
-    ) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
         """
         Process a single event with state.
 
@@ -285,9 +294,7 @@ class LastProcessFunction(ProcessFunction):
           expr: last(SpO2) < 92
     """
 
-    def process_element(
-        self, event: ClinicalEvent, state: Dict[str, Any]
-    ) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and return the current value."""
         value = event.value
         result = self.evaluate(value)
@@ -325,9 +332,14 @@ class EMAProcessFunction(ProcessFunction):
           expr: ema(HR, 1h) > 100
     """
 
-    def __init__(self, trend_name: str, window_ms: int,
-                 threshold: Optional[float] = None, comparison: str = ">",
-                 description: Optional[str] = None):
+    def __init__(
+        self,
+        trend_name: str,
+        window_ms: int,
+        threshold: Optional[float] = None,
+        comparison: str = ">",
+        description: Optional[str] = None,
+    ):
         """
         Initialize EMA process function.
 
@@ -346,9 +358,7 @@ class EMAProcessFunction(ProcessFunction):
         window_minutes = window_ms / (60 * 1000)
         self.alpha = 2.0 / (window_minutes + 1)
 
-    def process_element(
-        self, event: ClinicalEvent, state: Dict[str, Any]
-    ) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and update EMA."""
         current_value = event.value
 
@@ -385,10 +395,14 @@ class EMAProcessFunction(ProcessFunction):
 
 # Factory functions for creating operators from PSDL expressions
 
-def create_window_function(operator_name: str, trend_name: str,
-                           threshold: Optional[float] = None,
-                           comparison: str = ">",
-                           description: Optional[str] = None) -> WindowFunction:
+
+def create_window_function(
+    operator_name: str,
+    trend_name: str,
+    threshold: Optional[float] = None,
+    comparison: str = ">",
+    description: Optional[str] = None,
+) -> WindowFunction:
     """
     Create appropriate window function for a PSDL operator.
 
@@ -422,11 +436,14 @@ def create_window_function(operator_name: str, trend_name: str,
     )
 
 
-def create_process_function(operator_name: str, trend_name: str,
-                            window_ms: Optional[int] = None,
-                            threshold: Optional[float] = None,
-                            comparison: str = ">",
-                            description: Optional[str] = None) -> ProcessFunction:
+def create_process_function(
+    operator_name: str,
+    trend_name: str,
+    window_ms: Optional[int] = None,
+    threshold: Optional[float] = None,
+    comparison: str = ">",
+    description: Optional[str] = None,
+) -> ProcessFunction:
     """
     Create appropriate process function for a PSDL operator.
 

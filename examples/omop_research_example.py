@@ -20,12 +20,12 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-# Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "runtime", "python"))
+# Add reference implementation to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
 
 from parser import PSDLParser
 from evaluator import PSDLEvaluator
-from backends.omop import OMOPBackend, OMOPConfig
+from adapters.omop import OMOPBackend, OMOPConfig
 
 
 def main():

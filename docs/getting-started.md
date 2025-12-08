@@ -54,7 +54,7 @@ logic:
 ## Parse and Validate
 
 ```python
-from runtime.python import PSDLParser
+from reference.python import PSDLParser
 
 # Parse the scenario
 parser = PSDLParser()
@@ -70,9 +70,9 @@ print(f"Logic: {list(scenario.logic.keys())}")
 ## Evaluate Against Data
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.evaluator import InMemoryBackend
-from runtime.python.operators import DataPoint
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.evaluator import InMemoryBackend
+from reference.python.operators import DataPoint
 from datetime import datetime, timedelta
 
 # Parse scenario
@@ -153,8 +153,8 @@ logic:
 For retrospective research or real-time monitoring with OMOP databases:
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.backends.omop import create_omop_backend
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.adapters.omop import create_omop_backend
 
 # Standard OMOP with mapped concepts
 backend = create_omop_backend(
@@ -175,7 +175,7 @@ result = evaluator.evaluate_patient(patient_id=12345)
 For OMOP databases where `concept_id = 0` (common with MIMIC-IV ETL):
 
 ```python
-from runtime.python.backends.omop import create_omop_backend
+from reference.python.adapters.omop import create_omop_backend
 
 # Use source values instead of concept IDs
 backend = create_omop_backend(
@@ -191,15 +191,15 @@ backend = create_omop_backend(
 )
 ```
 
-See [OMOP Backend Documentation](./backends/omop.md) for detailed setup instructions.
+See [OMOP Adapter Documentation](./adapters/omop.md) for detailed setup instructions.
 
 ## Using with FHIR R4
 
 For EHR integration using FHIR:
 
 ```python
-from runtime.python import PSDLParser, PSDLEvaluator
-from runtime.python.backends import FHIRBackend, FHIRConfig
+from reference.python import PSDLParser, PSDLEvaluator
+from reference.python.adapters import FHIRBackend, FHIRConfig
 
 # Configure FHIR connection
 config = FHIRConfig(
@@ -215,14 +215,14 @@ evaluator = PSDLEvaluator(scenario, backend)
 result = evaluator.evaluate_patient(patient_id="patient-uuid")
 ```
 
-See [FHIR Backend Documentation](./backends/fhir.md) for detailed setup instructions.
+See [FHIR Adapter Documentation](./adapters/fhir.md) for detailed setup instructions.
 
 ## Next Steps
 
 - Browse [example scenarios](../examples/) for clinical use cases
 - Read the [language specification](../spec/schema-v0.1.yaml)
-- Connect to [OMOP CDM](./backends/omop.md) for research
-- Connect to [FHIR R4](./backends/fhir.md) for EHR integration
+- Connect to [OMOP CDM](./adapters/omop.md) for research
+- Connect to [FHIR R4](./adapters/fhir.md) for EHR integration
 - Contribute your own scenarios!
 
 ## Running Tests

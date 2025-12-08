@@ -17,13 +17,13 @@ from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from runtime.python.backends.fhir import (  # noqa: E402
+from reference.python.adapters.fhir import (  # noqa: E402
     FHIRBackend,
     FHIRConfig,
     create_fhir_backend,
 )
-from runtime.python.parser import Domain, PSDLParser, Signal  # noqa: E402
-from runtime.python.evaluator import PSDLEvaluator  # noqa: E402
+from reference.python.parser import Domain, PSDLParser, Signal  # noqa: E402
+from reference.python.evaluator import PSDLEvaluator  # noqa: E402
 
 
 # Mark all tests in this module as integration tests
@@ -51,10 +51,7 @@ class TestHAPIFHIRServer:
         # Try to get metadata/capability statement
         try:
             session = backend._get_session()
-            response = session.get(
-                f"{self.HAPI_BASE_URL}/metadata",
-                timeout=backend.config.timeout
-            )
+            response = session.get(f"{self.HAPI_BASE_URL}/metadata", timeout=backend.config.timeout)
             assert response.status_code == 200
             data = response.json()
             assert data.get("resourceType") == "CapabilityStatement"
@@ -98,10 +95,7 @@ class TestHAPIFHIRServer:
         """Test searching for patients with specific observations."""
         try:
             # Search for patients with heart rate observations
-            patients = backend.search_patients_with_observation(
-                loinc_code="8867-4",  # Heart rate
-                min_count=1
-            )
+            patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)  # Heart rate
             assert isinstance(patients, list)
             print(f"\nFound {len(patients)} patients with heart rate observations")
         except Exception as e:
@@ -111,17 +105,11 @@ class TestHAPIFHIRServer:
         """Test fetching observation data for a signal."""
         try:
             # First find patients with creatinine data
-            patients = backend.search_patients_with_observation(
-                loinc_code="2160-0",  # Creatinine
-                min_count=1
-            )
+            patients = backend.search_patients_with_observation(loinc_code="2160-0", min_count=1)  # Creatinine
 
             if not patients:
                 # Try a more common observation
-                patients = backend.search_patients_with_observation(
-                    loinc_code="8867-4",  # Heart rate
-                    min_count=1
-                )
+                patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)  # Heart rate
 
             if not patients:
                 pytest.skip("No patients with observations found")
@@ -138,7 +126,7 @@ class TestHAPIFHIRServer:
                 patient_id=patients[0],
                 signal=signal,
                 window_seconds=86400 * 365,  # 1 year window
-                reference_time=datetime.now()
+                reference_time=datetime.now(),
             )
 
             print(f"\nFetched {len(data_points)} data points for patient {patients[0]}")
@@ -207,20 +195,14 @@ logic:
             assert "HR" in scenario.signals
 
             # Find a patient with heart rate data
-            patients = backend.search_patients_with_observation(
-                loinc_code="8867-4",
-                min_count=1
-            )
+            patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)
 
             if not patients:
                 pytest.skip("No patients with heart rate data")
 
             # Create evaluator and evaluate
             evaluator = PSDLEvaluator(scenario, backend)
-            result = evaluator.evaluate_patient(
-                patient_id=patients[0],
-                reference_time=datetime.now()
-            )
+            result = evaluator.evaluate_patient(patient_id=patients[0], reference_time=datetime.now())
 
             print(f"\nEvaluation result for patient {patients[0]}:")
             print(f"  is_triggered: {result.is_triggered}")
@@ -228,8 +210,8 @@ logic:
             print(f"  triggered_logic: {result.triggered_logic}")
 
             # The result should be valid (either triggered or not)
-            assert hasattr(result, 'is_triggered')
-            assert hasattr(result, 'trend_values')
+            assert hasattr(result, "is_triggered")
+            assert hasattr(result, "trend_values")
 
         except Exception as e:
             pytest.skip(f"Could not evaluate scenario: {e}")
@@ -263,10 +245,7 @@ class TestMultiplePublicServers:
 
             # Try to get capability statement
             session = backend._get_session()
-            response = session.get(
-                f"{base_url}/metadata",
-                timeout=30
-            )
+            response = session.get(f"{base_url}/metadata", timeout=30)
 
             if response.status_code == 200:
                 data = response.json()
@@ -323,10 +302,7 @@ class TestFHIRDataQuality:
         )
 
         data_points = backend.fetch_signal_data(
-            patient_id="some-patient",
-            signal=signal,
-            window_seconds=86400,
-            reference_time=datetime.now()
+            patient_id="some-patient", signal=signal, window_seconds=86400, reference_time=datetime.now()
         )
 
         # Should return empty list, not error
@@ -401,10 +377,7 @@ class TestFHIRPerformance:
             # Time the fetch
             start = time.time()
             data_points = backend.fetch_signal_data(
-                patient_id=patients[0],
-                signal=signal,
-                window_seconds=86400 * 365,
-                reference_time=datetime.now()
+                patient_id=patients[0], signal=signal, window_seconds=86400 * 365, reference_time=datetime.now()
             )
             elapsed = time.time() - start
 

@@ -1,14 +1,30 @@
 """
-PSDL Data Backends
+DEPRECATED: This module has been renamed to 'reference.python.adapters'.
 
-This module provides backend connectors for various clinical data sources:
-- InMemoryBackend: For testing and development
-- OMOPBackend: For OMOP CDM databases (v5.4)
-- FHIRBackend: For FHIR R4 servers
+Please update your imports:
+    OLD: from runtime.python.backends import ...
+    NEW: from reference.python.adapters import ...
+
+This compatibility shim will be removed in v0.2.0.
 """
 
-from .fhir import FHIRBackend, FHIRConfig, create_fhir_backend
-from .omop import OMOPBackend, OMOPConfig
+import warnings
+
+warnings.warn(
+    "The 'runtime.python.backends' module is deprecated and will be removed in v0.2.0. "
+    "Please use 'reference.python.adapters' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export everything from reference.python.adapters
+from reference.python.adapters import (
+    OMOPBackend,
+    OMOPConfig,
+    FHIRBackend,
+    FHIRConfig,
+    create_fhir_backend,
+)
 
 __all__ = [
     "OMOPBackend",

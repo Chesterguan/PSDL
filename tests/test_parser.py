@@ -10,7 +10,7 @@ import sys
 import pytest
 
 # Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "runtime", "python"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
 
 from parser import Domain  # noqa: E402
 from parser import PSDLParseError  # noqa: E402

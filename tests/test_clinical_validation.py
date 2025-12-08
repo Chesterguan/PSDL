@@ -20,14 +20,15 @@ import random  # noqa: E402
 
 import pytest  # noqa: E402
 
-from runtime.python.parser import PSDLParser  # noqa: E402
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
-from runtime.python.operators import DataPoint  # noqa: E402
+from reference.python.parser import PSDLParser  # noqa: E402
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.operators import DataPoint  # noqa: E402
 
 
 @dataclass
 class SyntheticPatient:
     """A synthetic patient with known clinical state."""
+
     patient_id: str
     age: int
     expected_aki: bool  # Ground truth: should AKI be detected?
@@ -44,58 +45,73 @@ class ClinicalDataGenerator:
 
     def generate_stable_patient(self, patient_id: str) -> tuple:
         """Generate a stable patient with normal values."""
-        return SyntheticPatient(
-            patient_id=patient_id,
-            age=random.randint(30, 70),
-            expected_aki=False,
-            expected_sepsis=False,
-            expected_deterioration=False,
-            clinical_notes="Stable patient, all vitals normal"
-        ), self._stable_vitals()
+        return (
+            SyntheticPatient(
+                patient_id=patient_id,
+                age=random.randint(30, 70),
+                expected_aki=False,
+                expected_sepsis=False,
+                expected_deterioration=False,
+                clinical_notes="Stable patient, all vitals normal",
+            ),
+            self._stable_vitals(),
+        )
 
     def generate_aki_stage1_patient(self, patient_id: str) -> tuple:
         """Generate a patient with KDIGO Stage 1 AKI."""
-        return SyntheticPatient(
-            patient_id=patient_id,
-            age=random.randint(50, 80),
-            expected_aki=True,
-            expected_sepsis=False,
-            expected_deterioration=False,
-            clinical_notes="AKI Stage 1: Creatinine rise >0.3 mg/dL in 48h"
-        ), self._aki_stage1_vitals()
+        return (
+            SyntheticPatient(
+                patient_id=patient_id,
+                age=random.randint(50, 80),
+                expected_aki=True,
+                expected_sepsis=False,
+                expected_deterioration=False,
+                clinical_notes="AKI Stage 1: Creatinine rise >0.3 mg/dL in 48h",
+            ),
+            self._aki_stage1_vitals(),
+        )
 
     def generate_aki_stage2_patient(self, patient_id: str) -> tuple:
         """Generate a patient with KDIGO Stage 2 AKI."""
-        return SyntheticPatient(
-            patient_id=patient_id,
-            age=random.randint(55, 85),
-            expected_aki=True,
-            expected_sepsis=False,
-            expected_deterioration=True,  # Stage 2 indicates deterioration
-            clinical_notes="AKI Stage 2: Creatinine doubled from baseline"
-        ), self._aki_stage2_vitals()
+        return (
+            SyntheticPatient(
+                patient_id=patient_id,
+                age=random.randint(55, 85),
+                expected_aki=True,
+                expected_sepsis=False,
+                expected_deterioration=True,  # Stage 2 indicates deterioration
+                clinical_notes="AKI Stage 2: Creatinine doubled from baseline",
+            ),
+            self._aki_stage2_vitals(),
+        )
 
     def generate_sepsis_patient(self, patient_id: str) -> tuple:
         """Generate a patient meeting sepsis criteria."""
-        return SyntheticPatient(
-            patient_id=patient_id,
-            age=random.randint(40, 75),
-            expected_aki=False,
-            expected_sepsis=True,
-            expected_deterioration=True,
-            clinical_notes="Sepsis: qSOFA positive + elevated lactate"
-        ), self._sepsis_vitals()
+        return (
+            SyntheticPatient(
+                patient_id=patient_id,
+                age=random.randint(40, 75),
+                expected_aki=False,
+                expected_sepsis=True,
+                expected_deterioration=True,
+                clinical_notes="Sepsis: qSOFA positive + elevated lactate",
+            ),
+            self._sepsis_vitals(),
+        )
 
     def generate_ckd_stable_patient(self, patient_id: str) -> tuple:
         """Generate a CKD patient with chronically elevated but STABLE creatinine."""
-        return SyntheticPatient(
-            patient_id=patient_id,
-            age=random.randint(60, 85),
-            expected_aki=False,  # CKD is NOT acute - should NOT trigger AKI
-            expected_sepsis=False,
-            expected_deterioration=False,
-            clinical_notes="CKD Stage 3: Elevated but stable creatinine (no acute injury)"
-        ), self._ckd_stable_vitals()
+        return (
+            SyntheticPatient(
+                patient_id=patient_id,
+                age=random.randint(60, 85),
+                expected_aki=False,  # CKD is NOT acute - should NOT trigger AKI
+                expected_sepsis=False,
+                expected_deterioration=False,
+                clinical_notes="CKD Stage 3: Elevated but stable creatinine (no acute injury)",
+            ),
+            self._ckd_stable_vitals(),
+        )
 
     def _stable_vitals(self) -> Dict[str, List[DataPoint]]:
         """Normal stable vital signs over 48 hours."""
@@ -261,14 +277,12 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
         # Clinical expectation: NO AKI
-        assert result.is_triggered == patient.expected_aki, \
-            f"Stable patient incorrectly triggered: {result.triggered_logic}"
+        assert (
+            result.is_triggered == patient.expected_aki
+        ), f"Stable patient incorrectly triggered: {result.triggered_logic}"
         print(f"✓ {patient.clinical_notes}: correctly NOT triggered")
 
     def test_aki_stage1_detected(self, scenario, generator):
@@ -278,14 +292,12 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
         # Clinical expectation: AKI detected
-        assert result.is_triggered == patient.expected_aki, \
-            f"AKI Stage 1 patient NOT detected! Trends: {result.trend_results}"
+        assert (
+            result.is_triggered == patient.expected_aki
+        ), f"AKI Stage 1 patient NOT detected! Trends: {result.trend_results}"
         assert "aki_stage1" in result.triggered_logic or "aki_present" in result.triggered_logic
         print(f"✓ {patient.clinical_notes}: correctly triggered {result.triggered_logic}")
 
@@ -296,10 +308,7 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
         assert result.is_triggered == patient.expected_aki
         # Should trigger stage 2 or higher
@@ -313,15 +322,13 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
         # Clinical expectation: NO AKI (chronic, not acute)
         # The delta should be near 0
-        assert result.is_triggered == patient.expected_aki, \
-            f"CKD stable patient incorrectly triggered: {result.triggered_logic}"
+        assert (
+            result.is_triggered == patient.expected_aki
+        ), f"CKD stable patient incorrectly triggered: {result.triggered_logic}"
         print(f"✓ {patient.clinical_notes}: correctly NOT triggered")
 
 
@@ -348,13 +355,11 @@ class TestSepsisDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
-        assert result.is_triggered == patient.expected_sepsis, \
-            f"Stable patient incorrectly triggered sepsis: {result.triggered_logic}"
+        assert (
+            result.is_triggered == patient.expected_sepsis
+        ), f"Stable patient incorrectly triggered sepsis: {result.triggered_logic}"
         print(f"✓ {patient.clinical_notes}: correctly NOT triggered for sepsis")
 
     def test_sepsis_patient_detected(self, scenario, generator):
@@ -364,13 +369,11 @@ class TestSepsisDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(
-            patient_id=patient.patient_id,
-            reference_time=datetime.now()
-        )
+        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
 
-        assert result.is_triggered == patient.expected_sepsis, \
-            f"Septic patient NOT detected! Trends: {result.trend_results}"
+        assert (
+            result.is_triggered == patient.expected_sepsis
+        ), f"Septic patient NOT detected! Trends: {result.trend_results}"
         print(f"✓ {patient.clinical_notes}: correctly triggered {result.triggered_logic}")
 
 
@@ -415,10 +418,7 @@ class TestCohortValidation:
         false_negatives = 0
 
         for patient, _ in cohort:
-            result = evaluator.evaluate_patient(
-                patient_id=patient.patient_id,
-                reference_time=now
-            )
+            result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=now)
 
             predicted_positive = result.is_triggered
             actual_positive = patient.expected_aki
@@ -435,8 +435,12 @@ class TestCohortValidation:
                 print(f"  FN: {patient.patient_id} - {patient.clinical_notes}")
 
         # Calculate metrics
-        sensitivity = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
-        specificity = true_negatives / (true_negatives + false_positives) if (true_negatives + false_positives) > 0 else 0
+        sensitivity = (
+            true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+        )
+        specificity = (
+            true_negatives / (true_negatives + false_positives) if (true_negatives + false_positives) > 0 else 0
+        )
         accuracy = (true_positives + true_negatives) / len(cohort)
 
         print(f"\n=== AKI Detection Validation Results ===")
@@ -486,10 +490,7 @@ class TestCohortValidation:
 
         print("\n=== Mixed Cohort Validation ===")
         for patient, _ in cohort:
-            result = evaluator.evaluate_patient(
-                patient_id=patient.patient_id,
-                reference_time=now
-            )
+            result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=now)
 
             if result.is_triggered == patient.expected_aki:
                 correct += 1
@@ -521,10 +522,14 @@ class TestEdgeCases:
         now = datetime.now()
 
         # Exactly 0.3 mg/dL rise - should trigger
-        backend.add_data("borderline", "Cr", [
-            DataPoint(now - timedelta(hours=48), 1.0),
-            DataPoint(now, 1.3),  # Exactly 0.3 rise
-        ])
+        backend.add_data(
+            "borderline",
+            "Cr",
+            [
+                DataPoint(now - timedelta(hours=48), 1.0),
+                DataPoint(now, 1.3),  # Exactly 0.3 rise
+            ],
+        )
 
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id="borderline", reference_time=now)
@@ -538,10 +543,14 @@ class TestEdgeCases:
         now = datetime.now()
 
         # Just below threshold
-        backend.add_data("below", "Cr", [
-            DataPoint(now - timedelta(hours=48), 1.0),
-            DataPoint(now, 1.25),  # 0.25 rise - below 0.3 threshold
-        ])
+        backend.add_data(
+            "below",
+            "Cr",
+            [
+                DataPoint(now - timedelta(hours=48), 1.0),
+                DataPoint(now, 1.25),  # 0.25 rise - below 0.3 threshold
+            ],
+        )
 
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id="below", reference_time=now)
@@ -555,13 +564,17 @@ class TestEdgeCases:
         now = datetime.now()
 
         # Rose acutely 24h ago, now stable
-        backend.add_data("recovering", "Cr", [
-            DataPoint(now - timedelta(hours=48), 1.0),
-            DataPoint(now - timedelta(hours=36), 1.5),  # Acute rise
-            DataPoint(now - timedelta(hours=24), 1.5),
-            DataPoint(now - timedelta(hours=12), 1.48),
-            DataPoint(now, 1.45),  # Slightly improving
-        ])
+        backend.add_data(
+            "recovering",
+            "Cr",
+            [
+                DataPoint(now - timedelta(hours=48), 1.0),
+                DataPoint(now - timedelta(hours=36), 1.5),  # Acute rise
+                DataPoint(now - timedelta(hours=24), 1.5),
+                DataPoint(now - timedelta(hours=12), 1.48),
+                DataPoint(now, 1.45),  # Slightly improving
+            ],
+        )
 
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id="recovering", reference_time=now)

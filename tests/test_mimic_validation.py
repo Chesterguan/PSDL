@@ -23,9 +23,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from runtime.python.parser import PSDLParser
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend
-from runtime.python.operators import DataPoint
+from reference.python.parser import PSDLParser
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.operators import DataPoint
 
 
 # Path to MIMIC-IV FHIR data
@@ -35,34 +35,29 @@ MIMIC_FHIR_PATH = Path("/Users/ziyuanguan/Downloads/dataSources/physionet.org/fi
 # These are MIMIC-specific codes, not LOINC
 MIMIC_LAB_MAPPING = {
     # Renal function
-    "50912": "Cr",       # Creatinine
-    "50920": "eGFR",     # Estimated GFR
-    "51006": "BUN",      # Urea Nitrogen
-
+    "50912": "Cr",  # Creatinine
+    "50920": "eGFR",  # Estimated GFR
+    "51006": "BUN",  # Urea Nitrogen
     # Electrolytes
-    "50983": "Na",       # Sodium
-    "50971": "K",        # Potassium
-    "50893": "Ca",       # Calcium Total
-    "50902": "Cl",       # Chloride
-    "50882": "CO2",      # Bicarbonate (Total CO2)
-    "50804": "CO2",      # Calculated Total CO2
-
+    "50983": "Na",  # Sodium
+    "50971": "K",  # Potassium
+    "50893": "Ca",  # Calcium Total
+    "50902": "Cl",  # Chloride
+    "50882": "CO2",  # Bicarbonate (Total CO2)
+    "50804": "CO2",  # Calculated Total CO2
     # Metabolic
     "50931": "Glucose",  # Glucose
     "50809": "Glucose",  # Glucose (Blood Gas)
-
     # Blood gases
-    "50813": "Lact",     # Lactate
-    "50820": "pH",       # pH
-
+    "50813": "Lact",  # Lactate
+    "50820": "pH",  # pH
     # Hematology
-    "51222": "Hgb",      # Hemoglobin
-    "51301": "WBC",      # White Blood Cells
-    "51265": "Plt",      # Platelet Count
-
+    "51222": "Hgb",  # Hemoglobin
+    "51301": "WBC",  # White Blood Cells
+    "51265": "Plt",  # Platelet Count
     # Cardiac
-    "50911": "CK",       # Creatine Kinase
-    "51003": "TnT",      # Troponin T
+    "50911": "CK",  # Creatine Kinase
+    "51003": "TnT",  # Troponin T
 }
 
 
@@ -85,7 +80,7 @@ class MIMICFHIRLoader:
             return
 
         count = 0
-        with gzip.open(filepath, 'rt', encoding='utf-8') as f:
+        with gzip.open(filepath, "rt", encoding="utf-8") as f:
             for line in f:
                 if limit and count >= limit:
                     break
@@ -96,10 +91,7 @@ class MIMICFHIRLoader:
                     continue
 
     def get_lab_observations(
-        self,
-        patient_id: str = None,
-        lab_codes: List[str] = None,
-        limit: int = 10000
+        self, patient_id: str = None, lab_codes: List[str] = None, limit: int = 10000
     ) -> List[Dict]:
         """Get lab observations, optionally filtered by patient and lab codes."""
         observations = []
@@ -158,7 +150,7 @@ class MIMICFHIRLoader:
 
         try:
             # Parse ISO timestamp (MIMIC uses offset format like "2140-01-06T09:49:00-05:00")
-            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             # Convert to naive datetime for consistency
             timestamp = timestamp.replace(tzinfo=None)
         except (ValueError, AttributeError):
@@ -175,19 +167,13 @@ class MIMICPSDLBackend(InMemoryBackend):
         self.loader = loader
         self.loaded_patients = set()
 
-    def load_patient_labs(
-        self,
-        patient_id: str,
-        lab_limit: int = 1000
-    ) -> int:
+    def load_patient_labs(self, patient_id: str, lab_limit: int = 1000) -> int:
         """Load lab data for a specific patient."""
         if patient_id in self.loaded_patients:
             return 0
 
         observations = self.loader.get_lab_observations(
-            patient_id=patient_id,
-            lab_codes=list(MIMIC_LAB_MAPPING.keys()),
-            limit=lab_limit
+            patient_id=patient_id, lab_codes=list(MIMIC_LAB_MAPPING.keys()), limit=lab_limit
         )
 
         # Group by signal
@@ -211,10 +197,7 @@ class MIMICPSDLBackend(InMemoryBackend):
         patient_data = defaultdict(lambda: defaultdict(list))
         stats = {"observations": 0, "patients": 0, "signals": defaultdict(int)}
 
-        for obs in self.loader.stream_ndjson_gz(
-            "MimicObservationLabevents.ndjson.gz",
-            limit=limit
-        ):
+        for obs in self.loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=limit):
             result = self.loader.observation_to_datapoint(obs)
             if not result:
                 continue
@@ -266,10 +249,7 @@ class TestMIMICDataLoading:
         count = 0
         cr_count = 0
 
-        for obs in mimic_loader.stream_ndjson_gz(
-            "MimicObservationLabevents.ndjson.gz",
-            limit=10000
-        ):
+        for obs in mimic_loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=10000):
             count += 1
             coding = obs.get("code", {}).get("coding", [{}])[0]
             if coding.get("code") == "50912":  # Creatinine
@@ -284,10 +264,7 @@ class TestMIMICDataLoading:
         converted = 0
         failed = 0
 
-        for obs in mimic_loader.stream_ndjson_gz(
-            "MimicObservationLabevents.ndjson.gz",
-            limit=1000
-        ):
+        for obs in mimic_loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=1000):
             result = mimic_loader.observation_to_datapoint(obs)
             if result:
                 converted += 1
@@ -326,7 +303,7 @@ class TestMIMICAKIValidation:
         print(f"Total observations: {stats['observations']}")
         print(f"Unique patients: {stats['patients']}")
         print(f"Signal distribution:")
-        for signal, count in sorted(stats['signals'].items(), key=lambda x: -x[1]):
+        for signal, count in sorted(stats["signals"].items(), key=lambda x: -x[1]):
             print(f"  {signal}: {count}")
 
         # Evaluate patients with creatinine data
@@ -355,12 +332,14 @@ class TestMIMICAKIValidation:
                 # Get delta value for analysis
                 cr_values = [dp.value for dp in sorted(cr_data, key=lambda x: x.timestamp)]
                 delta = cr_values[-1] - cr_values[0] if len(cr_values) >= 2 else 0
-                triggered_details.append({
-                    "patient_id": patient_id[:16] + "...",
-                    "logic": result.triggered_logic,
-                    "cr_range": f"{min(cr_values):.1f}-{max(cr_values):.1f}",
-                    "delta": delta,
-                })
+                triggered_details.append(
+                    {
+                        "patient_id": patient_id[:16] + "...",
+                        "logic": result.triggered_logic,
+                        "cr_range": f"{min(cr_values):.1f}-{max(cr_values):.1f}",
+                        "delta": delta,
+                    }
+                )
 
         print(f"\n=== AKI Evaluation Results ===")
         print(f"Patients with sufficient Cr data: {evaluated_count}")

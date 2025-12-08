@@ -64,3 +64,4 @@ CLAUDE.md
 *.log
 *.tmp
 tools/generate_diagrams.py
+CLAUDE.md

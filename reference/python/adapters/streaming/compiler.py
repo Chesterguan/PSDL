@@ -21,19 +21,22 @@ Architecture:
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from .models import ClinicalEvent, TrendResult, LogicResult, WindowSpec, Severity
-from .operators import (
-    WindowFunction, ProcessFunction,
-    create_window_function, create_process_function,
-)
 from .config import StreamingConfig
+from .models import ClinicalEvent, LogicResult, Severity, TrendResult, WindowSpec
+from .operators import (
+    ProcessFunction,
+    WindowFunction,
+    create_process_function,
+    create_window_function,
+)
 
 
 class OperatorType(Enum):
     """Type of temporal operator."""
+
     WINDOW = "window"  # Requires windowing (delta, slope, min, max, count, sma)
     PROCESS = "process"  # Stateful process (last, ema)
 
@@ -41,6 +44,7 @@ class OperatorType(Enum):
 @dataclass
 class ParsedOperator:
     """Parsed PSDL operator from an expression."""
+
     name: str  # Operator name (delta, slope, ema, last, etc.)
     signal: str  # Signal name (HR, SpO2, etc.)
     window: Optional[str] = None  # Window size (1h, 30m, etc.)
@@ -55,6 +59,7 @@ class ParsedOperator:
 @dataclass
 class ParsedTrend:
     """Parsed PSDL trend definition."""
+
     name: str
     expr: str
     operator: ParsedOperator
@@ -64,6 +69,7 @@ class ParsedTrend:
 @dataclass
 class ParsedLogic:
     """Parsed PSDL logic definition."""
+
     name: str
     expr: str
     trend_refs: List[str]  # Trends referenced in expression
@@ -74,6 +80,7 @@ class ParsedLogic:
 @dataclass
 class CompiledTrend:
     """Compiled trend ready for Flink execution."""
+
     name: str
     signal: str
     operator_type: OperatorType
@@ -85,6 +92,7 @@ class CompiledTrend:
 @dataclass
 class CompiledLogic:
     """Compiled logic ready for Flink execution."""
+
     name: str
     expr: str
     trend_refs: List[str]
@@ -95,6 +103,7 @@ class CompiledLogic:
 @dataclass
 class CompiledScenario:
     """Fully compiled PSDL scenario."""
+
     name: str
     version: str
     config: StreamingConfig
@@ -108,14 +117,11 @@ class ExpressionParser:
 
     # Pattern: operator(signal, window, [slide]) comparison threshold
     OPERATOR_PATTERN = re.compile(
-        r'(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\d+[smhd])\s*)?'
-        r'(?:,\s*(\d+[smhd]))?\s*\)\s*([><=!]+)\s*(-?[\d.]+)'
+        r"(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\d+[smhd])\s*)?" r"(?:,\s*(\d+[smhd]))?\s*\)\s*([><=!]+)\s*(-?[\d.]+)"
     )
 
     # Pattern: last(signal) comparison threshold
-    SIMPLE_PATTERN = re.compile(
-        r'(\w+)\s*\(\s*(\w+)\s*\)\s*([><=!]+)\s*(-?[\d.]+)'
-    )
+    SIMPLE_PATTERN = re.compile(r"(\w+)\s*\(\s*(\w+)\s*\)\s*([><=!]+)\s*(-?[\d.]+)")
 
     # Operators that require windowing
     WINDOW_OPERATORS = {"delta", "slope", "min", "max", "count", "sma"}
@@ -145,8 +151,7 @@ class ExpressionParser:
         if match:
             op_name, signal, window, slide, comparison, threshold = match.groups()
 
-            op_type = (OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS
-                       else OperatorType.PROCESS)
+            op_type = OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
 
             return ParsedOperator(
                 name=op_name,
@@ -163,8 +168,7 @@ class ExpressionParser:
         if match:
             op_name, signal, comparison, threshold = match.groups()
 
-            op_type = (OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS
-                       else OperatorType.PROCESS)
+            op_type = OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
 
             return ParsedOperator(
                 name=op_name,
@@ -191,11 +195,11 @@ class ExpressionParser:
             List of trend names referenced in the expression
         """
         # Remove boolean operators and parentheses
-        cleaned = re.sub(r'\b(AND|OR|NOT)\b', ' ', expr, flags=re.IGNORECASE)
-        cleaned = re.sub(r'[()]', ' ', cleaned)
+        cleaned = re.sub(r"\b(AND|OR|NOT)\b", " ", expr, flags=re.IGNORECASE)
+        cleaned = re.sub(r"[()]", " ", cleaned)
 
         # Extract identifiers (trend names)
-        identifiers = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b', cleaned)
+        identifiers = re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b", cleaned)
 
         # Remove duplicates while preserving order
         seen = set()
@@ -229,12 +233,12 @@ class LogicEvaluator:
         # Sort by length descending to avoid partial replacements
         for trend_name in sorted(trend_values.keys(), key=len, reverse=True):
             value = "True" if trend_values[trend_name] else "False"
-            eval_expr = re.sub(rf'\b{trend_name}\b', value, eval_expr)
+            eval_expr = re.sub(rf"\b{trend_name}\b", value, eval_expr)
 
         # Replace PSDL operators with Python operators
-        eval_expr = re.sub(r'\bAND\b', 'and', eval_expr, flags=re.IGNORECASE)
-        eval_expr = re.sub(r'\bOR\b', 'or', eval_expr, flags=re.IGNORECASE)
-        eval_expr = re.sub(r'\bNOT\b', 'not', eval_expr, flags=re.IGNORECASE)
+        eval_expr = re.sub(r"\bAND\b", "and", eval_expr, flags=re.IGNORECASE)
+        eval_expr = re.sub(r"\bOR\b", "or", eval_expr, flags=re.IGNORECASE)
+        eval_expr = re.sub(r"\bNOT\b", "not", eval_expr, flags=re.IGNORECASE)
 
         # Safely evaluate
         try:
@@ -386,8 +390,9 @@ class LogicJoinFunction:
         self.scenario_version = scenario_version
         self.evaluator = LogicEvaluator()
 
-    def process(self, patient_id: str, trend_results: Dict[str, TrendResult],
-                timestamp: datetime) -> Optional[LogicResult]:
+    def process(
+        self, patient_id: str, trend_results: Dict[str, TrendResult], timestamp: datetime
+    ) -> Optional[LogicResult]:
         """
         Evaluate logic expression given trend results.
 
@@ -405,8 +410,7 @@ class LogicJoinFunction:
             return None
 
         # Extract boolean values from trend results
-        trend_values = {name: result.result for name, result in trend_results.items()
-                        if name in self.logic.trend_refs}
+        trend_values = {name: result.result for name, result in trend_results.items() if name in self.logic.trend_refs}
 
         # Evaluate the logic expression
         result = self.evaluator.evaluate(self.logic.expr, trend_values)
@@ -483,9 +487,7 @@ class StreamingEvaluator:
             if trend.operator_type == OperatorType.PROCESS:
                 # Stateful processing (last, ema)
                 trend_state = patient_state["trends"].get(trend_name, {})
-                result, new_trend_state = trend.process_function.process_element(
-                    event, trend_state
-                )
+                result, new_trend_state = trend.process_function.process_element(event, trend_state)
                 patient_state["trends"][trend_name] = new_trend_state
                 trend_results.append(result)
                 patient_state["trend_results"][trend_name] = result
@@ -503,8 +505,7 @@ class StreamingEvaluator:
                 if trend.window_spec:
                     cutoff = event.timestamp.timestamp() * 1000 - trend.window_spec.size_ms
                     patient_state["windows"][window_key] = [
-                        e for e in patient_state["windows"][window_key]
-                        if e.timestamp.timestamp() * 1000 >= cutoff
+                        e for e in patient_state["windows"][window_key] if e.timestamp.timestamp() * 1000 >= cutoff
                     ]
 
                 # Compute window result
@@ -512,20 +513,14 @@ class StreamingEvaluator:
                 if window_events:
                     window_start = min(e.timestamp for e in window_events)
                     window_end = max(e.timestamp for e in window_events)
-                    result = trend.window_function.process(
-                        patient_id, window_events, window_start, window_end
-                    )
+                    result = trend.window_function.process(patient_id, window_events, window_start, window_end)
                     trend_results.append(result)
                     patient_state["trend_results"][trend_name] = result
 
         # Evaluate logic expressions
         for logic_name, logic in compiled.logic.items():
             join_fn = LogicJoinFunction(logic, compiled.name, compiled.version)
-            result = join_fn.process(
-                patient_id,
-                patient_state["trend_results"],
-                event.timestamp
-            )
+            result = join_fn.process(patient_id, patient_state["trend_results"], event.timestamp)
             if result:
                 logic_results.append(result)
 

@@ -19,9 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest  # noqa: E402
 
-from runtime.python.parser import PSDLParser, Domain, Signal  # noqa: E402
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
-from runtime.python.operators import DataPoint  # noqa: E402
+from reference.python.parser import PSDLParser, Domain, Signal  # noqa: E402
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.operators import DataPoint  # noqa: E402
 
 
 # Path to Synthea FHIR data
@@ -31,45 +31,41 @@ SYNTHEA_FHIR_PATH = Path("/Volumes/extraSupply/Projects/Prometheno/backend/data/
 # Updated based on actual Synthea FHIR output
 LOINC_MAPPING = {
     # Renal function
-    "38483-4": "Cr",     # Creatinine (Synthea uses this code)
-    "2160-0": "Cr",      # Creatinine (standard code, kept for compatibility)
-    "6299-2": "BUN",     # Urea Nitrogen (Synthea)
-    "3094-0": "BUN",     # Blood Urea Nitrogen (standard)
-    "33914-3": "eGFR",   # Estimated GFR
-
+    "38483-4": "Cr",  # Creatinine (Synthea uses this code)
+    "2160-0": "Cr",  # Creatinine (standard code, kept for compatibility)
+    "6299-2": "BUN",  # Urea Nitrogen (Synthea)
+    "3094-0": "BUN",  # Blood Urea Nitrogen (standard)
+    "33914-3": "eGFR",  # Estimated GFR
     # Electrolytes
-    "2947-0": "Na",      # Sodium (Synthea)
-    "2951-2": "Na",      # Sodium (standard)
-    "6298-4": "K",       # Potassium (Synthea)
-    "2823-3": "K",       # Potassium (standard)
-    "17861-6": "Ca",     # Calcium
-    "49765-1": "Ca",     # Calcium (Synthea)
-    "2069-3": "Cl",      # Chloride
-    "20565-8": "CO2",    # Carbon Dioxide
-
+    "2947-0": "Na",  # Sodium (Synthea)
+    "2951-2": "Na",  # Sodium (standard)
+    "6298-4": "K",  # Potassium (Synthea)
+    "2823-3": "K",  # Potassium (standard)
+    "17861-6": "Ca",  # Calcium
+    "49765-1": "Ca",  # Calcium (Synthea)
+    "2069-3": "Cl",  # Chloride
+    "20565-8": "CO2",  # Carbon Dioxide
     # Metabolic
-    "2339-0": "Glucose", # Glucose (Synthea)
-    "2345-7": "Glucose", # Glucose (standard)
-    "2093-3": "Chol",    # Total Cholesterol
-    "2571-8": "TG",      # Triglycerides
-    "18262-6": "LDL",    # LDL Cholesterol
-    "2085-9": "HDL",     # HDL Cholesterol
-    "4548-4": "HbA1c",   # Hemoglobin A1c
-
+    "2339-0": "Glucose",  # Glucose (Synthea)
+    "2345-7": "Glucose",  # Glucose (standard)
+    "2093-3": "Chol",  # Total Cholesterol
+    "2571-8": "TG",  # Triglycerides
+    "18262-6": "LDL",  # LDL Cholesterol
+    "2085-9": "HDL",  # HDL Cholesterol
+    "4548-4": "HbA1c",  # Hemoglobin A1c
     # Hematology
-    "718-7": "Hgb",      # Hemoglobin
-    "6690-2": "WBC",     # White Blood Cell Count
-    "789-8": "RBC",      # Red Blood Cell Count
-    "4544-3": "Hct",     # Hematocrit
-
+    "718-7": "Hgb",  # Hemoglobin
+    "6690-2": "WBC",  # White Blood Cell Count
+    "789-8": "RBC",  # Red Blood Cell Count
+    "4544-3": "Hct",  # Hematocrit
     # Vitals (less common in Synthea labs, but included)
-    "8867-4": "HR",      # Heart Rate
-    "8480-6": "SBP",     # Systolic BP
-    "8462-4": "DBP",     # Diastolic BP
-    "8310-5": "Temp",    # Body Temperature
-    "9279-1": "RR",      # Respiratory Rate
-    "2708-6": "SpO2",    # Oxygen Saturation
-    "2524-7": "Lact",    # Lactate
+    "8867-4": "HR",  # Heart Rate
+    "8480-6": "SBP",  # Systolic BP
+    "8462-4": "DBP",  # Diastolic BP
+    "8310-5": "Temp",  # Body Temperature
+    "9279-1": "RR",  # Respiratory Rate
+    "2708-6": "SpO2",  # Oxygen Saturation
+    "2524-7": "Lact",  # Lactate
 }
 
 
@@ -88,7 +84,7 @@ class SyntheaFHIRLoader:
 
     def load_patient_bundle(self, file_path: Path) -> Dict:
         """Load a single patient's FHIR bundle."""
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             return json.load(f)
 
     def extract_patient_id(self, bundle: Dict) -> Optional[str]:
@@ -328,10 +324,7 @@ class TestSyntheaAKIValidation:
             # Use the most recent data point as reference time
             reference_time = max(dp.timestamp for dp in cr_data)
 
-            result = evaluator.evaluate_patient(
-                patient_id=patient_id,
-                reference_time=reference_time
-            )
+            result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=reference_time)
 
             if result.is_triggered:
                 results["triggered"] += 1
@@ -359,10 +352,10 @@ class TestSyntheaAKIValidation:
         patient_files = synthea_loader.list_patients(limit=100)
 
         patterns = {
-            "stable_normal": 0,      # Cr < 1.2, stable
-            "stable_elevated": 0,    # Cr >= 1.2, stable
-            "rising": 0,             # Cr increasing
-            "falling": 0,            # Cr decreasing
+            "stable_normal": 0,  # Cr < 1.2, stable
+            "stable_elevated": 0,  # Cr >= 1.2, stable
+            "rising": 0,  # Cr increasing
+            "falling": 0,  # Cr decreasing
             "insufficient_data": 0,  # < 2 data points
         }
 
@@ -448,10 +441,7 @@ class TestSyntheaMultiScenario:
 
                 reference_time = max(dp.timestamp for dp in all_data)
 
-                result = evaluator.evaluate_patient(
-                    patient_id=patient_id,
-                    reference_time=reference_time
-                )
+                result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=reference_time)
 
                 if result.is_triggered:
                     triggered_count += 1
@@ -500,11 +490,11 @@ class TestCardiacSurgeryQuery:
 
                     # Check if it's a cardiac procedure
                     is_cardiac = (
-                        code in cardiac_surgery_codes or
-                        "cardiac" in display.lower() or
-                        "heart" in display.lower() or
-                        "coronary" in display.lower() or
-                        "cabg" in display.lower()
+                        code in cardiac_surgery_codes
+                        or "cardiac" in display.lower()
+                        or "heart" in display.lower()
+                        or "coronary" in display.lower()
+                        or "cabg" in display.lower()
                     )
 
                     if is_cardiac:

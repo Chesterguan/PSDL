@@ -14,9 +14,9 @@ from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from runtime.python.parser import PSDLParser  # noqa: E402
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
-from runtime.python.operators import DataPoint  # noqa: E402
+from reference.python.parser import PSDLParser  # noqa: E402
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.operators import DataPoint  # noqa: E402
 
 
 class TestAKIDetectionScenario:
@@ -47,7 +47,7 @@ class TestAKIDetectionScenario:
                 DataPoint(now - timedelta(hours=12), 0.92),
                 DataPoint(now - timedelta(hours=6), 0.88),
                 DataPoint(now, 0.90),
-            ]
+            ],
         )
 
         evaluator = PSDLEvaluator(scenario, backend)
@@ -70,7 +70,7 @@ class TestAKIDetectionScenario:
                 DataPoint(now - timedelta(hours=12), 1.2),
                 DataPoint(now - timedelta(hours=6), 1.3),
                 DataPoint(now, 1.5),
-            ]
+            ],
         )
 
         evaluator = PSDLEvaluator(scenario, backend)
@@ -93,7 +93,7 @@ class TestAKIDetectionScenario:
                 DataPoint(now - timedelta(hours=24), 1.5),
                 DataPoint(now - timedelta(hours=12), 1.8),
                 DataPoint(now, 2.0),
-            ]
+            ],
         )
 
         evaluator = PSDLEvaluator(scenario, backend)
@@ -117,7 +117,7 @@ class TestAKIDetectionScenario:
                 DataPoint(now - timedelta(hours=24), 2.5),
                 DataPoint(now - timedelta(hours=12), 2.6),
                 DataPoint(now, 2.5),
-            ]
+            ],
         )
 
         evaluator = PSDLEvaluator(scenario, backend)
@@ -131,17 +131,13 @@ class TestAKIDetectionScenario:
         """Scenario should handle patients with only one data point."""
         now = datetime.now()
 
-        backend.add_data(
-            patient_id=1,
-            signal_name="Cr",
-            data=[DataPoint(now, 1.8)]
-        )
+        backend.add_data(patient_id=1, signal_name="Cr", data=[DataPoint(now, 1.8)])
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id=1, reference_time=now)
 
         # Should not crash, may or may not trigger
-        assert hasattr(result, 'is_triggered')
+        assert hasattr(result, "is_triggered")
 
     def test_no_data_handling(self, scenario, backend):
         """Scenario should handle patients with no data gracefully."""
@@ -168,7 +164,7 @@ class TestICUDeteriorationScenario:
     def _add_stable_vitals(self, backend, patient_id, now):
         """Add normal stable vital signs."""
         for i in range(12):
-            t = now - timedelta(hours=12-i)
+            t = now - timedelta(hours=12 - i)
             backend.add_data(patient_id, "MAP", [DataPoint(t, 75)])
             backend.add_data(patient_id, "Lactate", [DataPoint(t, 1.0)])
             backend.add_data(patient_id, "Cr", [DataPoint(t, 0.9)])
@@ -190,7 +186,7 @@ class TestICUDeteriorationScenario:
 
         # MAP dropping from 75 to 55
         for i in range(6):
-            t = now - timedelta(hours=6-i)
+            t = now - timedelta(hours=6 - i)
             map_value = 75 - (i * 4)  # Drops 4 per hour
             backend.add_data(1, "MAP", [DataPoint(t, map_value)])
             backend.add_data(1, "Lactate", [DataPoint(t, 1.0)])
@@ -208,7 +204,7 @@ class TestICUDeteriorationScenario:
 
         # Lactate rising from 1.0 to 4.0
         for i in range(6):
-            t = now - timedelta(hours=6-i)
+            t = now - timedelta(hours=6 - i)
             lactate = 1.0 + (i * 0.6)
             backend.add_data(1, "Lactate", [DataPoint(t, lactate)])
             backend.add_data(1, "MAP", [DataPoint(t, 70)])
@@ -230,10 +226,10 @@ class TestICUDeteriorationScenario:
         map_data = []
 
         for i in range(12):  # More data points, more granular
-            t = now - timedelta(hours=12-i)
-            cr_data.append(DataPoint(t, 1.0 + i*0.1))  # Rises from 1.0 to 2.1
-            lact_data.append(DataPoint(t, 1.0 + i*0.3))  # Rises from 1.0 to 4.3
-            map_data.append(DataPoint(t, 70 - i*2))  # Falls from 70 to 48
+            t = now - timedelta(hours=12 - i)
+            cr_data.append(DataPoint(t, 1.0 + i * 0.1))  # Rises from 1.0 to 2.1
+            lact_data.append(DataPoint(t, 1.0 + i * 0.3))  # Rises from 1.0 to 4.3
+            map_data.append(DataPoint(t, 70 - i * 2))  # Falls from 70 to 48
 
         backend.add_data(1, "Cr", cr_data)
         backend.add_data(1, "Lact", lact_data)
@@ -367,10 +363,14 @@ logic:
         now = datetime.now()
 
         # Data exactly at window boundary
-        backend.add_data(1, "Value", [
-            DataPoint(now - timedelta(hours=6), 50),
-            DataPoint(now, 65),  # Delta = 15
-        ])
+        backend.add_data(
+            1,
+            "Value",
+            [
+                DataPoint(now - timedelta(hours=6), 50),
+                DataPoint(now, 65),  # Delta = 15
+            ],
+        )
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id=1, reference_time=now)
@@ -387,12 +387,16 @@ logic:
         now = datetime.now()
 
         # Data not exactly at boundaries
-        backend.add_data(1, "Value", [
-            DataPoint(now - timedelta(hours=8), 50),  # Outside 6h window
-            DataPoint(now - timedelta(hours=4), 55),
-            DataPoint(now - timedelta(hours=2), 60),
-            DataPoint(now, 62),
-        ])
+        backend.add_data(
+            1,
+            "Value",
+            [
+                DataPoint(now - timedelta(hours=8), 50),  # Outside 6h window
+                DataPoint(now - timedelta(hours=4), 55),
+                DataPoint(now - timedelta(hours=2), 60),
+                DataPoint(now, 62),
+            ],
+        )
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id=1, reference_time=now)
@@ -439,14 +443,18 @@ logic:
         now = datetime.now()
 
         # Clear upward trend
-        backend.add_data(1, "Value", [
-            DataPoint(now - timedelta(hours=5), 10),
-            DataPoint(now - timedelta(hours=4), 15),
-            DataPoint(now - timedelta(hours=3), 20),
-            DataPoint(now - timedelta(hours=2), 25),
-            DataPoint(now - timedelta(hours=1), 30),
-            DataPoint(now, 35),
-        ])
+        backend.add_data(
+            1,
+            "Value",
+            [
+                DataPoint(now - timedelta(hours=5), 10),
+                DataPoint(now - timedelta(hours=4), 15),
+                DataPoint(now - timedelta(hours=3), 20),
+                DataPoint(now - timedelta(hours=2), 25),
+                DataPoint(now - timedelta(hours=1), 30),
+                DataPoint(now, 35),
+            ],
+        )
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id=1, reference_time=now)

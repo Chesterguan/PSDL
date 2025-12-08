@@ -129,17 +129,13 @@ class PSDLScenario:
         # Check trend expressions reference valid signals
         for trend_name, trend in self.trends.items():
             if trend.signal not in self.signals:
-                errors.append(
-                    f"Trend '{trend_name}' references unknown signal '{trend.signal}'"
-                )
+                errors.append(f"Trend '{trend_name}' references unknown signal '{trend.signal}'")
 
         # Check logic expressions reference valid trends
         for logic_name, logic in self.logic.items():
             for term in logic.terms:
                 if term not in self.trends and term not in self.logic:
-                    errors.append(
-                        f"Logic '{logic_name}' references unknown term '{term}'"
-                    )
+                    errors.append(f"Logic '{logic_name}' references unknown term '{term}'")
 
         return errors
 
@@ -150,9 +146,7 @@ class PSDLParseError(Exception):
     def __init__(self, message: str, line: Optional[int] = None):
         self.message = message
         self.line = line
-        super().__init__(
-            f"PSDL Parse Error{f' (line {line})' if line else ''}: {message}"
-        )
+        super().__init__(f"PSDL Parse Error{f' (line {line})' if line else ''}: {message}")
 
 
 class PSDLParser:
@@ -250,9 +244,7 @@ class PSDLParser:
             raise PSDLParseError(f"Missing required field: '{field}'")
         value = data[field]
         if not isinstance(value, expected_type):
-            raise PSDLParseError(
-                f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}"
-            )
+            raise PSDLParseError(f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}")
         return value
 
     def _parse_population(self, data: Optional[dict]) -> Optional[PopulationFilter]:
@@ -260,9 +252,7 @@ class PSDLParser:
         if data is None:
             return None
 
-        return PopulationFilter(
-            include=data.get("include", []), exclude=data.get("exclude", [])
-        )
+        return PopulationFilter(include=data.get("include", []), exclude=data.get("exclude", []))
 
     def _parse_signals(self, data: dict) -> Dict[str, Signal]:
         """Parse signal bindings."""
@@ -282,9 +272,7 @@ class PSDLParser:
                     try:
                         domain = Domain(spec["domain"])
                     except ValueError:
-                        self.warnings.append(
-                            f"Unknown domain '{spec['domain']}' for signal '{name}'"
-                        )
+                        self.warnings.append(f"Unknown domain '{spec['domain']}' for signal '{name}'")
 
                 signals[name] = Signal(
                     name=name,
@@ -313,8 +301,7 @@ class PSDLParser:
         if not match:
             # Try simpler pattern without comparison (for boolean trends)
             simple_pattern = re.compile(
-                r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)"
-                r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
+                r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)" r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
             )
             simple_match = simple_pattern.match(expr)
             if simple_match:
@@ -383,9 +370,7 @@ class PSDLParser:
             if isinstance(spec, str):
                 # Shorthand: just the expression
                 terms, operators = self._parse_logic_expr(name, spec)
-                logic[name] = LogicExpr(
-                    name=name, expr=spec, terms=terms, operators=operators
-                )
+                logic[name] = LogicExpr(name=name, expr=spec, terms=terms, operators=operators)
             elif isinstance(spec, dict):
                 expr = spec.get("expr")
                 if not expr:
@@ -398,9 +383,7 @@ class PSDLParser:
                     try:
                         severity = Severity(spec["severity"])
                     except ValueError:
-                        self.warnings.append(
-                            f"Unknown severity '{spec['severity']}' for logic '{name}'"
-                        )
+                        self.warnings.append(f"Unknown severity '{spec['severity']}' for logic '{name}'")
 
                 logic[name] = LogicExpr(
                     name=name,

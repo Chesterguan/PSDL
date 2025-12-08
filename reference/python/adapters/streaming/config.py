@@ -5,24 +5,27 @@ Defines settings for Flink runtime, checkpointing, watermarks, and connectors.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, Optional
 
 
 class ExecutionMode(Enum):
     """PSDL execution mode."""
+
     BATCH = "batch"
     STREAMING = "streaming"
 
 
 class CheckpointMode(Enum):
     """Flink checkpoint mode."""
+
     EXACTLY_ONCE = "exactly_once"
     AT_LEAST_ONCE = "at_least_once"
 
 
 class LateDataPolicy(Enum):
     """Policy for handling late data."""
+
     DROP = "drop"
     ALLOW = "allow"
     SIDE_OUTPUT = "side_output"
@@ -30,6 +33,7 @@ class LateDataPolicy(Enum):
 
 class ErrorHandling(Enum):
     """Error handling strategy."""
+
     SKIP = "skip"
     FAIL = "fail"
     DEFAULT_VALUE = "default_value"
@@ -39,6 +43,7 @@ class ErrorHandling(Enum):
 @dataclass
 class WatermarkConfig:
     """Watermark configuration for event time processing."""
+
     max_lateness_ms: int = 5 * 60 * 1000  # 5 minutes default
     idle_timeout_ms: int = 30 * 1000  # 30 seconds
 
@@ -72,6 +77,7 @@ class WatermarkConfig:
 @dataclass
 class CheckpointConfig:
     """Checkpoint configuration for fault tolerance."""
+
     interval_ms: int = 60 * 1000  # 60 seconds
     mode: CheckpointMode = CheckpointMode.EXACTLY_ONCE
     timeout_ms: int = 10 * 60 * 1000  # 10 minutes
@@ -108,6 +114,7 @@ class CheckpointConfig:
 @dataclass
 class KafkaSourceConfig:
     """Kafka source connector configuration."""
+
     bootstrap_servers: str
     topic: str
     group_id: str = "psdl-streaming"
@@ -129,6 +136,7 @@ class KafkaSourceConfig:
 @dataclass
 class KafkaSinkConfig:
     """Kafka sink connector configuration."""
+
     bootstrap_servers: str
     topic: str
     key_field: str = "patient_id"
@@ -146,6 +154,7 @@ class KafkaSinkConfig:
 @dataclass
 class JDBCSinkConfig:
     """JDBC sink connector configuration for audit logging."""
+
     connection_string: str
     table: str
     batch_size: int = 100
@@ -165,6 +174,7 @@ class JDBCSinkConfig:
 @dataclass
 class ErrorHandlingConfig:
     """Error handling configuration."""
+
     missing_signal: ErrorHandling = ErrorHandling.SKIP
     invalid_value: ErrorHandling = ErrorHandling.SKIP
     parse_error: ErrorHandling = ErrorHandling.DEAD_LETTER_QUEUE
@@ -188,6 +198,7 @@ class StreamingConfig:
 
     Parsed from the `execution` section of a PSDL scenario file.
     """
+
     mode: ExecutionMode = ExecutionMode.STREAMING
     parallelism: int = 1
     state_ttl_ms: int = 48 * 60 * 60 * 1000  # 48 hours

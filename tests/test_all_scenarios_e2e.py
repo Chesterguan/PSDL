@@ -21,14 +21,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from runtime.python.parser import PSDLParser
-from runtime.python.evaluator import PSDLEvaluator, InMemoryBackend
-from runtime.python.operators import DataPoint
+from reference.python.parser import PSDLParser
+from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.operators import DataPoint
 
 
 # ============================================================================
 # Test Data Generators
 # ============================================================================
+
 
 class PatientDataGenerator:
     """Generate realistic patient data for testing."""
@@ -172,6 +173,7 @@ class PatientDataGenerator:
 # ============================================================================
 # Comprehensive Scenario Tests
 # ============================================================================
+
 
 class TestAKIScenarioComplete:
     """Complete end-to-end tests for AKI detection scenario."""
@@ -524,22 +526,22 @@ class TestRealDataEndToEnd:
 
         loaded_patients = []
         for pf in patient_files:
-            with open(pf, 'r') as f:
+            with open(pf, "r") as f:
                 bundle = json.load(f)
 
             patient_id = pf.stem
             cr_data = []
 
-            for entry in bundle.get('entry', []):
-                resource = entry.get('resource', {})
-                if resource.get('resourceType') == 'Observation':
-                    coding = resource.get('code', {}).get('coding', [{}])[0]
-                    if coding.get('code') == '38483-4':  # Creatinine
-                        value = resource.get('valueQuantity', {}).get('value')
-                        timestamp_str = resource.get('effectiveDateTime')
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "Observation":
+                    coding = resource.get("code", {}).get("coding", [{}])[0]
+                    if coding.get("code") == "38483-4":  # Creatinine
+                        value = resource.get("valueQuantity", {}).get("value")
+                        timestamp_str = resource.get("effectiveDateTime")
                         if value and timestamp_str:
                             try:
-                                ts = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                                ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                                 ts = ts.replace(tzinfo=None)
                                 cr_data.append(DataPoint(ts, float(value)))
                             except:
@@ -616,6 +618,7 @@ class TestAlertGeneration:
         print("GENERATED CLINICAL ALERT")
         print(f"{'='*60}")
         import json
+
         print(json.dumps(alert, indent=2, default=str))
         print(f"{'='*60}")
 

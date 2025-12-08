@@ -1,20 +1,32 @@
 """
-PSDL - Patient Scenario Definition Language
-Python Runtime v0.1
+DEPRECATED: This module has been renamed to 'reference.python'.
 
-A declarative language for expressing clinical scenarios.
+Please update your imports:
+    OLD: from runtime.python import ...
+    NEW: from reference.python import ...
+
+This compatibility shim will be removed in v0.2.0.
 """
 
-__version__ = "0.1.0"
+import warnings
 
-try:
-    from .evaluator import InMemoryBackend, PSDLEvaluator
-    from .operators import DataPoint, TemporalOperators
-    from .parser import PSDLParser, PSDLScenario
-except ImportError:
-    from evaluator import InMemoryBackend, PSDLEvaluator
-    from operators import DataPoint, TemporalOperators
-    from parser import PSDLParser, PSDLScenario
+warnings.warn(
+    "The 'runtime.python' module is deprecated and will be removed in v0.2.0. "
+    "Please use 'reference.python' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export everything from reference.python
+from reference.python import *
+from reference.python import (
+    PSDLParser,
+    PSDLScenario,
+    PSDLEvaluator,
+    InMemoryBackend,
+    DataPoint,
+    TemporalOperators,
+)
 
 __all__ = [
     "PSDLParser",

@@ -1,5 +1,5 @@
 """
-PSDL Streaming Backend - Apache Flink (PyFlink) Implementation
+PSDL Streaming Adapter - Apache Flink (PyFlink) Implementation
 
 This module provides streaming execution for PSDL scenarios using Apache Flink.
 It compiles PSDL operators to Flink streaming primitives for real-time clinical
@@ -9,7 +9,7 @@ See RFC-0002 for full specification:
 https://github.com/Chesterguan/PSDL/blob/main/rfcs/0002-streaming-execution.md
 
 Usage:
-    from psdl.backends.streaming import StreamingCompiler, StreamingEvaluator
+    from reference.python.adapters.streaming import StreamingCompiler, StreamingEvaluator
 
     compiler = StreamingCompiler()
     job = compiler.compile("scenarios/icu_deterioration.yaml")
@@ -17,17 +17,17 @@ Usage:
 """
 
 from .compiler import StreamingCompiler
+from .config import StreamingConfig
+from .models import ClinicalEvent, LogicResult, TrendResult
 from .operators import (
+    CountWindowFunction,
     DeltaWindowFunction,
-    SlopeWindowFunction,
     EMAProcessFunction,
     LastProcessFunction,
-    MinWindowFunction,
     MaxWindowFunction,
-    CountWindowFunction,
+    MinWindowFunction,
+    SlopeWindowFunction,
 )
-from .models import ClinicalEvent, TrendResult, LogicResult
-from .config import StreamingConfig
 
 __all__ = [
     "StreamingCompiler",
