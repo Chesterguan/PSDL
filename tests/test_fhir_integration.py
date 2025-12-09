@@ -51,9 +51,7 @@ class TestHAPIFHIRServer:
         # Try to get metadata/capability statement
         try:
             session = backend._get_session()
-            response = session.get(
-                f"{self.HAPI_BASE_URL}/metadata", timeout=backend.config.timeout
-            )
+            response = session.get(f"{self.HAPI_BASE_URL}/metadata", timeout=backend.config.timeout)
             assert response.status_code == 200
             data = response.json()
             assert data.get("resourceType") == "CapabilityStatement"
@@ -97,9 +95,7 @@ class TestHAPIFHIRServer:
         """Test searching for patients with specific observations."""
         try:
             # Search for patients with heart rate observations
-            patients = backend.search_patients_with_observation(
-                loinc_code="8867-4", min_count=1
-            )  # Heart rate
+            patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)  # Heart rate
             assert isinstance(patients, list)
             print(f"\nFound {len(patients)} patients with heart rate observations")
         except Exception as e:
@@ -109,15 +105,11 @@ class TestHAPIFHIRServer:
         """Test fetching observation data for a signal."""
         try:
             # First find patients with creatinine data
-            patients = backend.search_patients_with_observation(
-                loinc_code="2160-0", min_count=1
-            )  # Creatinine
+            patients = backend.search_patients_with_observation(loinc_code="2160-0", min_count=1)  # Creatinine
 
             if not patients:
                 # Try a more common observation
-                patients = backend.search_patients_with_observation(
-                    loinc_code="8867-4", min_count=1
-                )  # Heart rate
+                patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)  # Heart rate
 
             if not patients:
                 pytest.skip("No patients with observations found")
@@ -203,18 +195,14 @@ logic:
             assert "HR" in scenario.signals
 
             # Find a patient with heart rate data
-            patients = backend.search_patients_with_observation(
-                loinc_code="8867-4", min_count=1
-            )
+            patients = backend.search_patients_with_observation(loinc_code="8867-4", min_count=1)
 
             if not patients:
                 pytest.skip("No patients with heart rate data")
 
             # Create evaluator and evaluate
             evaluator = PSDLEvaluator(scenario, backend)
-            result = evaluator.evaluate_patient(
-                patient_id=patients[0], reference_time=datetime.now()
-            )
+            result = evaluator.evaluate_patient(patient_id=patients[0], reference_time=datetime.now())
 
             print(f"\nEvaluation result for patient {patients[0]}:")
             print(f"  is_triggered: {result.is_triggered}")

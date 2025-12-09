@@ -450,11 +450,7 @@ class TestConditionHandling:
                     "resource": {
                         "resourceType": "Condition",
                         "onsetDateTime": "2024-01-10T08:00:00Z",
-                        "code": {
-                            "coding": [
-                                {"system": "http://snomed.info/sct", "code": "123456"}
-                            ]
-                        },
+                        "code": {"coding": [{"system": "http://snomed.info/sct", "code": "123456"}]},
                     }
                 },
             ],

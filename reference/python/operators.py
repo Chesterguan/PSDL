@@ -93,9 +93,7 @@ class TemporalOperators:
         Returns:
             First value in window, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
         return filtered[0].value
@@ -118,9 +116,7 @@ class TemporalOperators:
         Returns:
             Absolute change, or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if len(filtered) < 2:
             return None
 
@@ -146,9 +142,7 @@ class TemporalOperators:
         Returns:
             Slope (units per second), or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if len(filtered) < 2:
             return None
 
@@ -187,9 +181,7 @@ class TemporalOperators:
         Returns:
             Simple moving average, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
 
@@ -213,9 +205,7 @@ class TemporalOperators:
         Returns:
             Exponential moving average, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
 
@@ -250,9 +240,7 @@ class TemporalOperators:
         Returns:
             Minimum value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
         return min(dp.value for dp in filtered)
@@ -274,9 +262,7 @@ class TemporalOperators:
         Returns:
             Maximum value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
         return max(dp.value for dp in filtered)
@@ -298,9 +284,7 @@ class TemporalOperators:
         Returns:
             Number of observations in window
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         return len(filtered)
 
     @staticmethod
@@ -320,9 +304,7 @@ class TemporalOperators:
         Returns:
             Standard deviation, or None if insufficient data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if len(filtered) < 2:
             return None
 
@@ -349,9 +331,7 @@ class TemporalOperators:
         Returns:
             Percentile value, or None if no data
         """
-        filtered = TemporalOperators.filter_by_window(
-            data, window_seconds, reference_time
-        )
+        filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         if not filtered:
             return None
 

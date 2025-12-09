@@ -177,9 +177,7 @@ class TestOMOPBackend:
             {"person_id": 3, "obs_count": 10},
         ]
 
-        patient_ids = backend.get_patient_ids_with_signal(
-            creatinine_signal, min_observations=3
-        )
+        patient_ids = backend.get_patient_ids_with_signal(creatinine_signal, min_observations=3)
 
         assert patient_ids == [1, 3]
 
@@ -231,9 +229,7 @@ class TestOMOPBackendIntegration:
             conn_string = self.LOCAL_CONNECTION
 
         if not conn_string:
-            pytest.skip(
-                "OMOP database not configured. Set OMOP_TEST_CONNECTION or OMOP_LOCAL=1"
-            )
+            pytest.skip("OMOP database not configured. Set OMOP_TEST_CONNECTION or OMOP_LOCAL=1")
 
         try:
             # Use "public" schema for local Prometheno OMOP database
@@ -328,9 +324,7 @@ class TestOMOPBackendIntegration:
 
         for pid in patient_ids[:50]:
             try:
-                result = evaluator.evaluate_patient(
-                    patient_id=pid, reference_time=reference_time
-                )
+                result = evaluator.evaluate_patient(patient_id=pid, reference_time=reference_time)
                 evaluated += 1
                 if result.is_triggered:
                     triggered += 1

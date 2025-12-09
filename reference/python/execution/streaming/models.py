@@ -55,9 +55,7 @@ class ClinicalEvent:
             "concept_id": self.concept_id,
             "fhir_resource_id": self.fhir_resource_id,
             "location": self.location,
-            "ingestion_time": self.ingestion_time.isoformat()
-            if self.ingestion_time
-            else None,
+            "ingestion_time": self.ingestion_time.isoformat() if self.ingestion_time else None,
         }
 
     @classmethod
@@ -73,11 +71,7 @@ class ClinicalEvent:
             concept_id=data.get("concept_id"),
             fhir_resource_id=data.get("fhir_resource_id"),
             location=data.get("location"),
-            ingestion_time=(
-                datetime.fromisoformat(data["ingestion_time"])
-                if data.get("ingestion_time")
-                else None
-            ),
+            ingestion_time=(datetime.fromisoformat(data["ingestion_time"]) if data.get("ingestion_time") else None),
         )
 
 
@@ -109,9 +103,7 @@ class TrendResult:
             "value": self.value,
             "result": self.result,
             "timestamp": self.timestamp.isoformat(),
-            "window_start": self.window_start.isoformat()
-            if self.window_start
-            else None,
+            "window_start": self.window_start.isoformat() if self.window_start else None,
             "window_end": self.window_end.isoformat() if self.window_end else None,
             "input_count": self.input_count,
             "description": self.description,
@@ -208,9 +200,7 @@ class WindowSpec:
     slide_ms: int  # Slide interval in milliseconds
 
     @classmethod
-    def from_psdl(
-        cls, window_str: str, slide_str: Optional[str] = None
-    ) -> "WindowSpec":
+    def from_psdl(cls, window_str: str, slide_str: Optional[str] = None) -> "WindowSpec":
         """
         Parse window specification from PSDL syntax.
 

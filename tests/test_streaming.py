@@ -22,12 +22,8 @@ from datetime import datetime, timedelta
 import types
 
 # Get paths
-_project_root = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-)
-_streaming_dir = os.path.join(
-    _project_root, "reference", "python", "execution", "streaming"
-)
+_project_root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+_streaming_dir = os.path.join(_project_root, "reference", "python", "execution", "streaming")
 
 # Create a fake package structure so relative imports work
 # This allows the streaming modules to use 'from .models import ...'
@@ -309,9 +305,7 @@ class TestProcessFunctions:
     def test_ema_function(self):
         """Test exponential moving average."""
         # 1 hour window -> alpha = 2/(60+1) ≈ 0.0328
-        fn = EMAProcessFunction(
-            "hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">"
-        )
+        fn = EMAProcessFunction("hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">")
 
         state = {}
 
@@ -414,9 +408,7 @@ class TestLogicEvaluator:
         assert result is True
 
     def test_complex_expression(self):
-        result = LogicEvaluator.evaluate(
-            "(a AND b) OR c", {"a": False, "b": True, "c": True}
-        )
+        result = LogicEvaluator.evaluate("(a AND b) OR c", {"a": False, "b": True, "c": True})
         assert result is True
 
     def test_not_expression(self):
@@ -489,9 +481,7 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"SpO2": {}},
-            "trends": {
-                "hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}
-            },
+            "trends": {"hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}},
             "logic": {"alert": {"expr": "hypoxia", "severity": "high"}},
         }
 
@@ -508,9 +498,7 @@ class TestStreamingEvaluator:
         )
 
         state = {}
-        trend_results, logic_results, state = evaluator.evaluate_event(
-            compiled, event, state
-        )
+        trend_results, logic_results, state = evaluator.evaluate_event(compiled, event, state)
 
         assert len(trend_results) == 1
         assert trend_results[0].trend_name == "hypoxia"
@@ -529,9 +517,7 @@ class TestStreamingEvaluator:
                 "tachycardia": {"expr": "last(HR) > 100"},
                 "hypoxia": {"expr": "last(SpO2) < 92"},
             },
-            "logic": {
-                "critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}
-            },
+            "logic": {"critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}},
         }
 
         evaluator = StreamingEvaluator()
