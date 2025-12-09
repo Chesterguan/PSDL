@@ -296,7 +296,7 @@ class TestPSDLvsSQLEquivalence:
         psdl_result = evaluator.evaluate_patient(patient_id, reference_time)
 
         # Compare results
-        print(f"\n=== AKI Stage 1 Comparison ===")
+        print("\n=== AKI Stage 1 Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}, stage: {sql_result['stage']}")
         print(f"SQL delta_48h: {sql_result['delta_48h']:.2f}")
         print(f"PSDL triggered: {psdl_result.is_triggered}")
@@ -330,7 +330,7 @@ class TestPSDLvsSQLEquivalence:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         psdl_result = evaluator.evaluate_patient(patient_id, reference_time)
 
-        print(f"\n=== AKI Stage 3 Comparison ===")
+        print("\n=== AKI Stage 3 Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}, stage: {sql_result['stage']}")
         print(f"SQL delta_48h: {sql_result['delta_48h']:.2f}, latest_cr: {sql_result['latest_cr']:.2f}")
         print(f"PSDL triggered: {psdl_result.is_triggered}")
@@ -359,13 +359,14 @@ class TestPSDLvsSQLEquivalence:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         psdl_result = evaluator.evaluate_patient(patient_id, reference_time)
 
-        print(f"\n=== Stable Patient Comparison ===")
+        print("\n=== Stable Patient Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}")
         print(f"SQL delta_48h: {sql_result['delta_48h']:.2f}")
         print(f"PSDL triggered: {psdl_result.is_triggered}")
 
         # Neither should trigger
-        assert sql_result["triggered"] == psdl_result.is_triggered == False
+        assert sql_result["triggered"] is False
+        assert psdl_result.is_triggered is False
 
     def test_icu_deterioration_equivalence(self, icu_scenario):
         """Test that PSDL and SQL agree on ICU deterioration."""
@@ -384,7 +385,7 @@ class TestPSDLvsSQLEquivalence:
         evaluator = PSDLEvaluator(icu_scenario, backend)
         psdl_result = evaluator.evaluate_patient(patient_id, reference_time)
 
-        print(f"\n=== ICU Deterioration Comparison ===")
+        print("\n=== ICU Deterioration Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}")
         print(f"SQL conditions: {sql_result['conditions_met']}")
         print(
@@ -395,7 +396,8 @@ class TestPSDLvsSQLEquivalence:
         print(f"PSDL rules: {psdl_result.triggered_logic}")
 
         # Both should detect deterioration
-        assert sql_result["triggered"] == psdl_result.is_triggered == True
+        assert sql_result["triggered"] is True
+        assert psdl_result.is_triggered is True
 
 
 class TestBatchComparison:
@@ -473,7 +475,7 @@ class TestBatchComparison:
                     }
                 )
 
-        print(f"\n=== Batch Comparison Results ===")
+        print("\n=== Batch Comparison Results ===")
         print(f"Total patients: {len(patients)}")
         print(f"Matches: {matches} ({matches/len(patients)*100:.1f}%)")
         print(f"Mismatches: {len(mismatches)}")
@@ -503,7 +505,7 @@ class TestSQLGenerationPreview:
         scenario = parser.parse_file("examples/aki_detection.yaml")
 
         # This is a preview of SQL generation (not actual implementation)
-        sql_preview = f"""
+        sql_preview = """
 -- Generated from PSDL scenario: {scenario.name}
 -- Version: {scenario.version}
 

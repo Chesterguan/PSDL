@@ -56,7 +56,7 @@ class TestManualDeltaVerification:
         window_48h = 48 * 60 * 60  # 48 hours in seconds
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Manual Delta Verification ===")
+        print("\n=== Manual Delta Verification ===")
         print(f"Input: {[dp.value for dp in data]}")
         print(f"Manual calculation: 1.4 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
@@ -90,9 +90,9 @@ class TestManualDeltaVerification:
         window_48h = 48 * 60 * 60
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Partial Window Delta Verification ===")
+        print("\n=== Partial Window Delta Verification ===")
         print(f"Full data: {[dp.value for dp in data]}")
-        print(f"Points in 48h window: [2.0, 2.5, 3.0]")
+        print("Points in 48h window: [2.0, 2.5, 3.0]")
         print(f"Manual calculation: 3.0 - 2.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
 
@@ -122,7 +122,7 @@ class TestManualDeltaVerification:
         window_48h = 48 * 60 * 60
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Stable Patient Delta Verification ===")
+        print("\n=== Stable Patient Delta Verification ===")
         print(f"Input: {[dp.value for dp in data]}")
         print(f"Manual calculation: 1.0 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
@@ -170,7 +170,7 @@ class TestManualSlopeVerification:
         window_24h = 24 * 60 * 60
         psdl_slope = TemporalOperators.slope(data, window_24h, now)
 
-        print(f"\n=== Manual Slope Verification ===")
+        print("\n=== Manual Slope Verification ===")
         print(f"Input: {[(dp.timestamp, dp.value) for dp in data]}")
         print(f"Expected slope: {EXPECTED_SLOPE:.10f} per second")
         print(f"Expected slope: {EXPECTED_SLOPE * 3600:.6f} per hour")
@@ -222,10 +222,10 @@ class TestManualAKITriggerVerification:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Manual AKI Stage 1 Verification ===")
+        print("\n=== Manual AKI Stage 1 Verification ===")
         print(f"Creatinine values: {[dp.value for dp in cr_data]}")
         print(f"Manual delta: {delta}")
-        print(f"KDIGO Stage 1 threshold: >= 0.3")
+        print("KDIGO Stage 1 threshold: >= 0.3")
         print(f"Manual trigger decision: {delta} >= 0.3 = {EXPECTED_TRIGGER}")
         print(f"PSDL triggered: {result.is_triggered}")
         print(f"PSDL triggered logic: {result.triggered_logic}")
@@ -266,10 +266,10 @@ class TestManualAKITriggerVerification:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Manual No-AKI Verification ===")
+        print("\n=== Manual No-AKI Verification ===")
         print(f"Creatinine values: {[dp.value for dp in cr_data]}")
         print(f"Manual delta: {delta}")
-        print(f"KDIGO Stage 1 threshold: >= 0.3")
+        print("KDIGO Stage 1 threshold: >= 0.3")
         print(f"Manual trigger decision: {delta} >= 0.3 = {EXPECTED_TRIGGER}")
         print(f"PSDL triggered: {result.is_triggered}")
 
@@ -308,10 +308,10 @@ class TestManualAKITriggerVerification:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Manual AKI Stage 3 Verification ===")
+        print("\n=== Manual AKI Stage 3 Verification ===")
         print(f"Creatinine values: {[dp.value for dp in cr_data]}")
         print(f"Latest creatinine: {latest_cr}")
-        print(f"KDIGO Stage 3 threshold: >= 4.0 mg/dL")
+        print("KDIGO Stage 3 threshold: >= 4.0 mg/dL")
         print(f"Manual trigger decision: {latest_cr} >= 4.0 = {EXPECTED_TRIGGER}")
         print(f"PSDL triggered: {result.is_triggered}")
         print(f"PSDL triggered logic: {result.triggered_logic}")
@@ -341,12 +341,12 @@ class TestEdgeCasesManualVerification:
         ]
 
         EXPECTED_DELTA = 0.3
-        EXPECTED_TRIGGER = True  # 0.3 >= 0.3
+        # Expected: should trigger since 0.3 >= 0.3
 
         window_48h = 48 * 60 * 60
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Threshold Edge Case ===")
+        print("\n=== Threshold Edge Case ===")
         print(f"Manual delta: 1.3 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL delta: {psdl_delta}")
         print(f"Threshold test: {psdl_delta} >= 0.3 = {psdl_delta >= 0.3}")
@@ -372,12 +372,12 @@ class TestEdgeCasesManualVerification:
         ]
 
         EXPECTED_DELTA = 0.29
-        EXPECTED_TRIGGER = False  # 0.29 >= 0.3 is False
+        # Expected: should NOT trigger since 0.29 < 0.3
 
         window_48h = 48 * 60 * 60
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Below Threshold Edge Case ===")
+        print("\n=== Below Threshold Edge Case ===")
         print(f"Manual delta: 1.29 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL delta: {psdl_delta}")
         print(f"Threshold test: {psdl_delta} >= 0.3 = {psdl_delta >= 0.3}")
@@ -408,10 +408,10 @@ class TestEdgeCasesManualVerification:
         window_48h = 48 * 60 * 60
         psdl_delta = TemporalOperators.delta(data, window_48h, now)
 
-        print(f"\n=== Negative Delta (Recovery) ===")
+        print("\n=== Negative Delta (Recovery) ===")
         print(f"Manual delta: 1.0 - 2.0 = {EXPECTED_DELTA}")
         print(f"PSDL delta: {psdl_delta}")
-        print(f"This is recovery, not AKI")
+        print("This is recovery, not AKI")
 
         assert abs(psdl_delta - EXPECTED_DELTA) < 0.001
         assert psdl_delta < 0  # Negative = falling = recovery
@@ -454,11 +454,11 @@ class TestClinicalReferenceCases:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== KDIGO Stage 1 Clinical Example ===")
-        print(f"Baseline Cr: 0.9 mg/dL")
-        print(f"Current Cr: 1.3 mg/dL")
-        print(f"Delta: 0.4 mg/dL (>= 0.3 threshold)")
-        print(f"Expected: AKI Stage 1")
+        print("\n=== KDIGO Stage 1 Clinical Example ===")
+        print("Baseline Cr: 0.9 mg/dL")
+        print("Current Cr: 1.3 mg/dL")
+        print("Delta: 0.4 mg/dL (>= 0.3 threshold)")
+        print("Expected: AKI Stage 1")
         print(f"PSDL result: {'Stage 1' if 'aki_stage1' in result.triggered_logic else 'No AKI'}")
 
         assert result.is_triggered
@@ -487,10 +487,10 @@ class TestClinicalReferenceCases:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Contrast-Induced AKI Example ===")
-        print(f"Pre-procedure Cr: 1.0 mg/dL")
-        print(f"48h post-procedure Cr: 1.5 mg/dL")
-        print(f"Delta: 0.5 mg/dL")
+        print("\n=== Contrast-Induced AKI Example ===")
+        print("Pre-procedure Cr: 1.0 mg/dL")
+        print("48h post-procedure Cr: 1.5 mg/dL")
+        print("Delta: 0.5 mg/dL")
         print(f"PSDL result: {result.triggered_logic}")
 
         assert result.is_triggered

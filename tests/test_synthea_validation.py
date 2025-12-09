@@ -4,28 +4,29 @@ Synthea FHIR Clinical Validation Tests
 Validates PSDL against real Synthea synthetic patient data.
 Uses local FHIR bundle files to test clinical scenarios.
 
-Data source: /Volumes/extraSupply/Projects/Prometheno/backend/data/synthea/fhir/
+Data source: Set SYNTHEA_FHIR_PATH environment variable or configure path below.
+Download Synthea data from: https://synthea.mitre.org/downloads
 """
 
 import sys
 import os
 import json
-import gzip
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest  # noqa: E402
 
-from reference.python.parser import PSDLParser, Domain, Signal  # noqa: E402
+from reference.python.parser import PSDLParser  # noqa: E402
 from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
 from reference.python.operators import DataPoint  # noqa: E402
 
 
-# Path to Synthea FHIR data
-SYNTHEA_FHIR_PATH = Path("/Volumes/extraSupply/Projects/Prometheno/backend/data/synthea/fhir")
+# Path to Synthea FHIR data - configure for your local setup
+# Download from: https://synthea.mitre.org/downloads
+SYNTHEA_FHIR_PATH = Path(os.environ.get("SYNTHEA_FHIR_PATH", "./data/synthea/fhir"))
 
 # LOINC codes for common clinical measurements
 # Updated based on actual Synthea FHIR output
@@ -279,7 +280,7 @@ class TestSyntheaDataLoading:
 
         print(f"\nTotal observations: {total_obs}")
         print(f"Converted to DataPoints: {converted_obs}")
-        print(f"Signal distribution:")
+        print("Signal distribution:")
         for signal, count in sorted(signal_counts.items(), key=lambda x: -x[1])[:10]:
             print(f"  {signal}: {count}")
 
@@ -333,7 +334,7 @@ class TestSyntheaAKIValidation:
             else:
                 results["not_triggered"] += 1
 
-        print(f"\n=== AKI Evaluation Results ===")
+        print("\n=== AKI Evaluation Results ===")
         print(f"Total patients loaded: {results['total']}")
         print(f"Patients with Cr data: {results['with_cr_data']}")
         print(f"Triggered: {results['triggered']}")
@@ -341,7 +342,7 @@ class TestSyntheaAKIValidation:
         if results["with_cr_data"] > 0:
             trigger_rate = results["triggered"] / results["with_cr_data"]
             print(f"Trigger rate: {trigger_rate:.1%}")
-        print(f"Triggered rules breakdown:")
+        print("Triggered rules breakdown:")
         for rule, count in sorted(results["triggered_rules"].items(), key=lambda x: -x[1]):
             print(f"  {rule}: {count}")
 
@@ -388,7 +389,7 @@ class TestSyntheaAKIValidation:
             else:
                 patterns["falling"] += 1
 
-        print(f"\n=== Creatinine Pattern Analysis ===")
+        print("\n=== Creatinine Pattern Analysis ===")
         for pattern, count in patterns.items():
             print(f"  {pattern}: {count}")
 
@@ -448,7 +449,7 @@ class TestSyntheaMultiScenario:
 
             scenario_results[scenario_name] = triggered_count
 
-        print(f"\n=== Multi-Scenario Results ===")
+        print("\n=== Multi-Scenario Results ===")
         for name, count in scenario_results.items():
             pct = count / len(loaded_ids) * 100 if loaded_ids else 0
             print(f"  {name}: {count}/{len(loaded_ids)} triggered ({pct:.1f}%)")
@@ -513,13 +514,13 @@ class TestCardiacSurgeryQuery:
         # Remove duplicates
         unique_patients = list(set(patients_with_cardiac))
 
-        print(f"\n=== Cardiac Surgery Analysis (2020-2025) ===")
+        print("\n=== Cardiac Surgery Analysis (2020-2025) ===")
         print(f"Total patients scanned: {len(patient_files)}")
         print(f"Patients with cardiac procedures: {len(unique_patients)}")
-        print(f"\nProcedure types:")
+        print("\nProcedure types:")
         for proc, count in sorted(procedure_counts.items(), key=lambda x: -x[1])[:10]:
             print(f"  {proc}: {count}")
-        print(f"\nBy year:")
+        print("\nBy year:")
         for year in sorted(year_counts.keys()):
             print(f"  {year}: {year_counts[year]}")
 

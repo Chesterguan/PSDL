@@ -11,7 +11,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime, timedelta  # noqa: E402
-from io import StringIO  # noqa: E402
 
 import pytest  # noqa: E402
 
@@ -161,7 +160,7 @@ Triggered Rules:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id="sepsis-patient", reference_time=now)
 
-        print(f"\nSepsis workflow result:")
+        print("\nSepsis workflow result:")
         print(f"  Triggered: {result.is_triggered}")
         print(f"  Rules: {result.triggered_logic}")
         print(f"  Trend values: {result.trend_values}")
@@ -312,7 +311,7 @@ class TestCohortEvaluation:
             else:
                 not_triggered.append(patient_id)
 
-        print(f"\nCohort screening results:")
+        print("\nCohort screening results:")
         print(f"  Total patients: {len(cohort)}")
         print(f"  At-risk patients: {len(at_risk)}")
         print(f"  Not triggered: {len(not_triggered)}")

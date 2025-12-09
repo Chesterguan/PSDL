@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from datetime import datetime, timedelta  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
-from typing import List, Dict, Any  # noqa: E402
+from typing import List, Dict  # noqa: E402
 import random  # noqa: E402
 
 import pytest  # noqa: E402
@@ -443,7 +443,7 @@ class TestCohortValidation:
         )
         accuracy = (true_positives + true_negatives) / len(cohort)
 
-        print(f"\n=== AKI Detection Validation Results ===")
+        print("\n=== AKI Detection Validation Results ===")
         print(f"Cohort size: {len(cohort)}")
         print(f"True Positives:  {true_positives}")
         print(f"True Negatives:  {true_negatives}")

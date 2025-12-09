@@ -214,8 +214,9 @@ class TestOMOPBackendIntegration:
         export OMOP_LOCAL=1
     """
 
-    # Default local connection for Prometheno OMOP database (MIMIC-IV data)
-    LOCAL_CONNECTION = "postgresql://prometheno:prometheno_dev_2024@localhost:5434/prometheno_omop"
+    # Default local connection for OMOP database
+    # Set OMOP_TEST_CONNECTION environment variable for your local setup
+    LOCAL_CONNECTION = "postgresql://user:password@localhost:5432/omop"
 
     @pytest.fixture
     def real_backend(self):
@@ -255,7 +256,7 @@ class TestOMOPBackendIntegration:
         """Test actual database connection."""
         patient_ids = real_backend.get_patient_ids()
         assert isinstance(patient_ids, list)
-        print(f"\nConnected to OMOP database")
+        print("\nConnected to OMOP database")
         print(f"Found {len(patient_ids)} patients")
 
     @pytest.mark.integration
@@ -330,7 +331,7 @@ class TestOMOPBackendIntegration:
             except Exception:
                 pass  # Skip patients with issues
 
-        print(f"\n=== AKI Evaluation on OMOP Database ===")
+        print("\n=== AKI Evaluation on OMOP Database ===")
         print(f"Evaluated: {evaluated}")
         print(f"Triggered: {triggered}")
         if evaluated > 0:
@@ -339,16 +340,15 @@ class TestOMOPBackendIntegration:
 
 class TestLocalOMOPMIMIC:
     """
-    Tests specifically for local Prometheno OMOP database (MIMIC-IV data).
+    Tests specifically for local OMOP database (e.g., MIMIC-IV data).
     Run with: OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
 
     Database Info:
-    - Host: localhost:5434
-    - Database: prometheno_omop
-    - ~364K patients, ~429K measurements
+    - Set OMOP_TEST_CONNECTION or configure LOCAL_CONNECTION below
     """
 
-    LOCAL_CONNECTION = "postgresql://prometheno:prometheno_dev_2024@localhost:5434/prometheno_omop"
+    # Configure this for your local OMOP database
+    LOCAL_CONNECTION = "postgresql://user:password@localhost:5432/omop"
 
     @pytest.fixture
     def mimic_backend(self):
@@ -394,7 +394,7 @@ class TestLocalOMOPMIMIC:
             3004249: "Potassium",
             3000963: "Hemoglobin",
             3027018: "Heart Rate",
-            3004249: "Sodium",
+            3019550: "Sodium",
         }
 
         print("\n=== MIMIC-IV Measurement Concepts ===")

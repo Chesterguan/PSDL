@@ -17,11 +17,18 @@
   <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8-3.12">
 </p>
 
----
-
 <p align="center">
   <strong>What SQL became for data queries, ONNX for ML models, and GraphQL for APIs —<br/>
   PSDL is becoming the <em>semantic layer</em> for clinical AI.</strong>
+</p>
+
+<p align="center">
+  📄 <strong>Read the Whitepaper:</strong>
+  <a href="docs/WHITEPAPER_EN.md">English</a> ·
+  <a href="docs/WHITEPAPER_ZH.md">简体中文</a> ·
+  <a href="docs/WHITEPAPER_ES.md">Español</a> ·
+  <a href="docs/WHITEPAPER_FR.md">Français</a> ·
+  <a href="docs/WHITEPAPER_JA.md">日本語</a>
 </p>
 
 ---
@@ -226,48 +233,13 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 238 Tests (238 pass, 7 skip)
+### Test Coverage: 238 Tests
 
-| Test Suite | Tests | Description |
-|------------|-------|-------------|
-| `test_parser.py` | 18 | YAML parsing and validation |
-| `test_evaluator.py` | 23 | Core evaluator logic |
-| `test_operators.py` | 20 | Temporal operators (delta, slope, etc.) |
-| `test_psdl_vs_sql.py` | 6 | PSDL matches SQL equivalence (100% match) |
-| `test_independent_verification.py` | 12 | Manual calculation verification |
-| `test_all_scenarios_e2e.py` | 14 | Complete end-to-end scenario workflows |
-| `test_end_to_end.py` | 11 | Full pipeline workflow tests |
-| `test_synthea_validation.py` | 7 | Validation against Synthea FHIR data |
-| `test_mimic_validation.py` | 8 | Validation against MIMIC-IV FHIR data |
-| `test_clinical_validation.py` | 11 | Clinical scenario correctness |
-| `test_scenarios_comprehensive.py` | 20 | Comprehensive scenario testing |
-| `test_fhir_backend.py` | 30 | FHIR backend unit tests |
-| `test_fhir_integration.py` | 19 | Multiple public FHIR servers (HAPI, Firely, etc.) |
-| `test_omop_backend.py` | 20 | OMOP backend with source value support |
+- **Unit Tests**: Parser, evaluator, operators, scenarios
+- **Integration Tests**: FHIR (public servers), OMOP (MIMIC-IV with 364K patients)
+- **Validation**: SQL equivalence (100% match), KDIGO clinical guidelines, Synthea + MIMIC-IV data
 
-**Integration Tests**: FHIR (12 pass) + OMOP (5 pass on local MIMIC-IV database with 364K patients)
-
-### Validation Methodology
-
-PSDL correctness is proven through multiple independent methods:
-
-1. **Manual Calculation Verification**: Each operator is tested against hand-calculated expected values
-2. **SQL Equivalence**: PSDL results match pure SQL implementations (100% batch accuracy)
-3. **Real Data Validation**: Tested against Synthea (synthetic) and MIMIC-IV (real hospital) data
-4. **Clinical Reference Cases**: Tests based on published KDIGO guidelines
-5. **Multi-Backend Validation**: FHIR (public servers) and OMOP (local MIMIC-IV with 364K patients)
-
-See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodology and independence analysis.
-
-### Running Integration Tests
-
-```bash
-# FHIR integration tests (requires network)
-pytest tests/test_fhir_integration.py -v -m integration
-
-# OMOP integration tests (requires local database on port 5434)
-OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
-```
+See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodology.
 
 ## Example Scenarios
 
@@ -289,34 +261,14 @@ OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
 
 ## Roadmap
 
-### Phase 1: Semantic Foundation [Complete]
-- [x] Type system definition
-- [x] Operator specification
-- [x] YAML schema
-- [x] Python parser
-- [x] Temporal operators
-- [x] In-memory evaluator
-- [x] Example scenarios
-- [x] Unit tests
-- [x] OMOP SQL backend
-- [x] FHIR backend
-- [x] Clinical validation suite (238 tests)
-- [x] Real data validation (Synthea, MIMIC-IV)
+| Phase | Status | Focus |
+|-------|--------|-------|
+| **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters, 238 tests |
+| **Phase 2: Enhanced Runtime** | 🚧 Current | Streaming, SQL generation, triggers, packaging |
+| **Phase 3: Community** | 📋 Planned | Blog series, conferences, tooling ecosystem |
+| **Phase 4: Adoption** | 🔮 Future | Hospital pilots, standards engagement |
 
-### Phase 2: Enhanced Runtime [Current]
-- [ ] SQL query generation from PSDL
-- [ ] Streaming evaluation mode
-- [ ] Trigger/Action system (v0.2)
-- [ ] Performance benchmarking
-
-### Phase 3: Community
-- [ ] Technical blog series
-- [ ] Conference presentations
-- [ ] Community infrastructure
-
-### Phase 4: Adoption
-- [ ] Hospital pilot programs
-- [ ] Standards body engagement (OHDSI, HL7)
+📍 **[View Full Roadmap →](docs/ROADMAP.md)**
 
 ## Related Standards
 
@@ -331,24 +283,11 @@ OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
 
 | Document | Description |
 |----------|-------------|
-| [Whitepaper](docs/WHITEPAPER.md) | Full project vision and specification |
+| [Whitepaper](docs/WHITEPAPER.md) | Full project vision and specification (5 languages) |
 | [Getting Started](docs/getting-started.md) | Quick start guide |
+| [Roadmap](docs/ROADMAP.md) | Development phases and timeline |
 | [Schema](spec/schema-v0.1.yaml) | YAML schema definition |
 | [Changelog](CHANGELOG.md) | Version history |
-
-### Whitepaper — Available in 5 Languages
-
-We're building a global community! Read the whitepaper in your preferred language:
-
-<p align="center">
-  <a href="docs/WHITEPAPER_EN.md"><strong>English</strong></a> ·
-  <a href="docs/WHITEPAPER_ZH.md"><strong>简体中文</strong></a> ·
-  <a href="docs/WHITEPAPER_ES.md"><strong>Español</strong></a> ·
-  <a href="docs/WHITEPAPER_FR.md"><strong>Français</strong></a> ·
-  <a href="docs/WHITEPAPER_JA.md"><strong>日本語</strong></a>
-</p>
-
-Want to contribute a translation? We welcome translations to additional languages! See [docs/WHITEPAPER.md](docs/WHITEPAPER.md) for guidelines.
 
 ## Contributing
 

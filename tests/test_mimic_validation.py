@@ -4,7 +4,8 @@ MIMIC-IV FHIR Clinical Validation Tests
 Validates PSDL against real MIMIC-IV hospital data.
 MIMIC-IV contains de-identified ICU patient data from Beth Israel Deaconess Medical Center.
 
-Data source: /Users/ziyuanguan/Downloads/dataSources/physionet.org/files/mimic-iv-fhir/2.1/fhir/
+Data source: Set MIMIC_FHIR_PATH environment variable or configure path below.
+Download from: https://physionet.org/content/mimic-iv-fhir/ (requires credentialed access)
 
 Note: MIMIC-IV data requires PhysioNet credentialed access.
 These tests demonstrate that PSDL works with real hospital EHR data.
@@ -14,9 +15,9 @@ import sys
 import os
 import json
 import gzip
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Iterator
+from typing import Dict, List, Optional, Iterator
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -28,8 +29,9 @@ from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
 from reference.python.operators import DataPoint
 
 
-# Path to MIMIC-IV FHIR data
-MIMIC_FHIR_PATH = Path("/Users/ziyuanguan/Downloads/dataSources/physionet.org/files/mimic-iv-fhir/2.1/fhir")
+# Path to MIMIC-IV FHIR data - configure for your local setup
+# Download from: https://physionet.org/content/mimic-iv-fhir/ (requires credentialed access)
+MIMIC_FHIR_PATH = Path(os.environ.get("MIMIC_FHIR_PATH", "./data/mimic-iv-fhir"))
 
 # MIMIC lab item codes mapping to PSDL signals
 # These are MIMIC-specific codes, not LOINC
@@ -299,10 +301,10 @@ class TestMIMICAKIValidation:
         print("\nLoading MIMIC observations...")
         stats = backend.load_from_stream(limit=50000)
 
-        print(f"\n=== MIMIC Data Loading Results ===")
+        print("\n=== MIMIC Data Loading Results ===")
         print(f"Total observations: {stats['observations']}")
         print(f"Unique patients: {stats['patients']}")
-        print(f"Signal distribution:")
+        print("Signal distribution:")
         for signal, count in sorted(stats["signals"].items(), key=lambda x: -x[1]):
             print(f"  {signal}: {count}")
 
@@ -341,14 +343,14 @@ class TestMIMICAKIValidation:
                     }
                 )
 
-        print(f"\n=== AKI Evaluation Results ===")
+        print("\n=== AKI Evaluation Results ===")
         print(f"Patients with sufficient Cr data: {evaluated_count}")
         print(f"AKI triggered: {triggered_count}")
         if evaluated_count > 0:
             print(f"AKI rate: {triggered_count/evaluated_count*100:.1f}%")
 
         if triggered_details:
-            print(f"\nSample triggered patients:")
+            print("\nSample triggered patients:")
             for detail in triggered_details[:5]:
                 print(f"  {detail['patient_id']}: {detail['logic']}")
                 print(f"    Cr range: {detail['cr_range']} mg/dL, delta: {detail['delta']:.2f}")
@@ -360,7 +362,7 @@ class TestMIMICAKIValidation:
     def test_compare_with_gfr(self, mimic_loader, aki_scenario):
         """Compare AKI detection with eGFR trends."""
         backend = MIMICPSDLBackend(mimic_loader)
-        stats = backend.load_from_stream(limit=30000)
+        backend.load_from_stream(limit=30000)
 
         evaluator = PSDLEvaluator(aki_scenario, backend)
 
@@ -392,7 +394,7 @@ class TestMIMICAKIValidation:
                 if latest_gfr and latest_gfr < 60:
                     no_aki_with_low_gfr += 1
 
-        print(f"\n=== AKI vs eGFR Correlation ===")
+        print("\n=== AKI vs eGFR Correlation ===")
         print(f"AKI with low eGFR (<60): {aki_with_low_gfr}")
         print(f"AKI with normal eGFR: {aki_with_normal_gfr}")
         print(f"No AKI but low eGFR (possible CKD): {no_aki_with_low_gfr}")
@@ -456,7 +458,7 @@ class TestMIMICMultiScenario:
 
             results[scenario_name] = {"triggered": triggered, "evaluated": evaluated}
 
-        print(f"\n=== Multi-Scenario Results ===")
+        print("\n=== Multi-Scenario Results ===")
         for name, r in results.items():
             if r["evaluated"] > 0:
                 pct = r["triggered"] / r["evaluated"] * 100
@@ -471,7 +473,7 @@ class TestMIMICClinicalQueries:
     def test_aki_stages_distribution(self, mimic_loader, aki_scenario):
         """Analyze distribution of AKI stages in MIMIC ICU patients."""
         backend = MIMICPSDLBackend(mimic_loader)
-        stats = backend.load_from_stream(limit=50000)
+        backend.load_from_stream(limit=50000)
 
         evaluator = PSDLEvaluator(aki_scenario, backend)
 
@@ -501,7 +503,7 @@ class TestMIMICClinicalQueries:
             else:
                 stage_counts["No AKI"] += 1
 
-        print(f"\n=== AKI Stage Distribution (MIMIC ICU) ===")
+        print("\n=== AKI Stage Distribution (MIMIC ICU) ===")
         print(f"Total patients evaluated: {total_evaluated}")
         for stage, count in sorted(stage_counts.items()):
             pct = count / total_evaluated * 100 if total_evaluated > 0 else 0
@@ -510,7 +512,7 @@ class TestMIMICClinicalQueries:
     def test_lactate_trends(self, mimic_loader):
         """Analyze lactate trends in MIMIC patients."""
         backend = MIMICPSDLBackend(mimic_loader)
-        stats = backend.load_from_stream(limit=100000)
+        backend.load_from_stream(limit=100000)
 
         elevated_lactate = 0
         normal_lactate = 0
@@ -535,7 +537,7 @@ class TestMIMICClinicalQueries:
                 if sorted_data[-1].value > sorted_data[0].value + 1.0:
                     rising_trend += 1
 
-        print(f"\n=== Lactate Analysis (MIMIC ICU) ===")
+        print("\n=== Lactate Analysis (MIMIC ICU) ===")
         print(f"Elevated (>2.0 mmol/L): {elevated_lactate}")
         print(f"Normal: {normal_lactate}")
         print(f"Rising trend (>1.0 increase): {rising_trend}")

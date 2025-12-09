@@ -14,7 +14,7 @@ These tests prove that PSDL works as a complete system, not just individual comp
 import sys
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from typing import Dict, List
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -191,7 +191,7 @@ class TestAKIScenarioComplete:
         assert "aki_stage1" in scenario.logic
         assert "aki_stage3" in scenario.logic
 
-        print(f"\n=== AKI Scenario Metadata ===")
+        print("\n=== AKI Scenario Metadata ===")
         print(f"Name: {scenario.name}")
         print(f"Version: {scenario.version}")
         print(f"Signals: {list(scenario.signals.keys())}")
@@ -211,7 +211,7 @@ class TestAKIScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== AKI Stage 1 Detection ===")
+        print("\n=== AKI Stage 1 Detection ===")
         print(f"Patient: {patient_id}")
         print(f"Triggered: {result.is_triggered}")
         print(f"Rules: {result.triggered_logic}")
@@ -234,7 +234,7 @@ class TestAKIScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== AKI Stage 3 Detection ===")
+        print("\n=== AKI Stage 3 Detection ===")
         print(f"Patient: {patient_id}")
         print(f"Triggered: {result.is_triggered}")
         print(f"Rules: {result.triggered_logic}")
@@ -255,7 +255,7 @@ class TestAKIScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Stable Patient (No AKI) ===")
+        print("\n=== Stable Patient (No AKI) ===")
         print(f"Patient: {patient_id}")
         print(f"Triggered: {result.is_triggered}")
 
@@ -277,7 +277,7 @@ class TestICUScenarioComplete:
         assert "Lact" in scenario.signals
         assert "HR" in scenario.signals
 
-        print(f"\n=== ICU Scenario Metadata ===")
+        print("\n=== ICU Scenario Metadata ===")
         print(f"Name: {scenario.name}")
         print(f"Signals: {list(scenario.signals.keys())}")
         print(f"Logic rules: {list(scenario.logic.keys())}")
@@ -295,7 +295,7 @@ class TestICUScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== ICU Deterioration Detection ===")
+        print("\n=== ICU Deterioration Detection ===")
         print(f"Patient: {patient_id}")
         print(f"Triggered: {result.is_triggered}")
         print(f"Rules: {result.triggered_logic}")
@@ -318,7 +318,7 @@ class TestICUScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Stable ICU Patient ===")
+        print("\n=== Stable ICU Patient ===")
         print(f"Triggered: {result.is_triggered}")
 
         assert not result.is_triggered
@@ -339,7 +339,7 @@ class TestSepsisScenarioComplete:
         assert "SBP" in scenario.signals
         assert "Temp" in scenario.signals
 
-        print(f"\n=== Sepsis Scenario Metadata ===")
+        print("\n=== Sepsis Scenario Metadata ===")
         print(f"Name: {scenario.name}")
         print(f"Signals: {list(scenario.signals.keys())}")
         print(f"Logic rules: {list(scenario.logic.keys())}")
@@ -357,7 +357,7 @@ class TestSepsisScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Sepsis Detection ===")
+        print("\n=== Sepsis Detection ===")
         print(f"Patient: {patient_id}")
         print(f"Triggered: {result.is_triggered}")
         print(f"Rules: {result.triggered_logic}")
@@ -378,7 +378,7 @@ class TestSepsisScenarioComplete:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(patient_id, now)
 
-        print(f"\n=== Stable Patient (No Sepsis) ===")
+        print("\n=== Stable Patient (No Sepsis) ===")
         print(f"Triggered: {result.is_triggered}")
 
         assert not result.is_triggered
@@ -434,7 +434,7 @@ class TestAllScenariosIntegration:
 
         # Print comprehensive report
         print(f"\n{'='*60}")
-        print(f"MULTI-SCENARIO COHORT EVALUATION REPORT")
+        print("MULTI-SCENARIO COHORT EVALUATION REPORT")
         print(f"{'='*60}")
         print(f"Patients: {len(patients)}")
         print(f"Scenarios: {list(all_scenarios.keys())}")
@@ -490,21 +490,22 @@ class TestAllScenariosIntegration:
             result = evaluator.evaluate_patient(patient_id, now)
             results[name] = result.is_triggered
 
-        print(f"\n=== Scenario Independence Test ===")
-        print(f"Patient has AKI but normal vitals")
+        print("\n=== Scenario Independence Test ===")
+        print("Patient has AKI but normal vitals")
         for name, triggered in results.items():
             print(f"  {name}: {'TRIGGERED' if triggered else 'NOT TRIGGERED'}")
 
         # AKI should trigger, others should not
-        assert results["AKI"] == True
-        assert results["ICU"] == False
-        assert results["Sepsis"] == False
+        assert results["AKI"] is True
+        assert results["ICU"] is False
+        assert results["Sepsis"] is False
 
 
 class TestRealDataEndToEnd:
     """End-to-end tests using real data sources."""
 
-    SYNTHEA_PATH = Path("/Volumes/extraSupply/Projects/Prometheno/backend/data/synthea/fhir")
+    # Configure path for your local Synthea data
+    SYNTHEA_PATH = Path(os.environ.get("SYNTHEA_FHIR_PATH", "./data/synthea/fhir"))
 
     @pytest.fixture
     def synthea_available(self):
@@ -544,14 +545,14 @@ class TestRealDataEndToEnd:
                                 ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                                 ts = ts.replace(tzinfo=None)
                                 cr_data.append(DataPoint(ts, float(value)))
-                            except:
+                            except (ValueError, TypeError):
                                 pass
 
             if len(cr_data) >= 2:
                 backend.add_data(patient_id, "Cr", cr_data)
                 loaded_patients.append(patient_id)
 
-        print(f"\n=== Synthea End-to-End Test ===")
+        print("\n=== Synthea End-to-End Test ===")
         print(f"Loaded {len(loaded_patients)} patients with Cr data")
 
         # Evaluate

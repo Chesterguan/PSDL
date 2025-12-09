@@ -13,7 +13,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from datetime import datetime, timedelta  # noqa: E402
+from datetime import datetime  # noqa: E402
 
 import pytest  # noqa: E402
 
