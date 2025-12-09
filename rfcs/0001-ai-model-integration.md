@@ -326,7 +326,7 @@ Model invocations are logged with inputs and outputs:
 
 ```json
 {
-  "timestamp": "2024-01-15T10:30:00Z",
+  "timestamp": "2025-12-05T10:30:00Z",
   "patient_id": "12345",
   "scenario": "Hybrid_Deterioration_Alert",
   "model": "icu_transfer_24h:2.1.0",

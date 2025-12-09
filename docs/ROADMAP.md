@@ -167,11 +167,11 @@ Major features are proposed through RFCs:
 
 | Phase | Target |
 |-------|--------|
-| Phase 1 | ✅ Complete (Dec 2024) |
-| Phase 2 | Q1-Q2 2025 |
-| Phase 3 | Q3-Q4 2025 |
-| Phase 4 | 2026+ |
+| Phase 1 | ✅ Complete (Dec 2025) |
+| Phase 2 | Q1-Q2 2026 |
+| Phase 3 | Q3-Q4 2026 |
+| Phase 4 | 2027+ |
 
 ---
 
-*Last updated: December 2024*
+*Last updated: December 2025*
