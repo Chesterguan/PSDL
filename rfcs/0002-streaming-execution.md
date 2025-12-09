@@ -904,13 +904,13 @@ monitoring:
 
 ## Implementation Plan
 
-### Phase 1: Core Streaming (v0.2.0)
-- [ ] PyFlink backend infrastructure
-- [ ] Operator compilation (delta, slope, ema, last, min, max)
-- [ ] Logic join functions
-- [ ] Kafka source/sink connectors
-- [ ] Basic checkpointing
-- [ ] Unit and integration tests
+### Phase 1: Core Streaming (v0.2.0) ✅ Complete
+- [x] PyFlink backend infrastructure (`flink_runtime.py`)
+- [x] Operator compilation (delta, slope, ema, last, min, max, count, sma)
+- [x] Logic join functions
+- [x] Kafka source/sink connectors
+- [x] Basic checkpointing configuration
+- [x] Unit and integration tests (41 tests)
 
 ### Phase 2: Production Readiness (v0.2.1)
 - [ ] FHIR subscription source
