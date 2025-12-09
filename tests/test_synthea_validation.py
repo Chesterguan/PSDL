@@ -20,7 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import pytest  # noqa: E402
 
 from reference.python.parser import PSDLParser  # noqa: E402
-from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.execution.batch import (
+    PSDLEvaluator,
+    InMemoryBackend,
+)  # noqa: E402
 from reference.python.operators import DataPoint  # noqa: E402
 
 
@@ -156,7 +159,9 @@ class SyntheaFHIRLoader:
                 ts_str = obs["effectiveDateTime"]
                 # Parse ISO format
                 if "T" in ts_str:
-                    timestamp = datetime.fromisoformat(ts_str.replace("Z", "+00:00").split("+")[0])
+                    timestamp = datetime.fromisoformat(
+                        ts_str.replace("Z", "+00:00").split("+")[0]
+                    )
                 else:
                     timestamp = datetime.strptime(ts_str, "%Y-%m-%d")
             except (ValueError, TypeError):
@@ -325,12 +330,16 @@ class TestSyntheaAKIValidation:
             # Use the most recent data point as reference time
             reference_time = max(dp.timestamp for dp in cr_data)
 
-            result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=reference_time)
+            result = evaluator.evaluate_patient(
+                patient_id=patient_id, reference_time=reference_time
+            )
 
             if result.is_triggered:
                 results["triggered"] += 1
                 for rule in result.triggered_logic:
-                    results["triggered_rules"][rule] = results["triggered_rules"].get(rule, 0) + 1
+                    results["triggered_rules"][rule] = (
+                        results["triggered_rules"].get(rule, 0) + 1
+                    )
             else:
                 results["not_triggered"] += 1
 
@@ -343,7 +352,9 @@ class TestSyntheaAKIValidation:
             trigger_rate = results["triggered"] / results["with_cr_data"]
             print(f"Trigger rate: {trigger_rate:.1%}")
         print("Triggered rules breakdown:")
-        for rule, count in sorted(results["triggered_rules"].items(), key=lambda x: -x[1]):
+        for rule, count in sorted(
+            results["triggered_rules"].items(), key=lambda x: -x[1]
+        ):
             print(f"  {rule}: {count}")
 
     def test_creatinine_patterns(self, synthea_loader):
@@ -442,7 +453,9 @@ class TestSyntheaMultiScenario:
 
                 reference_time = max(dp.timestamp for dp in all_data)
 
-                result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=reference_time)
+                result = evaluator.evaluate_patient(
+                    patient_id=patient_id, reference_time=reference_time
+                )
 
                 if result.is_triggered:
                     triggered_count += 1
@@ -500,13 +513,17 @@ class TestCardiacSurgeryQuery:
 
                     if is_cardiac:
                         # Get procedure date
-                        performed = proc.get("performedDateTime") or proc.get("performedPeriod", {}).get("start")
+                        performed = proc.get("performedDateTime") or proc.get(
+                            "performedPeriod", {}
+                        ).get("start")
                         if performed:
                             try:
                                 year = int(performed[:4])
                                 if 2020 <= year <= 2025:
                                     patients_with_cardiac.append(patient_id)
-                                    procedure_counts[display] = procedure_counts.get(display, 0) + 1
+                                    procedure_counts[display] = (
+                                        procedure_counts.get(display, 0) + 1
+                                    )
                                     year_counts[year] = year_counts.get(year, 0) + 1
                             except (ValueError, TypeError):
                                 pass

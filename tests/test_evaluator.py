@@ -11,13 +11,14 @@ from datetime import datetime, timedelta
 import pytest
 
 # Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from evaluator import InMemoryBackend  # noqa: E402
-from evaluator import PSDLEvaluator  # noqa: E402
-from operators import DataPoint  # noqa: E402
-from operators import TemporalOperators  # noqa: E402
-from parser import PSDLParser  # noqa: E402
+from reference.python.execution.batch import (
+    InMemoryBackend,
+    PSDLEvaluator,
+)  # noqa: E402
+from reference.python.operators import DataPoint, TemporalOperators  # noqa: E402
+from reference.python.parser import PSDLParser  # noqa: E402
 
 
 class TestTemporalOperators:
@@ -89,7 +90,9 @@ class TestTemporalOperators:
 
     def test_slope_flat(self, reference_time):
         # Flat data
-        flat_data = [DataPoint(reference_time - timedelta(hours=i), 1.0) for i in range(6, 0, -1)]
+        flat_data = [
+            DataPoint(reference_time - timedelta(hours=i), 1.0) for i in range(6, 0, -1)
+        ]
         result = TemporalOperators.slope(flat_data, 6 * 3600, reference_time)
         assert abs(result) < 0.01
 
@@ -199,7 +202,9 @@ logic:
 
         return backend, base_time
 
-    def test_evaluate_single_patient_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -213,7 +218,9 @@ logic:
         assert result.trend_results["cr_high"] is True
         assert result.trend_results["cr_rising"] is True
 
-    def test_evaluate_single_patient_not_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_not_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -249,7 +256,9 @@ logic:
         backend, base_time = backend_with_data
         evaluator = PSDLEvaluator(scenario, backend)
 
-        results = evaluator.evaluate_cohort(reference_time=base_time, patient_ids=[1, 2, 3])
+        results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3]
+        )
 
         assert len(results) == 3
 

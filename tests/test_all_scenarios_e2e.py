@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import pytest
 
 from reference.python.parser import PSDLParser
-from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.execution.batch import PSDLEvaluator, InMemoryBackend
 from reference.python.operators import DataPoint
 
 
@@ -35,7 +35,9 @@ class PatientDataGenerator:
     """Generate realistic patient data for testing."""
 
     @staticmethod
-    def create_aki_stage1_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_aki_stage1_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with AKI Stage 1 (Cr rise >= 0.3 mg/dL in 48h)."""
         return {
             "Cr": [
@@ -52,7 +54,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_aki_stage3_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_aki_stage3_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with AKI Stage 3 (Cr >= 4.0 mg/dL)."""
         return {
             "Cr": [
@@ -69,7 +73,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_stable_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_stable_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Stable patient with no clinical triggers."""
         return {
             "Cr": [
@@ -105,7 +111,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_icu_deteriorating_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_icu_deteriorating_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """ICU patient showing signs of deterioration."""
         return {
             "MAP": [
@@ -133,7 +141,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_sepsis_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_sepsis_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with sepsis presentation."""
         return {
             "RR": [
@@ -406,9 +416,15 @@ class TestAllScenariosIntegration:
         patients = {
             "stable_001": PatientDataGenerator.create_stable_patient("stable_001", now),
             "stable_002": PatientDataGenerator.create_stable_patient("stable_002", now),
-            "aki_stage1": PatientDataGenerator.create_aki_stage1_patient("aki_stage1", now),
-            "aki_stage3": PatientDataGenerator.create_aki_stage3_patient("aki_stage3", now),
-            "icu_sick": PatientDataGenerator.create_icu_deteriorating_patient("icu_sick", now),
+            "aki_stage1": PatientDataGenerator.create_aki_stage1_patient(
+                "aki_stage1", now
+            ),
+            "aki_stage3": PatientDataGenerator.create_aki_stage3_patient(
+                "aki_stage3", now
+            ),
+            "icu_sick": PatientDataGenerator.create_icu_deteriorating_patient(
+                "icu_sick", now
+            ),
             "sepsis": PatientDataGenerator.create_sepsis_patient("sepsis", now),
         }
 
@@ -542,7 +558,9 @@ class TestRealDataEndToEnd:
                         timestamp_str = resource.get("effectiveDateTime")
                         if value and timestamp_str:
                             try:
-                                ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                                ts = datetime.fromisoformat(
+                                    timestamp_str.replace("Z", "+00:00")
+                                )
                                 ts = ts.replace(tzinfo=None)
                                 cr_data.append(DataPoint(ts, float(value)))
                             except (ValueError, TypeError):
@@ -604,9 +622,13 @@ class TestAlertGeneration:
             "evaluation": {
                 "triggered": result.is_triggered,
                 "rules": result.triggered_logic,
-                "trend_values": {k: v for k, v in result.trend_values.items() if v is not None},
+                "trend_values": {
+                    k: v for k, v in result.trend_values.items() if v is not None
+                },
             },
-            "severity": "critical" if "aki_stage3" in result.triggered_logic else "medium",
+            "severity": "critical"
+            if "aki_stage3" in result.triggered_logic
+            else "medium",
             "recommended_actions": [
                 "Notify nephrologist",
                 "Check urine output",

@@ -15,14 +15,14 @@ from unittest.mock import patch
 import pytest
 
 # Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from adapters.omop import OMOPBackend  # noqa: E402
-from adapters.omop import OMOPConfig  # noqa: E402
-from adapters.omop import create_omop_backend  # noqa: E402
-
-from parser import Domain  # noqa: E402
-from parser import Signal  # noqa: E402
+from reference.python.adapters.omop import (
+    OMOPBackend,
+    OMOPConfig,
+    create_omop_backend,
+)  # noqa: E402
+from reference.python.parser import Domain, Signal  # noqa: E402
 
 
 class TestOMOPConfig:
@@ -177,7 +177,9 @@ class TestOMOPBackend:
             {"person_id": 3, "obs_count": 10},
         ]
 
-        patient_ids = backend.get_patient_ids_with_signal(creatinine_signal, min_observations=3)
+        patient_ids = backend.get_patient_ids_with_signal(
+            creatinine_signal, min_observations=3
+        )
 
         assert patient_ids == [1, 3]
 
@@ -229,7 +231,9 @@ class TestOMOPBackendIntegration:
             conn_string = self.LOCAL_CONNECTION
 
         if not conn_string:
-            pytest.skip("OMOP database not configured. Set OMOP_TEST_CONNECTION or OMOP_LOCAL=1")
+            pytest.skip(
+                "OMOP database not configured. Set OMOP_TEST_CONNECTION or OMOP_LOCAL=1"
+            )
 
         try:
             # Use "public" schema for local Prometheno OMOP database
@@ -303,7 +307,7 @@ class TestOMOPBackendIntegration:
     def test_evaluate_aki_scenario(self, real_backend):
         """Test evaluating AKI scenario against real OMOP data."""
         from reference.python.parser import PSDLParser
-        from reference.python.evaluator import PSDLEvaluator
+        from reference.python.execution.batch import PSDLEvaluator
 
         # Parse AKI scenario
         parser = PSDLParser()
@@ -324,7 +328,9 @@ class TestOMOPBackendIntegration:
 
         for pid in patient_ids[:50]:
             try:
-                result = evaluator.evaluate_patient(patient_id=pid, reference_time=reference_time)
+                result = evaluator.evaluate_patient(
+                    patient_id=pid, reference_time=reference_time
+                )
                 evaluated += 1
                 if result.is_triggered:
                     triggered += 1

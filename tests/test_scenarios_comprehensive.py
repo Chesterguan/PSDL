@@ -15,7 +15,10 @@ from datetime import datetime, timedelta  # noqa: E402
 import pytest  # noqa: E402
 
 from reference.python.parser import PSDLParser  # noqa: E402
-from reference.python.evaluator import PSDLEvaluator, InMemoryBackend  # noqa: E402
+from reference.python.execution.batch import (
+    PSDLEvaluator,
+    InMemoryBackend,
+)  # noqa: E402
 from reference.python.operators import DataPoint  # noqa: E402
 
 
@@ -101,7 +104,10 @@ class TestAKIDetectionScenario:
 
         assert result.is_triggered
         # Should trigger both stage1 and stage2
-        assert "aki_stage1" in result.triggered_logic or "aki_stage2" in result.triggered_logic
+        assert (
+            "aki_stage1" in result.triggered_logic
+            or "aki_stage2" in result.triggered_logic
+        )
 
     def test_chronic_elevated_creatinine_no_acute_alert(self, scenario, backend):
         """Chronically elevated but stable creatinine should not trigger."""
@@ -244,7 +250,9 @@ class TestICUDeteriorationScenario:
         print(f"Multi-factor deterioration: {result.triggered_logic}")
 
         # Should trigger some deterioration alerts with this data
-        assert result.is_triggered, f"Expected trigger with trends: {result.trend_results}"
+        assert (
+            result.is_triggered
+        ), f"Expected trigger with trends: {result.trend_results}"
 
 
 class TestSepsisScreeningScenario:
@@ -503,7 +511,9 @@ class TestBatchEvaluation:
         # Evaluate all patients
         triggered_patients = []
         for patient_id in range(1, 11):
-            result = evaluator.evaluate_patient(patient_id=patient_id, reference_time=now)
+            result = evaluator.evaluate_patient(
+                patient_id=patient_id, reference_time=now
+            )
             if result.is_triggered:
                 triggered_patients.append(patient_id)
 

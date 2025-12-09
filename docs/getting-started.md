@@ -71,7 +71,7 @@ print(f"Logic: {list(scenario.logic.keys())}")
 
 ```python
 from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.evaluator import InMemoryBackend
+from reference.python.execution.batch import InMemoryBackend
 from reference.python.operators import DataPoint
 from datetime import datetime, timedelta
 

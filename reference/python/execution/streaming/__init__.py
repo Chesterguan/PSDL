@@ -1,5 +1,5 @@
 """
-PSDL Streaming Adapter - Apache Flink (PyFlink) Implementation
+PSDL Streaming Execution - Apache Flink (PyFlink) Implementation
 
 This module provides streaming execution for PSDL scenarios using Apache Flink.
 It compiles PSDL operators to Flink streaming primitives for real-time clinical
@@ -10,13 +10,13 @@ https://github.com/Chesterguan/PSDL/blob/main/rfcs/0002-streaming-execution.md
 
 Usage:
     # Basic compilation (no PyFlink required)
-    from reference.python.adapters.streaming import StreamingCompiler, StreamingEvaluator
+    from reference.python.execution.streaming import StreamingCompiler, StreamingEvaluator
 
     compiler = StreamingCompiler()
     compiled = compiler.compile(scenario_dict)
 
     # Full Flink deployment (requires PyFlink)
-    from reference.python.adapters.streaming import FlinkRuntime, FlinkJob
+    from reference.python.execution.streaming import FlinkRuntime, FlinkJob
 
     runtime = FlinkRuntime()
     job = runtime.create_job(scenario_dict, kafka_config={...})

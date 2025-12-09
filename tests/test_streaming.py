@@ -11,7 +11,10 @@ integration in progress per RFC-0002).
 import pytest
 
 # Skip the entire module - streaming backend not fully implemented
-pytest.skip("Streaming backend tests skipped - Flink integration not complete (RFC-0002)", allow_module_level=True)
+pytest.skip(
+    "Streaming backend tests skipped - Flink integration not complete (RFC-0002)",
+    allow_module_level=True,
+)
 
 import sys
 import os
@@ -19,8 +22,12 @@ from datetime import datetime, timedelta
 import types
 
 # Get paths
-_project_root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-_streaming_dir = os.path.join(_project_root, "reference", "python", "adapters", "streaming")
+_project_root = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+)
+_streaming_dir = os.path.join(
+    _project_root, "reference", "python", "execution", "streaming"
+)
 
 # Create a fake package structure so relative imports work
 # This allows the streaming modules to use 'from .models import ...'
@@ -285,7 +292,12 @@ class TestProcessFunctions:
         fn = LastProcessFunction("hypoxia", threshold=92, comparison="<")
 
         event = ClinicalEvent(
-            patient_id="P123", timestamp=datetime.now(), signal_type="SpO2", value=88.0, unit="%", source="test"
+            patient_id="P123",
+            timestamp=datetime.now(),
+            signal_type="SpO2",
+            value=88.0,
+            unit="%",
+            source="test",
         )
 
         result, state = fn.process_element(event, {})
@@ -297,13 +309,20 @@ class TestProcessFunctions:
     def test_ema_function(self):
         """Test exponential moving average."""
         # 1 hour window -> alpha = 2/(60+1) ≈ 0.0328
-        fn = EMAProcessFunction("hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">")
+        fn = EMAProcessFunction(
+            "hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">"
+        )
 
         state = {}
 
         # First event initializes EMA
         event1 = ClinicalEvent(
-            patient_id="P123", timestamp=datetime.now(), signal_type="HR", value=80.0, unit="bpm", source="test"
+            patient_id="P123",
+            timestamp=datetime.now(),
+            signal_type="HR",
+            value=80.0,
+            unit="bpm",
+            source="test",
         )
         result1, state = fn.process_element(event1, state)
         assert result1.value == 80.0  # First value = EMA
@@ -395,7 +414,9 @@ class TestLogicEvaluator:
         assert result is True
 
     def test_complex_expression(self):
-        result = LogicEvaluator.evaluate("(a AND b) OR c", {"a": False, "b": True, "c": True})
+        result = LogicEvaluator.evaluate(
+            "(a AND b) OR c", {"a": False, "b": True, "c": True}
+        )
         assert result is True
 
     def test_not_expression(self):
@@ -412,7 +433,12 @@ class TestStreamingCompiler:
             "version": "0.2.0",
             "execution": {"mode": "streaming"},
             "signals": {"HR": {"source": "heart_rate"}},
-            "trends": {"hr_rising": {"expr": "delta(HR, 1h) > 20", "description": "Heart rate rising"}},
+            "trends": {
+                "hr_rising": {
+                    "expr": "delta(HR, 1h) > 20",
+                    "description": "Heart rate rising",
+                }
+            },
             "logic": {"alert": {"expr": "hr_rising", "severity": "high"}},
         }
 
@@ -429,16 +455,30 @@ class TestStreamingCompiler:
         scenario = {
             "scenario": "ICU_Deterioration",
             "version": "0.2.0",
-            "signals": {"HR": {"source": "heart_rate"}, "SBP": {"source": "systolic_bp"}},
-            "trends": {"hr_rising": {"expr": "delta(HR, 1h) > 20"}, "bp_dropping": {"expr": "delta(SBP, 30m) < -15"}},
-            "logic": {"deterioration": {"expr": "hr_rising AND bp_dropping", "severity": "critical"}},
+            "signals": {
+                "HR": {"source": "heart_rate"},
+                "SBP": {"source": "systolic_bp"},
+            },
+            "trends": {
+                "hr_rising": {"expr": "delta(HR, 1h) > 20"},
+                "bp_dropping": {"expr": "delta(SBP, 30m) < -15"},
+            },
+            "logic": {
+                "deterioration": {
+                    "expr": "hr_rising AND bp_dropping",
+                    "severity": "critical",
+                }
+            },
         }
 
         compiler = StreamingCompiler()
         compiled = compiler.compile(scenario)
 
         assert len(compiled.trends) == 2
-        assert compiled.logic["deterioration"].trend_refs == ["hr_rising", "bp_dropping"]
+        assert compiled.logic["deterioration"].trend_refs == [
+            "hr_rising",
+            "bp_dropping",
+        ]
 
 
 class TestStreamingEvaluator:
@@ -449,7 +489,9 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"SpO2": {}},
-            "trends": {"hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}},
+            "trends": {
+                "hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}
+            },
             "logic": {"alert": {"expr": "hypoxia", "severity": "high"}},
         }
 
@@ -457,11 +499,18 @@ class TestStreamingEvaluator:
         compiled = evaluator.compile(scenario)
 
         event = ClinicalEvent(
-            patient_id="P123", timestamp=datetime.now(), signal_type="SpO2", value=88.0, unit="%", source="test"
+            patient_id="P123",
+            timestamp=datetime.now(),
+            signal_type="SpO2",
+            value=88.0,
+            unit="%",
+            source="test",
         )
 
         state = {}
-        trend_results, logic_results, state = evaluator.evaluate_event(compiled, event, state)
+        trend_results, logic_results, state = evaluator.evaluate_event(
+            compiled, event, state
+        )
 
         assert len(trend_results) == 1
         assert trend_results[0].trend_name == "hypoxia"
@@ -476,8 +525,13 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"HR": {}, "SpO2": {}},
-            "trends": {"tachycardia": {"expr": "last(HR) > 100"}, "hypoxia": {"expr": "last(SpO2) < 92"}},
-            "logic": {"critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}},
+            "trends": {
+                "tachycardia": {"expr": "last(HR) > 100"},
+                "hypoxia": {"expr": "last(SpO2) < 92"},
+            },
+            "logic": {
+                "critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}
+            },
         }
 
         evaluator = StreamingEvaluator()
@@ -486,7 +540,12 @@ class TestStreamingEvaluator:
 
         # First event: high HR
         event1 = ClinicalEvent(
-            patient_id="P123", timestamp=datetime.now(), signal_type="HR", value=110.0, unit="bpm", source="test"
+            patient_id="P123",
+            timestamp=datetime.now(),
+            signal_type="HR",
+            value=110.0,
+            unit="bpm",
+            source="test",
         )
         _, logic1, state = evaluator.evaluate_event(compiled, event1, state)
 
@@ -543,13 +602,30 @@ class TestLogicJoinFunction:
     def test_join_all_trends_present(self):
         from streaming.compiler import CompiledLogic
 
-        logic = CompiledLogic(name="test_logic", expr="a AND b", trend_refs=["a", "b"], severity=Severity.HIGH)
+        logic = CompiledLogic(
+            name="test_logic",
+            expr="a AND b",
+            trend_refs=["a", "b"],
+            severity=Severity.HIGH,
+        )
 
         join_fn = LogicJoinFunction(logic, "TestScenario", "0.1.0")
 
         trend_results = {
-            "a": TrendResult(patient_id="P123", trend_name="a", value=1.0, result=True, timestamp=datetime.now()),
-            "b": TrendResult(patient_id="P123", trend_name="b", value=1.0, result=True, timestamp=datetime.now()),
+            "a": TrendResult(
+                patient_id="P123",
+                trend_name="a",
+                value=1.0,
+                result=True,
+                timestamp=datetime.now(),
+            ),
+            "b": TrendResult(
+                patient_id="P123",
+                trend_name="b",
+                value=1.0,
+                result=True,
+                timestamp=datetime.now(),
+            ),
         }
 
         result = join_fn.process("P123", trend_results, datetime.now())
@@ -561,13 +637,24 @@ class TestLogicJoinFunction:
     def test_join_missing_trend(self):
         from streaming.compiler import CompiledLogic
 
-        logic = CompiledLogic(name="test_logic", expr="a AND b", trend_refs=["a", "b"], severity=Severity.HIGH)
+        logic = CompiledLogic(
+            name="test_logic",
+            expr="a AND b",
+            trend_refs=["a", "b"],
+            severity=Severity.HIGH,
+        )
 
         join_fn = LogicJoinFunction(logic, "TestScenario", "0.1.0")
 
         # Only 'a' is present
         trend_results = {
-            "a": TrendResult(patient_id="P123", trend_name="a", value=1.0, result=True, timestamp=datetime.now())
+            "a": TrendResult(
+                patient_id="P123",
+                trend_name="a",
+                value=1.0,
+                result=True,
+                timestamp=datetime.now(),
+            )
         }
 
         result = join_fn.process("P123", trend_results, datetime.now())

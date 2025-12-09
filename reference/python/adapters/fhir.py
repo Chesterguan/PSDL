@@ -32,7 +32,7 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 try:
-    from ..evaluator import DataBackend
+    from ..execution.batch import DataBackend
     from ..operators import DataPoint
     from ..parser import Signal
 except ImportError:
@@ -40,7 +40,8 @@ except ImportError:
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from evaluator import DataBackend
+    from execution.batch import DataBackend
+
     from operators import DataPoint
     from parser import Signal
 
@@ -153,7 +154,8 @@ class FHIRBackend(DataBackend):
         if self._session is None:
             if not REQUESTS_AVAILABLE:
                 raise ImportError(
-                    "requests library is required for FHIR backend. " "Install with: pip install requests"
+                    "requests library is required for FHIR backend. "
+                    "Install with: pip install requests"
                 )
 
             self._session = requests.Session()
@@ -175,7 +177,9 @@ class FHIRBackend(DataBackend):
                         else self.config.auth_token
                     )
                 elif self.config.auth_type == "basic":
-                    self._session.headers["Authorization"] = f"Basic {self.config.auth_token}"
+                    self._session.headers[
+                        "Authorization"
+                    ] = f"Basic {self.config.auth_token}"
 
             # Add custom headers
             self._session.headers.update(self.config.headers)
@@ -185,7 +189,9 @@ class FHIRBackend(DataBackend):
 
         return self._session
 
-    def _make_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict:
+    def _make_request(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict:
         """Make a GET request to the FHIR server."""
         session = self._get_session()
         url = f"{self.config.base_url}/{endpoint}"
@@ -314,7 +320,9 @@ class FHIRBackend(DataBackend):
             List of DataPoints sorted by timestamp (ascending)
         """
         domain = signal.domain.value if signal.domain else "measurement"
-        resource_type = DOMAIN_RESOURCE_MAP.get(domain, FHIRResourceType.OBSERVATION).value
+        resource_type = DOMAIN_RESOURCE_MAP.get(
+            domain, FHIRResourceType.OBSERVATION
+        ).value
 
         window_start = reference_time - timedelta(seconds=window_seconds)
 
@@ -356,11 +364,15 @@ class FHIRBackend(DataBackend):
 
                 elif resource.get("resourceType") == "Condition":
                     # For conditions, return 1.0 for presence
-                    onset = resource.get("onsetDateTime") or resource.get("recordedDate")
+                    onset = resource.get("onsetDateTime") or resource.get(
+                        "recordedDate"
+                    )
                     if onset:
                         timestamp = self._parse_datetime(onset)
                         if timestamp:
-                            data_points.append(DataPoint(timestamp=timestamp, value=1.0))
+                            data_points.append(
+                                DataPoint(timestamp=timestamp, value=1.0)
+                            )
 
         # Sort by timestamp
         data_points.sort(key=lambda dp: dp.timestamp)

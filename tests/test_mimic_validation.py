@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import pytest
 
 from reference.python.parser import PSDLParser
-from reference.python.evaluator import PSDLEvaluator, InMemoryBackend
+from reference.python.execution.batch import PSDLEvaluator, InMemoryBackend
 from reference.python.operators import DataPoint
 
 
@@ -98,7 +98,9 @@ class MIMICFHIRLoader:
         """Get lab observations, optionally filtered by patient and lab codes."""
         observations = []
 
-        for obs in self.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=limit):
+        for obs in self.stream_ndjson_gz(
+            "MimicObservationLabevents.ndjson.gz", limit=limit
+        ):
             # Filter by patient if specified
             if patient_id:
                 subject_ref = obs.get("subject", {}).get("reference", "")
@@ -175,7 +177,9 @@ class MIMICPSDLBackend(InMemoryBackend):
             return 0
 
         observations = self.loader.get_lab_observations(
-            patient_id=patient_id, lab_codes=list(MIMIC_LAB_MAPPING.keys()), limit=lab_limit
+            patient_id=patient_id,
+            lab_codes=list(MIMIC_LAB_MAPPING.keys()),
+            limit=lab_limit,
         )
 
         # Group by signal
@@ -199,14 +203,18 @@ class MIMICPSDLBackend(InMemoryBackend):
         patient_data = defaultdict(lambda: defaultdict(list))
         stats = {"observations": 0, "patients": 0, "signals": defaultdict(int)}
 
-        for obs in self.loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=limit):
+        for obs in self.loader.stream_ndjson_gz(
+            "MimicObservationLabevents.ndjson.gz", limit=limit
+        ):
             result = self.loader.observation_to_datapoint(obs)
             if not result:
                 continue
 
             signal_name, dp = result
             subject_ref = obs.get("subject", {}).get("reference", "")
-            patient_id = subject_ref.split("/")[-1] if "/" in subject_ref else subject_ref
+            patient_id = (
+                subject_ref.split("/")[-1] if "/" in subject_ref else subject_ref
+            )
 
             patient_data[patient_id][signal_name].append(dp)
             stats["observations"] += 1
@@ -251,7 +259,9 @@ class TestMIMICDataLoading:
         count = 0
         cr_count = 0
 
-        for obs in mimic_loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=10000):
+        for obs in mimic_loader.stream_ndjson_gz(
+            "MimicObservationLabevents.ndjson.gz", limit=10000
+        ):
             count += 1
             coding = obs.get("code", {}).get("coding", [{}])[0]
             if coding.get("code") == "50912":  # Creatinine
@@ -266,7 +276,9 @@ class TestMIMICDataLoading:
         converted = 0
         failed = 0
 
-        for obs in mimic_loader.stream_ndjson_gz("MimicObservationLabevents.ndjson.gz", limit=1000):
+        for obs in mimic_loader.stream_ndjson_gz(
+            "MimicObservationLabevents.ndjson.gz", limit=1000
+        ):
             result = mimic_loader.observation_to_datapoint(obs)
             if result:
                 converted += 1
@@ -332,7 +344,9 @@ class TestMIMICAKIValidation:
             if result.is_triggered:
                 triggered_count += 1
                 # Get delta value for analysis
-                cr_values = [dp.value for dp in sorted(cr_data, key=lambda x: x.timestamp)]
+                cr_values = [
+                    dp.value for dp in sorted(cr_data, key=lambda x: x.timestamp)
+                ]
                 delta = cr_values[-1] - cr_values[0] if len(cr_values) >= 2 else 0
                 triggered_details.append(
                     {
@@ -353,7 +367,9 @@ class TestMIMICAKIValidation:
             print("\nSample triggered patients:")
             for detail in triggered_details[:5]:
                 print(f"  {detail['patient_id']}: {detail['logic']}")
-                print(f"    Cr range: {detail['cr_range']} mg/dL, delta: {detail['delta']:.2f}")
+                print(
+                    f"    Cr range: {detail['cr_range']} mg/dL, delta: {detail['delta']:.2f}"
+                )
 
         # MIMIC has ICU patients, so we expect some AKI
         # But not asserting specific rates since data varies
@@ -420,7 +436,9 @@ class TestMIMICMultiScenario:
         # Load more data for multi-scenario testing
         print("\nLoading MIMIC data for multi-scenario test...")
         stats = backend.load_from_stream(limit=100000)
-        print(f"Loaded {stats['observations']} observations from {stats['patients']} patients")
+        print(
+            f"Loaded {stats['observations']} observations from {stats['patients']} patients"
+        )
 
         results = {}
 
@@ -462,7 +480,9 @@ class TestMIMICMultiScenario:
         for name, r in results.items():
             if r["evaluated"] > 0:
                 pct = r["triggered"] / r["evaluated"] * 100
-                print(f"  {name}: {r['triggered']}/{r['evaluated']} triggered ({pct:.1f}%)")
+                print(
+                    f"  {name}: {r['triggered']}/{r['evaluated']} triggered ({pct:.1f}%)"
+                )
             else:
                 print(f"  {name}: No patients with required data")
 

@@ -55,10 +55,23 @@ try:
     PYFLINK_AVAILABLE = True
 except ImportError:
     PYFLINK_AVAILABLE = False
-    logger.warning("PyFlink not installed. Install with: pip install apache-flink>=1.18")
+    # Define stubs for type hints when PyFlink not available
+    KeyedProcessFunction = object
+    RuntimeContext = Any
+    TimestampAssigner = object
+    DataStream = Any
+    StreamExecutionEnvironment = Any
+    Types = None
+    WatermarkStrategy = None
+    ValueStateDescriptor = None
+    logger.warning(
+        "PyFlink not installed. Install with: pip install apache-flink>=1.18"
+    )
 
 
-class ClinicalEventTimestampAssigner(TimestampAssigner if PYFLINK_AVAILABLE else object):
+class ClinicalEventTimestampAssigner(
+    TimestampAssigner if PYFLINK_AVAILABLE else object
+):
     """Extract event time from ClinicalEvent for watermarking."""
 
     def extract_timestamp(self, value: ClinicalEvent, record_timestamp: int) -> int:
@@ -79,9 +92,9 @@ def create_watermark_strategy(max_lateness_ms: int = 300000) -> "WatermarkStrate
     if not PYFLINK_AVAILABLE:
         raise RuntimeError("PyFlink not installed")
 
-    return WatermarkStrategy.for_bounded_out_of_orderness(Time.milliseconds(max_lateness_ms)).with_timestamp_assigner(
-        ClinicalEventTimestampAssigner()
-    )
+    return WatermarkStrategy.for_bounded_out_of_orderness(
+        Time.milliseconds(max_lateness_ms)
+    ).with_timestamp_assigner(ClinicalEventTimestampAssigner())
 
 
 class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else object):
@@ -107,13 +120,19 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
     def open(self, runtime_context: RuntimeContext):
         """Initialize Flink state."""
         # State for windowed events (list of events within window)
-        self.events_state = runtime_context.get_list_state(ValueStateDescriptor("events", Types.STRING()))
+        self.events_state = runtime_context.get_list_state(
+            ValueStateDescriptor("events", Types.STRING())
+        )
         # State for EMA value
-        self.ema_state = runtime_context.get_state(ValueStateDescriptor("ema", Types.FLOAT()))
+        self.ema_state = runtime_context.get_state(
+            ValueStateDescriptor("ema", Types.FLOAT())
+        )
         # State for last value
-        self.last_state = runtime_context.get_state(ValueStateDescriptor("last", Types.FLOAT()))
+        self.last_state = runtime_context.get_state(
+            ValueStateDescriptor("last", Types.FLOAT())
+        )
 
-    def process_element(self, value: ClinicalEvent, ctx: KeyedProcessFunction.Context):
+    def process_element(self, value: ClinicalEvent, ctx: Any):
         """Process incoming clinical event."""
         patient_id = ctx.get_current_key()
         current_time_ms = int(value.timestamp.timestamp() * 1000)
@@ -125,12 +144,17 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
             # Window-based processing (delta, slope, etc.)
             yield from self._process_windowed(value, patient_id, current_time_ms, ctx)
 
-    def _process_stateful(self, event: ClinicalEvent, patient_id: str, current_time_ms: int):
+    def _process_stateful(
+        self, event: ClinicalEvent, patient_id: str, current_time_ms: int
+    ):
         """Process stateful operators (last, ema)."""
         if self.compiled_trend.process_function:
             # Get current state
             state = {}
-            if self.compiled_trend.process_function.__class__.__name__ == "EMAProcessFunction":
+            if (
+                self.compiled_trend.process_function.__class__.__name__
+                == "EMAProcessFunction"
+            ):
                 ema_val = self.ema_state.value()
                 if ema_val is not None:
                     state["ema"] = ema_val
@@ -140,7 +164,9 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
                     state["last_value"] = last_val
 
             # Process event
-            result, new_state = self.compiled_trend.process_function.process_element(event, state)
+            result, new_state = self.compiled_trend.process_function.process_element(
+                event, state
+            )
 
             # Update state
             if "ema" in new_state:
@@ -150,7 +176,9 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
 
             yield result
 
-    def _process_windowed(self, event: ClinicalEvent, patient_id: str, current_time_ms: int, ctx):
+    def _process_windowed(
+        self, event: ClinicalEvent, patient_id: str, current_time_ms: int, ctx
+    ):
         """Process windowed operators (delta, slope, min, max, count, sma)."""
         # Add event to state (serialize to JSON string)
         event_json = json.dumps(
@@ -200,10 +228,12 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
         if events and self.compiled_trend.window_function:
             window_start = min(e.timestamp for e in events)
             window_end = max(e.timestamp for e in events)
-            result = self.compiled_trend.window_function.process(patient_id, events, window_start, window_end)
+            result = self.compiled_trend.window_function.process(
+                patient_id, events, window_start, window_end
+            )
             yield result
 
-    def on_timer(self, timestamp: int, ctx: KeyedProcessFunction.OnTimerContext):
+    def on_timer(self, timestamp: int, ctx: Any):
         """Timer callback to clean up old events."""
         # Clean events older than window
         cutoff_ms = timestamp - self.window_ms
@@ -248,7 +278,7 @@ class FlinkLogicProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
                 ValueStateDescriptor(f"trend_{trend_name}", Types.STRING())
             )
 
-    def process_element(self, value: TrendResult, ctx: KeyedProcessFunction.Context):
+    def process_element(self, value: TrendResult, ctx: Any):
         """Process incoming trend result."""
         patient_id = ctx.get_current_key()
 
@@ -348,7 +378,9 @@ class FlinkRuntime:
             config: Additional Flink configuration
         """
         if not PYFLINK_AVAILABLE:
-            raise RuntimeError("PyFlink not installed. Install with: pip install apache-flink>=1.18")
+            raise RuntimeError(
+                "PyFlink not installed. Install with: pip install apache-flink>=1.18"
+            )
 
         self.parallelism = parallelism
         self.config = config or {}
@@ -394,7 +426,9 @@ class FlinkRuntime:
 
         return FlinkJob(env, compiled, compiled.name)
 
-    def _configure_checkpointing(self, env: "StreamExecutionEnvironment", config: StreamingConfig):
+    def _configure_checkpointing(
+        self, env: "StreamExecutionEnvironment", config: StreamingConfig
+    ):
         """Configure Flink checkpointing from PSDL config."""
         cp_config = config.checkpointing
 
@@ -404,13 +438,17 @@ class FlinkRuntime:
             if cp_config.mode == CheckpointMode.EXACTLY_ONCE:
                 from pyflink.datastream import CheckpointingMode
 
-                env.get_checkpoint_config().set_checkpointing_mode(CheckpointingMode.EXACTLY_ONCE)
+                env.get_checkpoint_config().set_checkpointing_mode(
+                    CheckpointingMode.EXACTLY_ONCE
+                )
 
             if cp_config.timeout_ms:
                 env.get_checkpoint_config().set_checkpoint_timeout(cp_config.timeout_ms)
 
             if cp_config.min_pause_ms:
-                env.get_checkpoint_config().set_min_pause_between_checkpoints(cp_config.min_pause_ms)
+                env.get_checkpoint_config().set_min_pause_between_checkpoints(
+                    cp_config.min_pause_ms
+                )
 
     def _build_pipeline(
         self,
@@ -430,7 +468,9 @@ class FlinkRuntime:
             source = env.from_collection([])
 
         # Apply watermark strategy
-        watermark_strategy = create_watermark_strategy(compiled.config.watermark.max_lateness_ms)
+        watermark_strategy = create_watermark_strategy(
+            compiled.config.watermark.max_lateness_ms
+        )
 
         events_stream = source.assign_timestamps_and_watermarks(watermark_strategy)
 
@@ -440,7 +480,9 @@ class FlinkRuntime:
             signal_name = trend.signal
 
             # Filter events for this signal
-            signal_stream = events_stream.filter(lambda e, sig=signal_name: e.signal_type == sig)
+            signal_stream = events_stream.filter(
+                lambda e, sig=signal_name: e.signal_type == sig
+            )
 
             # Key by patient
             keyed_stream = signal_stream.key_by(lambda e: e.patient_id)
@@ -463,15 +505,21 @@ class FlinkRuntime:
 
             # Evaluate logic expressions
             for logic_name, logic in compiled.logic.items():
-                logic_join_fn = LogicJoinFunction(logic, compiled.name, compiled.version)
+                logic_join_fn = LogicJoinFunction(
+                    logic, compiled.name, compiled.version
+                )
                 logic_fn = FlinkLogicProcessFunction(logic_join_fn, logic.trend_refs)
 
-                logic_stream = all_trends.key_by(lambda t: t.patient_id).process(logic_fn)
+                logic_stream = all_trends.key_by(lambda t: t.patient_id).process(
+                    logic_fn
+                )
 
                 # Add sink for logic results
                 logic_stream.print()  # For debugging; replace with Kafka sink in production
 
-    def _create_kafka_source(self, kafka_config: Dict[str, str], compiled: CompiledScenario) -> DataStream:
+    def _create_kafka_source(
+        self, kafka_config: Dict[str, str], compiled: CompiledScenario
+    ) -> DataStream:
         """Create Kafka source for clinical events."""
         bootstrap_servers = kafka_config.get("bootstrap_servers", "localhost:9092")
         topic = kafka_config.get("topic", "clinical-events")
