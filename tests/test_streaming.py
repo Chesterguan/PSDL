@@ -4,15 +4,17 @@ Tests for PSDL Streaming Backend.
 Tests the streaming compiler, operators, and evaluation logic.
 """
 
-from datetime import datetime, timedelta
-
-# Import streaming components
 import sys
+from datetime import datetime, timedelta
+from pathlib import Path
 
-sys.path.insert(0, "reference/python")
+# Add reference/python to path for imports
+_THIS_DIR = Path(__file__).resolve().parent
+_REF_DIR = _THIS_DIR.parent / "reference" / "python"
+sys.path.insert(0, str(_REF_DIR))
 
-from adapters.streaming.models import ClinicalEvent, TrendResult, WindowSpec, Severity
-from adapters.streaming.operators import (
+from adapters.streaming.models import ClinicalEvent, TrendResult, WindowSpec, Severity  # noqa: E402
+from adapters.streaming.operators import (  # noqa: E402
     DeltaWindowFunction,
     SlopeWindowFunction,
     SMAWindowFunction,
@@ -22,7 +24,7 @@ from adapters.streaming.operators import (
     LastProcessFunction,
     EMAProcessFunction,
 )
-from adapters.streaming.compiler import (
+from adapters.streaming.compiler import (  # noqa: E402
     ExpressionParser,
     LogicEvaluator,
     StreamingCompiler,
@@ -30,7 +32,7 @@ from adapters.streaming.compiler import (
     StreamingEvaluator,
     OperatorType,
 )
-from adapters.streaming.config import (
+from adapters.streaming.config import (  # noqa: E402
     StreamingConfig,
     ExecutionMode,
     CheckpointMode,

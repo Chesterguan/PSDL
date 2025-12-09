@@ -65,3 +65,6 @@ CLAUDE.md
 *.tmp
 tools/generate_diagrams.py
 CLAUDE.md
+
+# Local docs (not for publishing)
+localDocs/
