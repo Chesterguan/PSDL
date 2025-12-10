@@ -1,0 +1,218 @@
+# PSDL Mapping File: MIMIC-IV
+# =================================
+# This mapping file translates PSDL logical signal names to MIMIC-IV terminology.
+#
+# MIMIC-IV OMOP has two lookup options:
+#   1. source_value: Original lab/vital names from MIMIC (e.g., "Creatinine")
+#   2. concept_id: Standard OMOP concept IDs (if mapped)
+#
+# This file uses source_value because MIMIC-IV preserves the original item names.
+# The mapping translates: "creatinine" (logical) → "Creatinine" (MIMIC source_value)
+#
+# Usage:
+#   from reference.python.mapping import load_mapping
+#   from reference.python.adapters.omop import OMOPBackend, OMOPConfig
+#
+#   mapping = load_mapping("mappings/mimic_iv.yaml")
+#   config = OMOPConfig(
+#       connection_string="postgresql://user:pass@localhost:5432/mimic",
+#       cdm_schema="public"
+#   )
+#   backend = OMOPBackend(config, mapping=mapping)
+
+institution: "MIMIC-IV"
+description: "Mapping for MIMIC-IV data in OMOP CDM format (PhysioNet)"
+data_source: "OMOP CDM 5.4"
+
+# Use source_value field for lookups (MIMIC preserves original item names)
+use_source_values: true
+
+signals:
+  # ============================================
+  # RENAL FUNCTION
+  # ============================================
+  creatinine:
+    source_value: "Creatinine"
+    loinc_code: "2160-0"
+    unit: "mg/dL"
+    description: "Serum creatinine - key marker for kidney function"
+
+  bun:
+    source_value: "Urea Nitrogen"
+    loinc_code: "3094-0"
+    unit: "mg/dL"
+    description: "Blood urea nitrogen"
+
+  # ============================================
+  # ELECTROLYTES
+  # ============================================
+  potassium:
+    source_value: "Potassium"
+    loinc_code: "2823-3"
+    unit: "mEq/L"
+    description: "Serum potassium - critical electrolyte"
+
+  sodium:
+    source_value: "Sodium"
+    loinc_code: "2951-2"
+    unit: "mEq/L"
+    description: "Serum sodium"
+
+  chloride:
+    source_value: "Chloride"
+    loinc_code: "2075-0"
+    unit: "mEq/L"
+    description: "Serum chloride"
+
+  bicarbonate:
+    source_value: "Bicarbonate"
+    loinc_code: "1963-8"
+    unit: "mEq/L"
+    description: "Serum bicarbonate"
+
+  calcium:
+    source_value: "Calcium, Total"
+    loinc_code: "17861-6"
+    unit: "mg/dL"
+    description: "Serum calcium"
+
+  magnesium:
+    source_value: "Magnesium"
+    loinc_code: "19123-9"
+    unit: "mg/dL"
+    description: "Serum magnesium"
+
+  phosphate:
+    source_value: "Phosphate"
+    loinc_code: "2777-1"
+    unit: "mg/dL"
+    description: "Serum phosphate"
+
+  # ============================================
+  # METABOLIC
+  # ============================================
+  lactate:
+    source_value: "Lactate"
+    loinc_code: "2524-7"
+    unit: "mmol/L"
+    description: "Blood lactate - marker for tissue hypoxia"
+
+  glucose:
+    source_value: "Glucose"
+    loinc_code: "2345-7"
+    unit: "mg/dL"
+    description: "Blood glucose"
+
+  # ============================================
+  # HEMATOLOGY
+  # ============================================
+  hemoglobin:
+    source_value: "Hemoglobin"
+    loinc_code: "718-7"
+    unit: "g/dL"
+    description: "Blood hemoglobin"
+
+  hematocrit:
+    source_value: "Hematocrit"
+    loinc_code: "4544-3"
+    unit: "%"
+    description: "Hematocrit"
+
+  wbc:
+    source_value: "White Blood Cells"
+    loinc_code: "6690-2"
+    unit: "K/uL"
+    description: "White blood cell count"
+
+  platelets:
+    source_value: "Platelet Count"
+    loinc_code: "777-3"
+    unit: "K/uL"
+    description: "Platelet count"
+
+  # ============================================
+  # VITAL SIGNS
+  # ============================================
+  heart_rate:
+    source_value: "Heart Rate"
+    loinc_code: "8867-4"
+    unit: "bpm"
+    description: "Heart rate"
+
+  sbp:
+    source_value: "Systolic Blood Pressure"
+    loinc_code: "8480-6"
+    unit: "mmHg"
+    description: "Systolic blood pressure"
+
+  dbp:
+    source_value: "Diastolic Blood Pressure"
+    loinc_code: "8462-4"
+    unit: "mmHg"
+    description: "Diastolic blood pressure"
+
+  map:
+    source_value: "Mean Arterial Pressure"
+    loinc_code: "8478-0"
+    unit: "mmHg"
+    description: "Mean arterial pressure"
+
+  temperature:
+    source_value: "Temperature"
+    loinc_code: "8310-5"
+    unit: "C"
+    description: "Body temperature"
+
+  respiratory_rate:
+    source_value: "Respiratory Rate"
+    loinc_code: "9279-1"
+    unit: "/min"
+    description: "Respiratory rate"
+
+  spo2:
+    source_value: "SpO2"
+    loinc_code: "59408-5"
+    unit: "%"
+    description: "Oxygen saturation by pulse oximetry"
+
+  # ============================================
+  # LIVER FUNCTION
+  # ============================================
+  alt:
+    source_value: "Alanine Aminotransferase (ALT)"
+    loinc_code: "1742-6"
+    unit: "U/L"
+    description: "Alanine aminotransferase"
+
+  ast:
+    source_value: "Aspartate Aminotransferase (AST)"
+    loinc_code: "1920-8"
+    unit: "U/L"
+    description: "Aspartate aminotransferase"
+
+  bilirubin:
+    source_value: "Bilirubin, Total"
+    loinc_code: "1975-2"
+    unit: "mg/dL"
+    description: "Total bilirubin"
+
+  albumin:
+    source_value: "Albumin"
+    loinc_code: "1751-7"
+    unit: "g/dL"
+    description: "Serum albumin"
+
+  # ============================================
+  # COAGULATION
+  # ============================================
+  inr:
+    source_value: "INR(PT)"
+    loinc_code: "5902-2"
+    unit: ""
+    description: "International normalized ratio"
+
+  ptt:
+    source_value: "PTT"
+    loinc_code: "3173-2"
+    unit: "sec"
+    description: "Partial thromboplastin time"

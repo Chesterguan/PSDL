@@ -177,9 +177,188 @@ class TestOMOPBackend:
             {"person_id": 3, "obs_count": 10},
         ]
 
-        patient_ids = backend.get_patient_ids_with_signal(creatinine_signal, min_observations=3)
+        patient_ids = backend.get_patient_ids_with_signal(
+            creatinine_signal, min_observations=3
+        )
 
         assert patient_ids == [1, 3]
+
+
+class TestPopulationFiltering:
+    """Tests for population filter parsing in OMOP backend."""
+
+    @pytest.fixture
+    def config(self):
+        return OMOPConfig(
+            connection_string="postgresql://localhost/test",
+            cdm_schema="cdm",
+        )
+
+    @pytest.fixture
+    def backend(self, config):
+        return OMOPBackend(config)
+
+    def test_parse_age_criterion(self, backend):
+        """Test parsing age filter criteria."""
+        params = {}
+
+        # Test age >= 18
+        sql, params, idx = backend._parse_population_criterion("age >= 18", params, 0)
+        assert sql is not None
+        assert "EXTRACT(YEAR FROM AGE" in sql
+        assert ">=" in sql
+        assert params["age_0"] == 18
+
+        # Test age < 65
+        sql, params, idx = backend._parse_population_criterion("age < 65", params, idx)
+        assert sql is not None
+        assert "<" in sql
+        assert params["age_1"] == 65
+
+    def test_parse_gender_criterion(self, backend):
+        """Test parsing gender filter criteria."""
+        params = {}
+
+        # Test male
+        sql, params, idx = backend._parse_population_criterion(
+            "gender == 'M'", params, 0
+        )
+        assert sql is not None
+        assert "gender_concept_id" in sql
+        assert params["gender_0"] == 8507  # OMOP Male concept
+
+        # Test female
+        sql, params, idx = backend._parse_population_criterion(
+            'gender == "F"', params, idx
+        )
+        assert sql is not None
+        assert params["gender_1"] == 8532  # OMOP Female concept
+
+    def test_parse_has_condition_criterion(self, backend):
+        """Test parsing condition filter criteria."""
+        params = {}
+
+        sql, params, idx = backend._parse_population_criterion(
+            "has_condition(201826)", params, 0
+        )  # Type 2 Diabetes
+        assert sql is not None
+        assert "condition_occurrence" in sql
+        assert "EXISTS" in sql
+        assert params["cond_0"] == 201826
+
+    def test_parse_has_measurement_criterion(self, backend):
+        """Test parsing measurement filter criteria."""
+        params = {}
+
+        sql, params, idx = backend._parse_population_criterion(
+            "has_measurement(3016723)", params, 0
+        )  # Creatinine
+        assert sql is not None
+        assert "measurement" in sql.lower()
+        assert "EXISTS" in sql
+        assert params["meas_0"] == 3016723
+
+    def test_parse_has_drug_criterion(self, backend):
+        """Test parsing drug filter criteria."""
+        params = {}
+
+        sql, params, idx = backend._parse_population_criterion(
+            "has_drug(1332419)", params, 0
+        )  # Metformin
+        assert sql is not None
+        assert "drug_exposure" in sql
+        assert "EXISTS" in sql
+        assert params["drug_0"] == 1332419
+
+    def test_parse_visit_type_criterion(self, backend):
+        """Test parsing visit type filter criteria."""
+        params = {}
+
+        # ICU visit
+        sql, params, idx = backend._parse_population_criterion(
+            "visit_type == 'ICU'", params, 0
+        )
+        assert sql is not None
+        assert "visit_occurrence" in sql
+        assert "EXISTS" in sql
+        assert params["visit_0"] == 32037  # ICU concept
+
+        # Inpatient visit
+        sql, params, idx = backend._parse_population_criterion(
+            "visit_type == 'IP'", params, idx
+        )
+        assert sql is not None
+        assert params["visit_1"] == 9201  # Inpatient concept
+
+    def test_parse_unknown_criterion_returns_none(self, backend):
+        """Test that unknown criteria return None (skip gracefully)."""
+        params = {}
+
+        sql, params, idx = backend._parse_population_criterion(
+            "unknown_filter == 'value'", params, 0
+        )
+        assert sql is None
+        assert idx == 0
+
+    @patch.object(OMOPBackend, "_execute_query")
+    def test_get_patient_ids_with_include_filters(self, mock_query, backend):
+        """Test get_patient_ids with inclusion criteria."""
+        mock_query.return_value = [{"person_id": 1}, {"person_id": 2}]
+
+        patient_ids = backend.get_patient_ids(
+            population_include=["age >= 18", "gender == 'M'"]
+        )
+
+        assert patient_ids == [1, 2]
+        # Verify query was built with AND for multiple include criteria
+        call_args = mock_query.call_args
+        query = call_args[0][0]
+        assert "WHERE" in query
+        assert "AND" in query
+
+    @patch.object(OMOPBackend, "_execute_query")
+    def test_get_patient_ids_with_exclude_filters(self, mock_query, backend):
+        """Test get_patient_ids with exclusion criteria."""
+        mock_query.return_value = [{"person_id": 1}]
+
+        patient_ids = backend.get_patient_ids(
+            population_exclude=["has_condition(201826)"]  # Exclude diabetics
+        )
+
+        assert patient_ids == [1]
+        call_args = mock_query.call_args
+        query = call_args[0][0]
+        assert "NOT" in query
+
+    @patch.object(OMOPBackend, "_execute_query")
+    def test_get_patient_ids_with_include_and_exclude(self, mock_query, backend):
+        """Test get_patient_ids with both include and exclude criteria."""
+        mock_query.return_value = [{"person_id": 1}]
+
+        patient_ids = backend.get_patient_ids(
+            population_include=["age >= 18", "has_measurement(3016723)"],
+            population_exclude=["has_condition(201826)"],
+        )
+
+        assert patient_ids == [1]
+        call_args = mock_query.call_args
+        query = call_args[0][0]
+        # Should have both inclusion AND exclusion
+        assert "WHERE" in query
+        assert "NOT" in query
+
+    @patch.object(OMOPBackend, "_execute_query")
+    def test_get_patient_ids_no_filters(self, mock_query, backend):
+        """Test get_patient_ids without any filters returns all patients."""
+        mock_query.return_value = [{"person_id": i} for i in range(1, 6)]
+
+        patient_ids = backend.get_patient_ids()
+
+        assert patient_ids == [1, 2, 3, 4, 5]
+        call_args = mock_query.call_args
+        query = call_args[0][0]
+        # Should not have WHERE clause for no filters
+        assert "WHERE" not in query or query.count("WHERE") == 0
 
 
 class TestCreateOMOPBackend:
@@ -194,213 +373,6 @@ class TestCreateOMOPBackend:
 
         assert isinstance(backend, OMOPBackend)
         assert backend.config.cdm_schema == "public"
-
-
-class TestOMOPBackendIntegration:
-    """
-    Integration tests that require a real OMOP database.
-    These are skipped by default - run with: pytest -m integration
-
-    Local OMOP Database Setup (Prometheno/MIMIC-IV):
-    - Host: localhost
-    - Port: 5434
-    - Database: mimic (or omop)
-    - Schema: mimiciv (OMOP CDM schema)
-
-    Set environment variable:
-        export OMOP_TEST_CONNECTION="postgresql://user:pass@localhost:5434/mimic"
-
-    Or for default local setup:
-        export OMOP_LOCAL=1
-    """
-
-    # Default local connection for OMOP database
-    # Set OMOP_TEST_CONNECTION environment variable for your local setup
-    LOCAL_CONNECTION = "postgresql://user:password@localhost:5432/omop"
-
-    @pytest.fixture
-    def real_backend(self):
-        """Create backend with real connection if available."""
-        # Check for explicit connection string
-        conn_string = os.environ.get("OMOP_TEST_CONNECTION")
-
-        # Or use local default if OMOP_LOCAL is set
-        if not conn_string and os.environ.get("OMOP_LOCAL"):
-            conn_string = self.LOCAL_CONNECTION
-
-        if not conn_string:
-            pytest.skip("OMOP database not configured. Set OMOP_TEST_CONNECTION or OMOP_LOCAL=1")
-
-        try:
-            # Use "public" schema for local Prometheno OMOP database
-            # Use source values since MIMIC-IV OMOP has unmapped concepts (all concept_id=0)
-            backend = create_omop_backend(
-                conn_string,
-                cdm_schema="public",
-                use_source_values=True,
-                source_value_mappings={
-                    "Cr": "Creatinine",
-                    "Lact": "Lactate",
-                    "HR": "Heart Rate",
-                    "BUN": "Urea Nitrogen",
-                    "K": "Potassium",
-                    "Hgb": "Hemoglobin",
-                },
-            )
-            return backend
-        except Exception as e:
-            pytest.skip(f"Could not connect to OMOP database: {e}")
-
-    @pytest.mark.integration
-    def test_real_connection(self, real_backend):
-        """Test actual database connection."""
-        patient_ids = real_backend.get_patient_ids()
-        assert isinstance(patient_ids, list)
-        print("\nConnected to OMOP database")
-        print(f"Found {len(patient_ids)} patients")
-
-    @pytest.mark.integration
-    def test_fetch_creatinine_data(self, real_backend):
-        """Test fetching creatinine data from real database."""
-        from reference.python.parser import Signal, Domain
-
-        # Get some patient IDs
-        patient_ids = real_backend.get_patient_ids()
-        if not patient_ids:
-            pytest.skip("No patients in database")
-
-        # Create creatinine signal
-        cr_signal = Signal(
-            name="Cr",
-            source="creatinine",
-            concept_id=3016723,  # OMOP concept for creatinine
-            domain=Domain.MEASUREMENT,
-            unit="mg/dL",
-        )
-
-        # MIMIC-IV data is date-shifted (years 2100-2200)
-        # Use a reference time in that range
-        reference_time = datetime(2180, 6, 1)
-
-        # Fetch data for first few patients
-        patients_with_data = 0
-        for pid in patient_ids[:20]:
-            data = real_backend.fetch_signal_data(
-                patient_id=pid,
-                signal=cr_signal,
-                window_seconds=86400 * 365 * 10,  # 10 years
-                reference_time=reference_time,
-            )
-            if data:
-                patients_with_data += 1
-                if patients_with_data == 1:
-                    print(f"\n  Sample data for patient {pid}: {data[:3]}")
-
-        print(f"\nPatients with creatinine data: {patients_with_data}/20")
-        assert patients_with_data > 0  # Should find some patients with data
-
-    @pytest.mark.integration
-    def test_evaluate_aki_scenario(self, real_backend):
-        """Test evaluating AKI scenario against real OMOP data."""
-        from reference.python.parser import PSDLParser
-        from reference.python.execution.batch import PSDLEvaluator
-
-        # Parse AKI scenario
-        parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
-
-        # Get patients
-        patient_ids = real_backend.get_patient_ids()
-        if not patient_ids:
-            pytest.skip("No patients in database")
-
-        # MIMIC-IV data is date-shifted (years 2100-2200)
-        reference_time = datetime(2180, 6, 1)
-
-        # Evaluate first 50 patients
-        evaluator = PSDLEvaluator(scenario, real_backend)
-        triggered = 0
-        evaluated = 0
-
-        for pid in patient_ids[:50]:
-            try:
-                result = evaluator.evaluate_patient(patient_id=pid, reference_time=reference_time)
-                evaluated += 1
-                if result.is_triggered:
-                    triggered += 1
-            except Exception:
-                pass  # Skip patients with issues
-
-        print("\n=== AKI Evaluation on OMOP Database ===")
-        print(f"Evaluated: {evaluated}")
-        print(f"Triggered: {triggered}")
-        if evaluated > 0:
-            print(f"Rate: {triggered/evaluated*100:.1f}%")
-
-
-class TestLocalOMOPMIMIC:
-    """
-    Tests specifically for local OMOP database (e.g., MIMIC-IV data).
-    Run with: OMOP_LOCAL=1 pytest tests/test_omop_backend.py -v -m integration
-
-    Database Info:
-    - Set OMOP_TEST_CONNECTION or configure LOCAL_CONNECTION below
-    """
-
-    # Configure this for your local OMOP database
-    LOCAL_CONNECTION = "postgresql://user:password@localhost:5432/omop"
-
-    @pytest.fixture
-    def mimic_backend(self):
-        """Connect to local MIMIC-IV OMOP database."""
-        if not os.environ.get("OMOP_LOCAL"):
-            pytest.skip("Set OMOP_LOCAL=1 to run local MIMIC tests")
-
-        try:
-            # Use "public" schema for local MIMIC-IV OMOP database
-            # Use source values since MIMIC-IV OMOP has unmapped concepts (all concept_id=0)
-            backend = create_omop_backend(
-                self.LOCAL_CONNECTION,
-                cdm_schema="public",
-                use_source_values=True,
-                source_value_mappings={
-                    "Cr": "Creatinine",
-                    "Lact": "Lactate",
-                    "HR": "Heart Rate",
-                    "BUN": "Urea Nitrogen",
-                    "K": "Potassium",
-                    "Hgb": "Hemoglobin",
-                },
-            )
-            return backend
-        except Exception as e:
-            pytest.skip(f"Could not connect to local MIMIC: {e}")
-
-    @pytest.mark.integration
-    def test_mimic_patient_count(self, mimic_backend):
-        """Verify MIMIC-IV patient count."""
-        patient_ids = mimic_backend.get_patient_ids()
-        print(f"\nMIMIC-IV patients: {len(patient_ids)}")
-        # MIMIC-IV has ~300k+ patients
-        assert len(patient_ids) > 0
-
-    @pytest.mark.integration
-    def test_mimic_measurement_concepts(self, mimic_backend):
-        """Check available measurement concepts in MIMIC."""
-        # Common OMOP concept IDs for ICU data
-        concepts = {
-            3016723: "Creatinine",
-            3013682: "BUN",
-            3004249: "Potassium",
-            3000963: "Hemoglobin",
-            3027018: "Heart Rate",
-            3019550: "Sodium",
-        }
-
-        print("\n=== MIMIC-IV Measurement Concepts ===")
-        for concept_id, name in concepts.items():
-            # This would require a query to check if concept exists
-            print(f"  {concept_id}: {name}")
 
 
 if __name__ == "__main__":

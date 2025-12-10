@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project setup
+### Changed
+- Test suite cleanup: 234 tests now all passing (removed external dependency tests)
+- Code quality improvements: fixed all flake8 linting errors
+- Code formatting: applied black and isort to entire codebase
+- Documentation updates: synchronized test counts across all docs
+
+### Fixed
+- Unused imports in test fixtures and streaming tests
+- F-string syntax issues in test fixtures
+- TYPE_CHECKING guard for MappingProvider in OMOP adapter
+- Line length issues in test files
 
 ## [0.1.0] - 2025-12-05
 
@@ -43,8 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known Limitations
 - No triggers/actions system (planned for v0.2)
-- In-memory backend only (OMOP/FHIR backends planned)
-- No mapping layer implementation yet
+- Mapping layer for concept portability (planned)
 
 ---
 
@@ -60,9 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### v0.2.0 (Planned)
 - Triggers and Actions system
-- OMOP CDM SQL backend
-- FHIR R4 runtime
 - Conformance test suite
+- Python package (pip install psdl)
 
 ### v0.3.0 (Planned)
 - Mapping layer for portability

@@ -148,47 +148,150 @@ logic:
     expr: (cr_high AND lactate_rising) OR shock_state
 ```
 
+## Architecture: Scenarios + Mappings
+
+PSDL separates **clinical logic** from **local terminology**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  PSDL Scenario (Portable)                                       │
+│  - Clinical logic: "detect creatinine rise > 0.3 in 48h"        │
+│  - Uses logical signal names: "creatinine", "potassium"         │
+│  - Shared across institutions                                   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Mapping File (Institution-Specific)                            │
+│  - Translates: "creatinine" → concept_id: 3016723               │
+│  - Or: "creatinine" → source_value: "CREATININE_SERUM"          │
+│  - Each hospital creates their own mapping                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Adapter (Shared Code)                                          │
+│  - OMOP Adapter: Handles OMOP database structure                │
+│  - FHIR Adapter: Handles FHIR server communication              │
+│  - No code changes needed per institution                       │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Hospital Database                                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+This means:
+- **Researchers** write scenarios using logical names (portable)
+- **Hospitals** create a mapping file for their local codes (no code)
+- **Adapters** are shared infrastructure (OMOP, FHIR)
+
 ## Using with OMOP CDM
 
-For retrospective research or real-time monitoring with OMOP databases:
+### Step 1: Choose or Create a Mapping File
+
+PSDL includes pre-built mappings for common datasets:
+
+```bash
+mappings/
+├── mimic_iv.yaml         # MIMIC-IV (unmapped OMOP)
+├── synthea.yaml          # Synthea synthetic data
+└── hospital_template.yaml # Template for your institution
+```
+
+### Step 2: Connect with Mapping (Recommended)
 
 ```python
 from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters.omop import create_omop_backend
+from reference.python.mapping import load_mapping
+from reference.python.adapters.omop import OMOPBackend, OMOPConfig
 
-# Standard OMOP with mapped concepts
-backend = create_omop_backend(
-    connection_string="postgresql://user:pass@localhost/omop_db",
-    cdm_schema="cdm",
-    cdm_version="5.4"
+# Load your institution's mapping
+mapping = load_mapping("mappings/mimic_iv.yaml")
+
+# Configure database connection
+config = OMOPConfig(
+    connection_string="postgresql://user:pass@localhost/mimic",
+    cdm_schema="public"
 )
 
-scenario = PSDLParser().parse_file("my_scenario.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
+# Create backend with mapping
+backend = OMOPBackend(config, mapping=mapping)
 
-# Evaluate patient from OMOP database
+# Parse and evaluate scenario (uses logical signal names!)
+scenario = PSDLParser().parse_file("examples/aki_detection.yaml")
+evaluator = PSDLEvaluator(scenario, backend)
 result = evaluator.evaluate_patient(patient_id=12345)
 ```
 
-### OMOP with Unmapped Concepts
+### Step 3: Create Your Own Mapping
 
-For OMOP databases where `concept_id = 0` (common with MIMIC-IV ETL):
+Copy the template and customize for your institution:
 
+```bash
+cp mappings/hospital_template.yaml mappings/my_hospital.yaml
+```
+
+Edit `mappings/my_hospital.yaml`:
+
+```yaml
+institution: "My Hospital"
+description: "Mapping for My Hospital OMOP database"
+data_source: "OMOP CDM 5.4"
+
+# Set to true if your database has unmapped concepts (concept_id = 0)
+use_source_values: false
+
+signals:
+  creatinine:
+    concept_id: 3016723      # Your local concept ID
+    unit: "mg/dL"
+
+  potassium:
+    concept_id: 3023103
+    unit: "mEq/L"
+
+  # For unmapped databases, use source_value instead:
+  # creatinine:
+  #   source_value: "CREAT_SERUM"  # Your local lab code
+  #   unit: "mg/dL"
+```
+
+### Finding Your Local Codes
+
+Run this SQL to discover your codes:
+
+```sql
+-- Find measurement concept IDs and source values
+SELECT DISTINCT
+    measurement_concept_id,
+    measurement_source_value,
+    c.concept_name,
+    COUNT(*) as count
+FROM measurement m
+LEFT JOIN concept c ON m.measurement_concept_id = c.concept_id
+WHERE LOWER(measurement_source_value) LIKE '%creatinine%'
+GROUP BY measurement_concept_id, measurement_source_value, c.concept_name
+ORDER BY count DESC;
+```
+
+### Pre-built Dataset Support
+
+**MIMIC-IV** (PhysioNet):
 ```python
-from reference.python.adapters.omop import create_omop_backend
+from reference.python.mapping import get_mimic_iv_mapping
 
-# Use source values instead of concept IDs
-backend = create_omop_backend(
-    connection_string="postgresql://localhost:5434/mimic_omop",
-    cdm_schema="public",
-    use_source_values=True,
-    source_value_mappings={
-        "Cr": "Creatinine",
-        "Lact": "Lactate",
-        "HR": "Heart Rate",
-        "BUN": "Urea Nitrogen",
-    }
-)
+mapping = get_mimic_iv_mapping()  # Built-in mapping
+backend = OMOPBackend(config, mapping=mapping)
+```
+
+**Synthea** (Synthetic):
+```python
+from reference.python.mapping import get_synthea_mapping
+
+mapping = get_synthea_mapping()  # Built-in mapping
+backend = OMOPBackend(config, mapping=mapping)
 ```
 
 See [OMOP Adapter Documentation](./adapters/omop.md) for detailed setup instructions.

@@ -168,27 +168,26 @@ For production use, PSDL should be validated against:
 |------------|-------|--------------|----------------|
 | `test_psdl_vs_sql.py` | 6 | Algorithm match | PSDL computes same as SQL |
 | `test_independent_verification.py` | 12 | Manual calculation | PSDL matches hand calculations |
-| `test_all_scenarios_e2e.py` | 14 | Full pipeline | Complete workflows work |
-| `test_synthea_validation.py` | 7 | Full independence | PSDL works on external data |
-| `test_mimic_validation.py` | 8 | Full independence | PSDL works on real hospital data |
+| `test_all_scenarios_e2e.py` | 8 | Full pipeline | Complete workflows work |
 | `test_clinical_validation.py` | 11 | Known outcomes | PSDL matches expected results |
 | `test_evaluator.py` | 23 | Unit tests | Core evaluator correctness |
 | `test_operators.py` | 20 | Unit tests | Temporal operators correctness |
 | `test_fhir_backend.py` | 30 | Unit tests | FHIR backend correctness |
-| `test_omop_backend.py` | 20 | Unit + Integration | OMOP backend with source values |
-| `test_fhir_integration.py` | 19 | Integration | Multiple public FHIR servers |
+| `test_omop_backend.py` | 20 | Unit tests | OMOP backend with population filtering |
 | `test_scenarios_comprehensive.py` | 20 | Comprehensive | Multi-scenario edge cases |
 | `test_parser.py` | 18 | Unit tests | YAML parsing correctness |
-| `test_end_to_end.py` | 11 | Integration | Full pipeline workflows |
+| `test_end_to_end.py` | 18 | Integration | Full pipeline workflows |
+| `test_streaming.py` | 48 | Unit tests | Streaming backend, window functions |
 
-**Total: 199+ tests**
+**Total: 234 tests (all passing)**
 
-### Integration Tests
+### Test Categories
 
-| Test Suite | Tests | Status | Notes |
-|------------|-------|--------|-------|
-| `test_fhir_integration.py` | 19 | 12 pass, 7 skip | Multiple public FHIR servers (HAPI, Firely, Grahame, AEGIS) |
-| `test_omop_backend.py` (integration) | 5 | 5 pass | Local MIMIC-IV OMOP database (364K patients) |
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Unit Tests | ~180 | Parser, evaluator, operators, adapters |
+| Integration Tests | ~30 | End-to-end workflows, FHIR/OMOP adapters |
+| Streaming Tests | ~48 | Window functions, logic evaluation, Flink compiler |
 
 ### Running Integration Tests
 

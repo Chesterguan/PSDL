@@ -1,28 +1,46 @@
 """
 PSDL Execution Module - Unified interface for batch and streaming execution.
 
-This module provides execution backends for PSDL scenarios:
-- Batch: Evaluate scenarios against historical data
-- Streaming: Deploy scenarios as real-time streaming jobs (Flink)
+PSDL supports two execution modes based on timing:
+
+1. **Batch (Retrospective)** - For research and historical analysis
+   - Data source: OMOP CDM databases
+   - Auto-optimization: SQL push-down for large cohorts
+   - Use case: Cohort studies, algorithm validation, research
+
+2. **Streaming (Real-time)** - For live patient monitoring
+   - Data source: FHIR events, Kafka streams
+   - Runtime: Apache Flink (PyFlink)
+   - Use case: ICU monitoring, clinical alerts
+
+The same clinical scenario (signals, trends, logic) works in both modes.
+Execution mode is a deployment concern, not part of the clinical specification.
 
 Usage:
-    # Batch execution
-    from reference.python.execution import BatchEvaluator
+    # Batch execution (auto-selects best strategy)
+    from reference.python.execution import PSDLEvaluator
 
-    evaluator = BatchEvaluator()
-    result = evaluator.evaluate(scenario, patient_data)
+    evaluator = PSDLEvaluator(scenario, backend)
+    results = evaluator.evaluate_cohort()  # Auto-optimized
+
+    # Single patient
+    result = evaluator.evaluate_patient(patient_id=123)
 
     # Streaming execution (requires PyFlink)
     from reference.python.execution import StreamingEvaluator
 
     evaluator = StreamingEvaluator(runtime="flink")
     job = evaluator.deploy(scenario, kafka_config)
-
-The same clinical scenario (signals, trends, logic) works in both modes.
-Execution mode is a deployment concern, not part of the clinical specification.
 """
 
-from .batch import DataPoint, InMemoryBackend, PSDLEvaluator
+from .batch import (
+    DataBackend,
+    DataPoint,
+    EvaluationResult,
+    InMemoryBackend,
+    PSDLEvaluator,
+    SQLCompiler,
+)
 
 # Batch evaluator aliases
 BatchEvaluator = PSDLEvaluator
@@ -59,7 +77,10 @@ __all__ = [
     "BatchEvaluator",
     "PSDLEvaluator",
     "InMemoryBackend",
+    "DataBackend",
     "DataPoint",
+    "EvaluationResult",
+    "SQLCompiler",
     # Streaming execution
     "StreamingEvaluator",
     "StreamingCompiler",

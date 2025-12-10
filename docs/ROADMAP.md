@@ -35,7 +35,7 @@ Foundation       Runtime           Growth           & Scale
 - [x] FHIR R4 data adapter (REST)
 
 ### Validation
-- [x] 238 unit and integration tests
+- [x] 234 unit and integration tests (all passing)
 - [x] SQL equivalence proof (100% match)
 - [x] Clinical validation against KDIGO guidelines
 - [x] Real data validation (Synthea synthetic, MIMIC-IV real)

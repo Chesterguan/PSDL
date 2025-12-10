@@ -6,24 +6,53 @@ Supports OMOP CDM v5.4 (recommended) and v5.3.
 
 Reference: https://ohdsi.github.io/CommonDataModel/cdm54.html
 
-Usage:
-    from psdl.backends import OMOPBackend, OMOPConfig
+Architecture:
+    PSDL separates data format (Adapter) from terminology (Mapping):
 
+    - Adapter (this file): Handles OMOP database structure, SQL generation
+    - Mapping (mapping.py): Translates logical signal names to local codes
+
+    This separation enables:
+    - Portable scenarios that work across institutions
+    - Institution-specific mappings without code changes
+    - Easy testing with different datasets
+
+Usage with Mapping (Recommended):
+    from psdl.mapping import load_mapping
+    from psdl.adapters.omop import OMOPBackend, OMOPConfig
+
+    # Load institution-specific mapping
+    mapping = load_mapping("mappings/mimic_iv.yaml")
+
+    # Create adapter with mapping
+    config = OMOPConfig(
+        connection_string="postgresql://user:pass@host/db",
+        cdm_schema="public"
+    )
+    backend = OMOPBackend(config, mapping=mapping)
+
+    # Run portable scenario
+    evaluator = PSDLEvaluator(scenario, backend)
+    result = evaluator.evaluate_patient(patient_id=12345)
+
+Legacy Usage (mapping in config):
     config = OMOPConfig(
         connection_string="postgresql://user:pass@host/db",
         cdm_schema="cdm",
-        cdm_version="5.4"
+        use_source_values=True,
+        source_value_mappings={"Cr": "Creatinine"}
     )
     backend = OMOPBackend(config)
-
-    evaluator = PSDLEvaluator(scenario, backend)
-    result = evaluator.evaluate_patient(patient_id=12345)
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from ..mapping import MappingProvider
 
 try:
     from ..execution.batch import DataBackend
@@ -102,7 +131,9 @@ class OMOPConfig:
         if self.vocab_schema is None:
             self.vocab_schema = self.cdm_schema
         if self.cdm_version not in ["5.3", "5.4"]:
-            raise ValueError(f"Unsupported CDM version: {self.cdm_version}. Use '5.3' or '5.4'")
+            raise ValueError(
+                f"Unsupported CDM version: {self.cdm_version}. Use '5.3' or '5.4'"
+            )
 
 
 class OMOPBackend(DataBackend):
@@ -118,28 +149,38 @@ class OMOPBackend(DataBackend):
     - Conditions (for presence/absence checks)
     - Multiple database engines via SQLAlchemy
 
-    Example:
+    Example with Mapping (Recommended):
+        from psdl.mapping import load_mapping
+
+        mapping = load_mapping("mappings/mimic_iv.yaml")
         config = OMOPConfig(
-            connection_string="postgresql://localhost/synthea",
+            connection_string="postgresql://localhost/mimic",
             cdm_schema="public"
         )
-        backend = OMOPBackend(config)
+        backend = OMOPBackend(config, mapping=mapping)
 
-        # Use with PSDL evaluator
         evaluator = PSDLEvaluator(scenario, backend)
         results = evaluator.evaluate_cohort()
     """
 
-    def __init__(self, config: OMOPConfig):
+    def __init__(self, config: OMOPConfig, mapping: Optional["MappingProvider"] = None):
         """
-        Initialize OMOP backend with configuration.
+        Initialize OMOP backend with configuration and optional mapping.
 
         Args:
             config: OMOPConfig with connection details
+            mapping: Optional MappingProvider for signal-to-terminology translation.
+                    If provided, the mapping takes precedence over config mappings.
         """
         self.config = config
+        self.mapping = mapping
         self._engine = None
         self._connection = None
+
+        # If mapping provided, update config settings
+        if mapping is not None:
+            if mapping.use_source_values:
+                self.config.use_source_values = True
 
     def _get_engine(self):
         """Lazy initialization of database engine."""
@@ -149,7 +190,10 @@ class OMOPBackend(DataBackend):
 
                 self._engine = create_engine(self.config.connection_string)
             except ImportError:
-                raise ImportError("SQLAlchemy is required for OMOP backend. " "Install with: pip install sqlalchemy")
+                raise ImportError(
+                    "SQLAlchemy is required for OMOP backend. "
+                    "Install with: pip install sqlalchemy"
+                )
         return self._engine
 
     def _execute_query(self, query: str, params: Dict[str, Any]) -> List[Dict]:
@@ -173,15 +217,33 @@ class OMOPBackend(DataBackend):
     def _get_datetime_column(self, domain: str) -> str:
         """Get the appropriate datetime column based on domain and config."""
         if domain == "measurement":
-            return "measurement_datetime" if self.config.use_datetime else "measurement_date"
+            return (
+                "measurement_datetime"
+                if self.config.use_datetime
+                else "measurement_date"
+            )
         elif domain == "observation":
-            return "observation_datetime" if self.config.use_datetime else "observation_date"
+            return (
+                "observation_datetime"
+                if self.config.use_datetime
+                else "observation_date"
+            )
         elif domain == "condition":
-            return "condition_start_datetime" if self.config.use_datetime else "condition_start_date"
+            return (
+                "condition_start_datetime"
+                if self.config.use_datetime
+                else "condition_start_date"
+            )
         elif domain == "drug":
-            return "drug_exposure_start_datetime" if self.config.use_datetime else "drug_exposure_start_date"
+            return (
+                "drug_exposure_start_datetime"
+                if self.config.use_datetime
+                else "drug_exposure_start_date"
+            )
         elif domain == "procedure":
-            return "procedure_datetime" if self.config.use_datetime else "procedure_date"
+            return (
+                "procedure_datetime" if self.config.use_datetime else "procedure_date"
+            )
         return "measurement_datetime"
 
     def _get_value_column(self, domain: str) -> str:
@@ -198,11 +260,19 @@ class OMOPBackend(DataBackend):
         Get the concept_id for a signal.
 
         Priority:
-        1. Config-level concept_mappings override
-        2. Signal's concept_id field
-        3. Raise error if not found
+        1. MappingProvider (if provided)
+        2. Config-level concept_mappings override
+        3. Signal's concept_id field
+        4. Raise error if not found
         """
-        # Check config overrides first
+        # Check MappingProvider first (new recommended approach)
+        if self.mapping is not None:
+            # Try to get from mapping using signal's source (logical name)
+            concept_id = self.mapping.get_concept_id(signal.source or signal.name)
+            if concept_id is not None:
+                return concept_id
+
+        # Check config overrides (legacy approach)
         if signal.name in self.config.concept_mappings:
             return self.config.concept_mappings[signal.name]
 
@@ -212,7 +282,8 @@ class OMOPBackend(DataBackend):
 
         raise ValueError(
             f"No concept_id found for signal '{signal.name}'. "
-            f"Either set concept_id in the scenario or add to config.concept_mappings"
+            f"Either provide a mapping file, set concept_id in the scenario, "
+            f"or add to config.concept_mappings"
         )
 
     def _get_source_value(self, signal: Signal) -> str:
@@ -220,11 +291,19 @@ class OMOPBackend(DataBackend):
         Get the source_value for a signal when using source value lookups.
 
         Priority:
-        1. Config-level source_value_mappings override
-        2. Signal's source field
-        3. Signal's name as fallback
+        1. MappingProvider (if provided)
+        2. Config-level source_value_mappings override
+        3. Signal's source field
+        4. Signal's name as fallback
         """
-        # Check config overrides first
+        # Check MappingProvider first (new recommended approach)
+        if self.mapping is not None:
+            # Try to get from mapping using signal's source (logical name)
+            source_value = self.mapping.get_source_value(signal.source or signal.name)
+            if source_value is not None:
+                return source_value
+
+        # Check config overrides (legacy approach)
         if signal.name in self.config.source_value_mappings:
             return self.config.source_value_mappings[signal.name]
 
@@ -345,6 +424,109 @@ class OMOPBackend(DataBackend):
 
         return data_points
 
+    def _parse_population_criterion(
+        self, criterion: str, params: Dict[str, Any], param_idx: int
+    ) -> Tuple[Optional[str], Dict[str, Any], int]:
+        """
+        Parse a single population criterion into SQL.
+
+        Supported patterns:
+        - "age >= 18" / "age < 65" - Age-based filters
+        - "gender == 'M'" / "gender == 'F'" - Gender filters
+        - "has_condition(concept_id)" - Has condition with concept
+        - "has_measurement(concept_id)" - Has measurement with concept
+        - "visit_type == 'ICU'" - Visit type filters
+
+        Returns:
+            Tuple of (sql_fragment, updated_params, next_param_idx)
+            Returns (None, params, param_idx) if criterion cannot be parsed
+        """
+        criterion = criterion.strip()
+
+        # Age comparisons: "age >= 18", "age < 65"
+        age_pattern = re.match(r"age\s*(>=|<=|>|<|==|!=)\s*(\d+)", criterion)
+        if age_pattern:
+            op, value = age_pattern.groups()
+            param_name = f"age_{param_idx}"
+            sql = f"EXTRACT(YEAR FROM AGE(p.birth_datetime)) {op} :{param_name}"
+            params[param_name] = int(value)
+            return sql, params, param_idx + 1
+
+        # Gender comparisons: "gender == 'M'" or "gender == 'F'"
+        gender_pattern = re.match(r"gender\s*==\s*['\"]([MF])['\"]", criterion)
+        if gender_pattern:
+            gender = gender_pattern.group(1)
+            param_name = f"gender_{param_idx}"
+            # OMOP uses 8507 for Male, 8532 for Female
+            gender_concept = 8507 if gender == "M" else 8532
+            sql = f"p.gender_concept_id = :{param_name}"
+            params[param_name] = gender_concept
+            return sql, params, param_idx + 1
+
+        # has_condition(concept_id): Patient has condition
+        condition_pattern = re.match(r"has_condition\s*\(\s*(\d+)\s*\)", criterion)
+        if condition_pattern:
+            concept_id = int(condition_pattern.group(1))
+            param_name = f"cond_{param_idx}"
+            sql = f"""EXISTS (
+                SELECT 1 FROM {self.config.cdm_schema}.condition_occurrence co
+                WHERE co.person_id = p.person_id
+                AND co.condition_concept_id = :{param_name}
+            )"""
+            params[param_name] = concept_id
+            return sql, params, param_idx + 1
+
+        # has_measurement(concept_id): Patient has measurement
+        measurement_pattern = re.match(r"has_measurement\s*\(\s*(\d+)\s*\)", criterion)
+        if measurement_pattern:
+            concept_id = int(measurement_pattern.group(1))
+            param_name = f"meas_{param_idx}"
+            sql = f"""EXISTS (
+                SELECT 1 FROM {self.config.cdm_schema}.measurement m
+                WHERE m.person_id = p.person_id
+                AND m.measurement_concept_id = :{param_name}
+            )"""
+            params[param_name] = concept_id
+            return sql, params, param_idx + 1
+
+        # has_drug(concept_id): Patient has drug exposure
+        drug_pattern = re.match(r"has_drug\s*\(\s*(\d+)\s*\)", criterion)
+        if drug_pattern:
+            concept_id = int(drug_pattern.group(1))
+            param_name = f"drug_{param_idx}"
+            sql = f"""EXISTS (
+                SELECT 1 FROM {self.config.cdm_schema}.drug_exposure de
+                WHERE de.person_id = p.person_id
+                AND de.drug_concept_id = :{param_name}
+            )"""
+            params[param_name] = concept_id
+            return sql, params, param_idx + 1
+
+        # visit_type == 'ICU' or similar
+        visit_pattern = re.match(r"visit_type\s*==\s*['\"](\w+)['\"]", criterion)
+        if visit_pattern:
+            visit_type = visit_pattern.group(1)
+            param_name = f"visit_{param_idx}"
+            # Map common visit types to concept IDs
+            visit_type_map = {
+                "ICU": 32037,  # Intensive Care
+                "ED": 9203,  # Emergency Room Visit
+                "IP": 9201,  # Inpatient Visit
+                "OP": 9202,  # Outpatient Visit
+            }
+            concept_id = visit_type_map.get(visit_type.upper())
+            if concept_id:
+                sql = f"""EXISTS (
+                    SELECT 1 FROM {self.config.cdm_schema}.visit_occurrence vo
+                    WHERE vo.person_id = p.person_id
+                    AND vo.visit_concept_id = :{param_name}
+                )"""
+                params[param_name] = concept_id
+                return sql, params, param_idx + 1
+
+        # Criterion not recognized - log warning and skip
+        return None, params, param_idx
+
     def get_patient_ids(
         self,
         population_include: Optional[List[str]] = None,
@@ -353,25 +535,67 @@ class OMOPBackend(DataBackend):
         """
         Get patient IDs matching population criteria.
 
-        Note: Population filter parsing is not yet implemented.
-        Currently returns all person_ids from the person table.
+        Supports filtering by:
+        - Age: "age >= 18", "age < 65"
+        - Gender: "gender == 'M'", "gender == 'F'"
+        - Conditions: "has_condition(concept_id)"
+        - Measurements: "has_measurement(concept_id)"
+        - Drugs: "has_drug(concept_id)"
+        - Visit type: "visit_type == 'ICU'"
 
         Args:
-            population_include: Inclusion criteria (not yet implemented)
-            population_exclude: Exclusion criteria (not yet implemented)
+            population_include: Inclusion criteria (all must match)
+            population_exclude: Exclusion criteria (any excludes patient)
 
         Returns:
-            List of person_ids
+            List of person_ids matching criteria
         """
-        # TODO: Implement population filter parsing
-        # For now, return all patients
+        params: Dict[str, Any] = {}
+        param_idx = 0
+        include_clauses: List[str] = []
+        exclude_clauses: List[str] = []
+
+        # Parse inclusion criteria
+        if population_include:
+            for criterion in population_include:
+                sql, params, param_idx = self._parse_population_criterion(
+                    criterion, params, param_idx
+                )
+                if sql:
+                    include_clauses.append(sql)
+
+        # Parse exclusion criteria
+        if population_exclude:
+            for criterion in population_exclude:
+                sql, params, param_idx = self._parse_population_criterion(
+                    criterion, params, param_idx
+                )
+                if sql:
+                    exclude_clauses.append(sql)
+
+        # Build query
         query = f"""
-            SELECT person_id
-            FROM {self.config.cdm_schema}.person
-            ORDER BY person_id
+            SELECT p.person_id
+            FROM {self.config.cdm_schema}.person p
         """
 
-        rows = self._execute_query(query, {})
+        where_parts = []
+
+        # Add inclusion criteria (AND together)
+        if include_clauses:
+            where_parts.append("(" + " AND ".join(include_clauses) + ")")
+
+        # Add exclusion criteria (NOT any)
+        if exclude_clauses:
+            for clause in exclude_clauses:
+                where_parts.append(f"NOT ({clause})")
+
+        if where_parts:
+            query += " WHERE " + " AND ".join(where_parts)
+
+        query += " ORDER BY p.person_id"
+
+        rows = self._execute_query(query, params)
         return [row["person_id"] for row in rows]
 
     def get_patient_ids_with_signal(

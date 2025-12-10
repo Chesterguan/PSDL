@@ -197,8 +197,10 @@ psdl/
 │   └── python/
 │       ├── __init__.py
 │       ├── parser.py      # YAML parser
-│       ├── evaluator.py   # Batch execution mode
 │       ├── operators.py   # Temporal operators
+│       ├── execution/     # Execution Modes
+│       │   ├── batch.py       # Batch mode + SQL compiler
+│       │   └── streaming/     # Streaming mode (Flink)
 │       └── adapters/      # Data Adapters
 │           ├── omop.py    # OMOP CDM adapter (SQL)
 │           └── fhir.py    # FHIR R4 adapter (REST)
@@ -233,11 +235,12 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 238 Tests
+### Test Coverage: 234 Tests (All Passing)
 
 - **Unit Tests**: Parser, evaluator, operators, scenarios
-- **Integration Tests**: FHIR (public servers), OMOP (MIMIC-IV with 364K patients)
-- **Validation**: SQL equivalence (100% match), KDIGO clinical guidelines, Synthea + MIMIC-IV data
+- **Integration Tests**: FHIR adapter, OMOP backend with population filtering
+- **Validation**: SQL equivalence (100% match), KDIGO clinical guidelines
+- **Streaming Tests**: Window functions, logic evaluation, Flink compiler
 
 See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodology.
 
@@ -263,8 +266,8 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 | Phase | Status | Focus |
 |-------|--------|-------|
-| **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters, 238 tests |
-| **Phase 2: Enhanced Runtime** | 🚧 Current | Streaming, SQL generation, triggers, packaging |
+| **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters, 234 tests |
+| **Phase 2: Enhanced Runtime** | 🚧 Current | ✅ Streaming, ✅ SQL generation, triggers, packaging |
 | **Phase 3: Community** | 📋 Planned | Blog series, conferences, tooling ecosystem |
 | **Phase 4: Adoption** | 🔮 Future | Hospital pilots, standards engagement |
 

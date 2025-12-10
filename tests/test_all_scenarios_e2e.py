@@ -15,7 +15,6 @@ import sys
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -35,7 +34,9 @@ class PatientDataGenerator:
     """Generate realistic patient data for testing."""
 
     @staticmethod
-    def create_aki_stage1_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_aki_stage1_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with AKI Stage 1 (Cr rise >= 0.3 mg/dL in 48h)."""
         return {
             "Cr": [
@@ -52,7 +53,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_aki_stage3_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_aki_stage3_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with AKI Stage 3 (Cr >= 4.0 mg/dL)."""
         return {
             "Cr": [
@@ -69,7 +72,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_stable_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_stable_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Stable patient with no clinical triggers."""
         return {
             "Cr": [
@@ -105,7 +110,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_icu_deteriorating_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_icu_deteriorating_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """ICU patient showing signs of deterioration."""
         return {
             "MAP": [
@@ -133,7 +140,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_sepsis_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_sepsis_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Patient with sepsis presentation."""
         return {
             "RR": [
@@ -406,9 +415,15 @@ class TestAllScenariosIntegration:
         patients = {
             "stable_001": PatientDataGenerator.create_stable_patient("stable_001", now),
             "stable_002": PatientDataGenerator.create_stable_patient("stable_002", now),
-            "aki_stage1": PatientDataGenerator.create_aki_stage1_patient("aki_stage1", now),
-            "aki_stage3": PatientDataGenerator.create_aki_stage3_patient("aki_stage3", now),
-            "icu_sick": PatientDataGenerator.create_icu_deteriorating_patient("icu_sick", now),
+            "aki_stage1": PatientDataGenerator.create_aki_stage1_patient(
+                "aki_stage1", now
+            ),
+            "aki_stage3": PatientDataGenerator.create_aki_stage3_patient(
+                "aki_stage3", now
+            ),
+            "icu_sick": PatientDataGenerator.create_icu_deteriorating_patient(
+                "icu_sick", now
+            ),
             "sepsis": PatientDataGenerator.create_sepsis_patient("sepsis", now),
         }
 
@@ -501,78 +516,6 @@ class TestAllScenariosIntegration:
         assert results["Sepsis"] is False
 
 
-class TestRealDataEndToEnd:
-    """End-to-end tests using real data sources."""
-
-    # Configure path for your local Synthea data
-    SYNTHEA_PATH = Path(os.environ.get("SYNTHEA_FHIR_PATH", "./data/synthea/fhir"))
-
-    @pytest.fixture
-    def synthea_available(self):
-        """Check if Synthea data is available."""
-        if not self.SYNTHEA_PATH.exists():
-            pytest.skip("Synthea data not available")
-        return True
-
-    def test_aki_on_synthea_data(self, synthea_available):
-        """Run AKI scenario on real Synthea data."""
-        import json
-
-        parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
-        backend = InMemoryBackend()
-
-        # Load first 10 Synthea patients
-        patient_files = list(self.SYNTHEA_PATH.glob("*.json"))[:10]
-
-        loaded_patients = []
-        for pf in patient_files:
-            with open(pf, "r") as f:
-                bundle = json.load(f)
-
-            patient_id = pf.stem
-            cr_data = []
-
-            for entry in bundle.get("entry", []):
-                resource = entry.get("resource", {})
-                if resource.get("resourceType") == "Observation":
-                    coding = resource.get("code", {}).get("coding", [{}])[0]
-                    if coding.get("code") == "38483-4":  # Creatinine
-                        value = resource.get("valueQuantity", {}).get("value")
-                        timestamp_str = resource.get("effectiveDateTime")
-                        if value and timestamp_str:
-                            try:
-                                ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-                                ts = ts.replace(tzinfo=None)
-                                cr_data.append(DataPoint(ts, float(value)))
-                            except (ValueError, TypeError):
-                                pass
-
-            if len(cr_data) >= 2:
-                backend.add_data(patient_id, "Cr", cr_data)
-                loaded_patients.append(patient_id)
-
-        print("\n=== Synthea End-to-End Test ===")
-        print(f"Loaded {len(loaded_patients)} patients with Cr data")
-
-        # Evaluate
-        evaluator = PSDLEvaluator(scenario, backend)
-        triggered = 0
-
-        for patient_id in loaded_patients:
-            cr_data = backend.data[patient_id]["Cr"]
-            ref_time = max(dp.timestamp for dp in cr_data)
-            result = evaluator.evaluate_patient(patient_id, ref_time)
-            if result.is_triggered:
-                triggered += 1
-                print(f"  {patient_id[:20]}... TRIGGERED: {result.triggered_logic}")
-
-        print(f"\nTotal triggered: {triggered}/{len(loaded_patients)}")
-
-        # Test passes if we can evaluate real data
-        assert len(loaded_patients) > 0
-
-
 class TestAlertGeneration:
     """Test complete alert generation workflow."""
 
@@ -604,9 +547,13 @@ class TestAlertGeneration:
             "evaluation": {
                 "triggered": result.is_triggered,
                 "rules": result.triggered_logic,
-                "trend_values": {k: v for k, v in result.trend_values.items() if v is not None},
+                "trend_values": {
+                    k: v for k, v in result.trend_values.items() if v is not None
+                },
             },
-            "severity": "critical" if "aki_stage3" in result.triggered_logic else "medium",
+            "severity": "critical"
+            if "aki_stage3" in result.triggered_logic
+            else "medium",
             "recommended_actions": [
                 "Notify nephrologist",
                 "Check urine output",

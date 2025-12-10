@@ -1,0 +1,216 @@
+# PSDL Mapping File Template
+# =================================
+# Copy this file and customize for your institution's data.
+#
+# This file translates PSDL logical signal names to your local terminology.
+# Each hospital/institution creates their own mapping file.
+#
+# The PSDL scenario (the clinical logic) remains PORTABLE across institutions.
+# Only this mapping file needs to be customized.
+#
+# Steps to use:
+# 1. Copy this file to: mappings/your_hospital_name.yaml
+# 2. Update the institution metadata below
+# 3. For each signal you want to use:
+#    - If using OMOP with standard concepts: add concept_id
+#    - If using OMOP with source values: add source_value
+#    - If using FHIR: add loinc_code
+# 4. Test with your data
+#
+# Usage in Python:
+#   from psdl.mapping import load_mapping
+#   from psdl.adapters.omop import OMOPBackend, OMOPConfig
+#
+#   mapping = load_mapping("mappings/your_hospital_name.yaml")
+#   config = OMOPConfig(
+#       connection_string="postgresql://user:pass@host:port/database",
+#       cdm_schema="your_schema"
+#   )
+#   backend = OMOPBackend(config, mapping=mapping)
+
+# ===========================================
+# INSTITUTION METADATA
+# ===========================================
+institution: "Your Hospital Name"
+description: "Mapping for Your Hospital's OMOP database"
+data_source: "OMOP CDM 5.4"  # or "FHIR R4"
+
+# Set to true if your OMOP database has unmapped concepts (concept_id = 0)
+# and you need to use source_value lookups instead
+use_source_values: false
+
+# ===========================================
+# SIGNAL MAPPINGS
+# ===========================================
+# Each signal maps a logical name to your local terminology.
+#
+# For OMOP with standard concepts:
+#   signal_name:
+#     concept_id: 12345
+#     unit: "mg/dL"
+#
+# For OMOP with unmapped concepts (use_source_values: true):
+#   signal_name:
+#     source_value: "Your Local Lab Code"
+#     unit: "mg/dL"
+#
+# For FHIR:
+#   signal_name:
+#     loinc_code: "2160-0"
+#     unit: "mg/dL"
+
+signals:
+  # ============================================
+  # RENAL FUNCTION - Critical for AKI detection
+  # ============================================
+  creatinine:
+    # Option 1: OMOP concept_id (if your data is mapped)
+    # concept_id: 3016723
+
+    # Option 2: source_value (if your data is unmapped)
+    # source_value: "CREATININE"  # Your local lab code
+
+    # LOINC for reference (used by FHIR adapter)
+    loinc_code: "2160-0"
+    unit: "mg/dL"
+    description: "Serum creatinine"
+
+  bun:
+    # concept_id: 3013682
+    # source_value: "BUN"
+    loinc_code: "3094-0"
+    unit: "mg/dL"
+    description: "Blood urea nitrogen"
+
+  # ============================================
+  # ELECTROLYTES - Critical for hyperkalemia
+  # ============================================
+  potassium:
+    # concept_id: 3023103
+    # source_value: "POTASSIUM"
+    loinc_code: "2823-3"
+    unit: "mEq/L"
+    description: "Serum potassium"
+
+  sodium:
+    # concept_id: 3019550
+    # source_value: "SODIUM"
+    loinc_code: "2951-2"
+    unit: "mEq/L"
+    description: "Serum sodium"
+
+  # ============================================
+  # METABOLIC - Critical for sepsis/lactic acidosis
+  # ============================================
+  lactate:
+    # concept_id: 3047181
+    # source_value: "LACTATE"
+    loinc_code: "2524-7"
+    unit: "mmol/L"
+    description: "Blood lactate"
+
+  glucose:
+    # concept_id: 3004501
+    # source_value: "GLUCOSE"
+    loinc_code: "2345-7"
+    unit: "mg/dL"
+    description: "Blood glucose"
+
+  # ============================================
+  # HEMATOLOGY - Critical for hemorrhage detection
+  # ============================================
+  hemoglobin:
+    # concept_id: 3000963
+    # source_value: "HEMOGLOBIN"
+    loinc_code: "718-7"
+    unit: "g/dL"
+    description: "Blood hemoglobin"
+
+  hematocrit:
+    # concept_id: 3009542
+    # source_value: "HEMATOCRIT"
+    loinc_code: "4544-3"
+    unit: "%"
+    description: "Hematocrit"
+
+  wbc:
+    # concept_id: 3010813
+    # source_value: "WBC"
+    loinc_code: "6690-2"
+    unit: "K/uL"
+    description: "White blood cell count"
+
+  platelets:
+    # concept_id: 3024929
+    # source_value: "PLATELETS"
+    loinc_code: "777-3"
+    unit: "K/uL"
+    description: "Platelet count"
+
+  # ============================================
+  # VITAL SIGNS
+  # ============================================
+  heart_rate:
+    # concept_id: 3027018
+    # source_value: "HR"
+    loinc_code: "8867-4"
+    unit: "bpm"
+    description: "Heart rate"
+
+  sbp:
+    # concept_id: 3004249
+    # source_value: "SBP"
+    loinc_code: "8480-6"
+    unit: "mmHg"
+    description: "Systolic blood pressure"
+
+  dbp:
+    # concept_id: 3012888
+    # source_value: "DBP"
+    loinc_code: "8462-4"
+    unit: "mmHg"
+    description: "Diastolic blood pressure"
+
+  temperature:
+    # concept_id: 3020891
+    # source_value: "TEMP"
+    loinc_code: "8310-5"
+    unit: "C"
+    description: "Body temperature"
+
+  respiratory_rate:
+    # concept_id: 3024171
+    # source_value: "RR"
+    loinc_code: "9279-1"
+    unit: "/min"
+    description: "Respiratory rate"
+
+  spo2:
+    # concept_id: 40762499
+    # source_value: "SPO2"
+    loinc_code: "59408-5"
+    unit: "%"
+    description: "Oxygen saturation"
+
+# ===========================================
+# HOW TO FIND YOUR CONCEPT IDS OR SOURCE VALUES
+# ===========================================
+#
+# For OMOP databases, run this SQL to find your local codes:
+#
+# -- Find measurement concept IDs
+# SELECT DISTINCT
+#     measurement_concept_id,
+#     measurement_source_value,
+#     c.concept_name,
+#     COUNT(*) as count
+# FROM measurement m
+# LEFT JOIN concept c ON m.measurement_concept_id = c.concept_id
+# GROUP BY measurement_concept_id, measurement_source_value, c.concept_name
+# ORDER BY count DESC;
+#
+# -- Find specific measurement (e.g., creatinine)
+# SELECT DISTINCT measurement_source_value, measurement_concept_id, COUNT(*)
+# FROM measurement
+# WHERE LOWER(measurement_source_value) LIKE '%creatinine%'
+# GROUP BY measurement_source_value, measurement_concept_id;

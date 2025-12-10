@@ -90,7 +90,9 @@ class TestTemporalOperators:
 
     def test_slope_flat(self, reference_time):
         # Flat data
-        flat_data = [DataPoint(reference_time - timedelta(hours=i), 1.0) for i in range(6, 0, -1)]
+        flat_data = [
+            DataPoint(reference_time - timedelta(hours=i), 1.0) for i in range(6, 0, -1)
+        ]
         result = TemporalOperators.slope(flat_data, 6 * 3600, reference_time)
         assert abs(result) < 0.01
 
@@ -108,7 +110,7 @@ class TestInMemoryBackend:
             DataPoint(base_time, 2.0),
         ]
 
-        from parser import Signal
+        from reference.python.parser import Signal
 
         signal = Signal(name="Cr", source="creatinine")
 
@@ -200,7 +202,9 @@ logic:
 
         return backend, base_time
 
-    def test_evaluate_single_patient_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -214,7 +218,9 @@ logic:
         assert result.trend_results["cr_high"] is True
         assert result.trend_results["cr_rising"] is True
 
-    def test_evaluate_single_patient_not_triggered(self, simple_scenario_yaml, backend_with_data):
+    def test_evaluate_single_patient_not_triggered(
+        self, simple_scenario_yaml, backend_with_data
+    ):
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -250,13 +256,69 @@ logic:
         backend, base_time = backend_with_data
         evaluator = PSDLEvaluator(scenario, backend)
 
-        results = evaluator.evaluate_cohort(reference_time=base_time, patient_ids=[1, 2, 3])
+        results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3]
+        )
 
         assert len(results) == 3
 
         # Check each patient
         results_by_id = {r.patient_id: r for r in results}
 
+        assert results_by_id[1].is_triggered
+        assert not results_by_id[2].is_triggered
+        assert results_by_id[3].is_triggered
+
+    def test_evaluate_cohort_parallel(self, simple_scenario_yaml, backend_with_data):
+        """Test parallel execution produces same results as serial."""
+        parser = PSDLParser()
+        scenario = parser.parse_string(simple_scenario_yaml)
+
+        backend, base_time = backend_with_data
+        evaluator = PSDLEvaluator(scenario, backend)
+
+        # Serial execution
+        serial_results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3]
+        )
+
+        # Parallel execution with explicit workers
+        parallel_results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3], max_workers=2
+        )
+
+        assert len(parallel_results) == len(serial_results)
+
+        # Compare results (parallel results are sorted by patient_id)
+        serial_by_id = {r.patient_id: r for r in serial_results}
+        parallel_by_id = {r.patient_id: r for r in parallel_results}
+
+        for patient_id in [1, 2, 3]:
+            serial = serial_by_id[patient_id]
+            parallel = parallel_by_id[patient_id]
+            assert serial.is_triggered == parallel.is_triggered
+            assert serial.triggered_logic == parallel.triggered_logic
+            assert serial.trend_results == parallel.trend_results
+
+    def test_evaluate_cohort_parallel_auto_workers(
+        self, simple_scenario_yaml, backend_with_data
+    ):
+        """Test parallel execution with auto-detected worker count."""
+        parser = PSDLParser()
+        scenario = parser.parse_string(simple_scenario_yaml)
+
+        backend, base_time = backend_with_data
+        evaluator = PSDLEvaluator(scenario, backend)
+
+        # max_workers=0 means auto-detect
+        results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3], max_workers=0
+        )
+
+        assert len(results) == 3
+
+        # Verify results are correct
+        results_by_id = {r.patient_id: r for r in results}
         assert results_by_id[1].is_triggered
         assert not results_by_id[2].is_triggered
         assert results_by_id[3].is_triggered

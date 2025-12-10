@@ -1,0 +1,136 @@
+# PSDL Mapping File: Synthea
+# =================================
+# This mapping file translates PSDL logical signal names to Synthea synthetic data.
+#
+# Synthea uses standard OMOP concept IDs, so we can use concept_id lookups directly.
+# This is the ideal case for OMOP-based systems with proper concept mapping.
+#
+# Usage:
+#   from psdl.mapping import load_mapping
+#   from psdl.adapters.omop import OMOPBackend, OMOPConfig
+#
+#   mapping = load_mapping("mappings/synthea.yaml")
+#   config = OMOPConfig(
+#       connection_string="postgresql://user:pass@localhost:5432/synthea",
+#       cdm_schema="public"
+#   )
+#   backend = OMOPBackend(config, mapping=mapping)
+
+institution: "Synthea"
+description: "Mapping for Synthea synthetic patient data (standard OMOP concepts)"
+data_source: "OMOP CDM 5.4 (standard concepts)"
+
+# Synthea uses standard concept IDs
+use_source_values: false
+
+signals:
+  # ============================================
+  # RENAL FUNCTION
+  # ============================================
+  creatinine:
+    concept_id: 3016723
+    loinc_code: "2160-0"
+    unit: "mg/dL"
+    description: "Serum creatinine"
+
+  bun:
+    concept_id: 3013682
+    loinc_code: "3094-0"
+    unit: "mg/dL"
+    description: "Blood urea nitrogen"
+
+  # ============================================
+  # ELECTROLYTES
+  # ============================================
+  potassium:
+    concept_id: 3023103
+    loinc_code: "2823-3"
+    unit: "mEq/L"
+    description: "Serum potassium"
+
+  sodium:
+    concept_id: 3019550
+    loinc_code: "2951-2"
+    unit: "mEq/L"
+    description: "Serum sodium"
+
+  chloride:
+    concept_id: 3014576
+    loinc_code: "2075-0"
+    unit: "mEq/L"
+    description: "Serum chloride"
+
+  # ============================================
+  # METABOLIC
+  # ============================================
+  lactate:
+    concept_id: 3047181
+    loinc_code: "2524-7"
+    unit: "mmol/L"
+    description: "Blood lactate"
+
+  glucose:
+    concept_id: 3004501
+    loinc_code: "2345-7"
+    unit: "mg/dL"
+    description: "Blood glucose"
+
+  # ============================================
+  # HEMATOLOGY
+  # ============================================
+  hemoglobin:
+    concept_id: 3000963
+    loinc_code: "718-7"
+    unit: "g/dL"
+    description: "Blood hemoglobin"
+
+  hematocrit:
+    concept_id: 3009542
+    loinc_code: "4544-3"
+    unit: "%"
+    description: "Hematocrit"
+
+  wbc:
+    concept_id: 3010813
+    loinc_code: "6690-2"
+    unit: "K/uL"
+    description: "White blood cell count"
+
+  platelets:
+    concept_id: 3024929
+    loinc_code: "777-3"
+    unit: "K/uL"
+    description: "Platelet count"
+
+  # ============================================
+  # VITAL SIGNS
+  # ============================================
+  heart_rate:
+    concept_id: 3027018
+    loinc_code: "8867-4"
+    unit: "bpm"
+    description: "Heart rate"
+
+  sbp:
+    concept_id: 3004249
+    loinc_code: "8480-6"
+    unit: "mmHg"
+    description: "Systolic blood pressure"
+
+  dbp:
+    concept_id: 3012888
+    loinc_code: "8462-4"
+    unit: "mmHg"
+    description: "Diastolic blood pressure"
+
+  temperature:
+    concept_id: 3020891
+    loinc_code: "8310-5"
+    unit: "C"
+    description: "Body temperature"
+
+  respiratory_rate:
+    concept_id: 3024171
+    loinc_code: "9279-1"
+    unit: "/min"
+    description: "Respiratory rate"

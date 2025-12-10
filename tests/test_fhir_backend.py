@@ -428,6 +428,100 @@ class TestCreateFHIRBackend:
         assert backend.config.auth_token is None
 
 
+class TestMappingProviderIntegration:
+    """Tests for MappingProvider integration with FHIR backend."""
+
+    def test_get_loinc_code_from_mapping_provider(self):
+        """Test LOINC code lookup from MappingProvider."""
+        from reference.python.mapping import MappingProvider, SignalMapping
+
+        mapping = MappingProvider(
+            institution="Test Hospital",
+            signals={
+                "creatinine": SignalMapping(loinc_code="2160-0"),
+                "custom_signal": SignalMapping(loinc_code="99999-9"),
+            },
+        )
+
+        config = FHIRConfig(base_url="https://fhir.test.org/r4")
+        backend = FHIRBackend(config, mapping=mapping)
+
+        # Test lookup from mapping
+        signal = Signal(
+            name="Cr",
+            source="creatinine",
+            domain=Domain.MEASUREMENT,
+        )
+        code = backend._get_loinc_code(signal)
+        assert code == "2160-0"
+
+        # Test custom signal
+        signal2 = Signal(
+            name="custom",
+            source="custom_signal",
+            domain=Domain.MEASUREMENT,
+        )
+        code2 = backend._get_loinc_code(signal2)
+        assert code2 == "99999-9"
+
+    def test_mapping_provider_priority_over_config(self):
+        """Test that MappingProvider takes priority over config.loinc_mappings."""
+        from reference.python.mapping import MappingProvider, SignalMapping
+
+        mapping = MappingProvider(
+            institution="Test Hospital",
+            signals={
+                "creatinine": SignalMapping(loinc_code="11111-1"),  # Different code
+            },
+        )
+
+        config = FHIRConfig(
+            base_url="https://fhir.test.org/r4",
+            loinc_mappings={
+                "creatinine": "22222-2"
+            },  # Config override (lower priority)
+        )
+        backend = FHIRBackend(config, mapping=mapping)
+
+        signal = Signal(
+            name="Cr",
+            source="creatinine",
+            domain=Domain.MEASUREMENT,
+        )
+
+        # Should use MappingProvider code, not config override
+        code = backend._get_loinc_code(signal)
+        assert code == "11111-1"
+
+    def test_fallback_to_config_when_not_in_mapping(self):
+        """Test fallback to config when signal not in MappingProvider."""
+        from reference.python.mapping import MappingProvider, SignalMapping
+
+        mapping = MappingProvider(
+            institution="Test Hospital",
+            signals={
+                "creatinine": SignalMapping(loinc_code="2160-0"),
+            },
+        )
+
+        # Config loinc_mappings is keyed by signal.name (not source)
+        config = FHIRConfig(
+            base_url="https://fhir.test.org/r4",
+            loinc_mappings={"other": "33333-3"},  # keyed by signal name
+        )
+        backend = FHIRBackend(config, mapping=mapping)
+
+        signal = Signal(
+            name="other",
+            source="other_signal",
+            domain=Domain.MEASUREMENT,
+        )
+
+        # Should fall back to config since not in mapping
+        code = backend._get_loinc_code(signal)
+        assert code == "33333-3"
+
+
 class TestConditionHandling:
     """Tests for Condition resource handling."""
 
@@ -450,7 +544,11 @@ class TestConditionHandling:
                     "resource": {
                         "resourceType": "Condition",
                         "onsetDateTime": "2024-01-10T08:00:00Z",
-                        "code": {"coding": [{"system": "http://snomed.info/sct", "code": "123456"}]},
+                        "code": {
+                            "coding": [
+                                {"system": "http://snomed.info/sct", "code": "123456"}
+                            ]
+                        },
                     }
                 },
             ],

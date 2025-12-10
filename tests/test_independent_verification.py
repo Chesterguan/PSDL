@@ -61,7 +61,9 @@ class TestManualDeltaVerification:
         print(f"Manual calculation: 1.4 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
 
-        assert abs(psdl_delta - EXPECTED_DELTA) < 0.001, f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
+        assert (
+            abs(psdl_delta - EXPECTED_DELTA) < 0.001
+        ), f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
 
     def test_delta_with_partial_window(self):
         """
@@ -459,7 +461,9 @@ class TestClinicalReferenceCases:
         print("Current Cr: 1.3 mg/dL")
         print("Delta: 0.4 mg/dL (>= 0.3 threshold)")
         print("Expected: AKI Stage 1")
-        print(f"PSDL result: {'Stage 1' if 'aki_stage1' in result.triggered_logic else 'No AKI'}")
+        print(
+            f"PSDL result: {'Stage 1' if 'aki_stage1' in result.triggered_logic else 'No AKI'}"
+        )
 
         assert result.is_triggered
         assert "aki_stage1" in result.triggered_logic

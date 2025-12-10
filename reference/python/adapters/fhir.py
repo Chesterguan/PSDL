@@ -21,7 +21,7 @@ Usage:
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 try:
     import requests
@@ -44,6 +44,9 @@ except ImportError:
 
     from operators import DataPoint
     from parser import Signal
+
+if TYPE_CHECKING:
+    from ..mapping import MappingProvider
 
 
 class FHIRResourceType(Enum):
@@ -137,16 +140,24 @@ class FHIRBackend(DataBackend):
 
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient("patient-uuid")
+
+    Example with mapping:
+        from reference.python.mapping import load_mapping
+
+        mapping = load_mapping("mappings/synthea.yaml")
+        backend = FHIRBackend(config, mapping=mapping)
     """
 
-    def __init__(self, config: FHIRConfig):
+    def __init__(self, config: FHIRConfig, mapping: Optional["MappingProvider"] = None):
         """
         Initialize FHIR backend with configuration.
 
         Args:
             config: FHIRConfig with connection details
+            mapping: Optional MappingProvider for signal-to-LOINC translation
         """
         self.config = config
+        self.mapping = mapping
         self._session = None
 
     def _get_session(self):
@@ -154,7 +165,8 @@ class FHIRBackend(DataBackend):
         if self._session is None:
             if not REQUESTS_AVAILABLE:
                 raise ImportError(
-                    "requests library is required for FHIR backend. " "Install with: pip install requests"
+                    "requests library is required for FHIR backend. "
+                    "Install with: pip install requests"
                 )
 
             self._session = requests.Session()
@@ -176,7 +188,9 @@ class FHIRBackend(DataBackend):
                         else self.config.auth_token
                     )
                 elif self.config.auth_type == "basic":
-                    self._session.headers["Authorization"] = f"Basic {self.config.auth_token}"
+                    self._session.headers[
+                        "Authorization"
+                    ] = f"Basic {self.config.auth_token}"
 
             # Add custom headers
             self._session.headers.update(self.config.headers)
@@ -186,7 +200,9 @@ class FHIRBackend(DataBackend):
 
         return self._session
 
-    def _make_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict:
+    def _make_request(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict:
         """Make a GET request to the FHIR server."""
         session = self._get_session()
         url = f"{self.config.base_url}/{endpoint}"
@@ -203,11 +219,18 @@ class FHIRBackend(DataBackend):
         Get LOINC code for a signal.
 
         Priority:
-        1. Config-level loinc_mappings override
-        2. Signal source name lookup in LOINC_CODES
-        3. Signal source if it looks like a LOINC code
+        1. MappingProvider (if provided)
+        2. Config-level loinc_mappings override
+        3. Signal source name lookup in LOINC_CODES
+        4. Signal source if it looks like a LOINC code
         """
-        # Check config overrides first
+        # Check MappingProvider first (new recommended approach)
+        if self.mapping is not None:
+            loinc_code = self.mapping.get_loinc_code(signal.source or signal.name)
+            if loinc_code:
+                return loinc_code
+
+        # Check config overrides
         if signal.name in self.config.loinc_mappings:
             return self.config.loinc_mappings[signal.name]
 
@@ -315,7 +338,9 @@ class FHIRBackend(DataBackend):
             List of DataPoints sorted by timestamp (ascending)
         """
         domain = signal.domain.value if signal.domain else "measurement"
-        resource_type = DOMAIN_RESOURCE_MAP.get(domain, FHIRResourceType.OBSERVATION).value
+        resource_type = DOMAIN_RESOURCE_MAP.get(
+            domain, FHIRResourceType.OBSERVATION
+        ).value
 
         window_start = reference_time - timedelta(seconds=window_seconds)
 
@@ -357,11 +382,15 @@ class FHIRBackend(DataBackend):
 
                 elif resource.get("resourceType") == "Condition":
                     # For conditions, return 1.0 for presence
-                    onset = resource.get("onsetDateTime") or resource.get("recordedDate")
+                    onset = resource.get("onsetDateTime") or resource.get(
+                        "recordedDate"
+                    )
                     if onset:
                         timestamp = self._parse_datetime(onset)
                         if timestamp:
-                            data_points.append(DataPoint(timestamp=timestamp, value=1.0))
+                            data_points.append(
+                                DataPoint(timestamp=timestamp, value=1.0)
+                            )
 
         # Sort by timestamp
         data_points.sort(key=lambda dp: dp.timestamp)

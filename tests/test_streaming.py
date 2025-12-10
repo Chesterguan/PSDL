@@ -3,18 +3,10 @@ Tests for PSDL Streaming Backend.
 
 Tests the streaming compiler, operators, and evaluation logic.
 
-NOTE: These tests are currently skipped because the Flink streaming backend
-is not fully implemented yet (Phase 1 backend complete, Phase 2 Flink
-integration in progress per RFC-0002).
+NOTE: These tests validate the streaming backend logic without requiring Flink.
+The actual Flink integration (PyFlink runtime) is optional - these tests
+verify the core streaming operators, compiler, and evaluator work correctly.
 """
-
-import pytest
-
-# Skip the entire module - streaming backend not fully implemented
-pytest.skip(
-    "Streaming backend tests skipped - Flink integration not complete (RFC-0002)",
-    allow_module_level=True,
-)
 
 import sys
 import os
@@ -22,8 +14,12 @@ from datetime import datetime, timedelta
 import types
 
 # Get paths
-_project_root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-_streaming_dir = os.path.join(_project_root, "reference", "python", "execution", "streaming")
+_project_root = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+)
+_streaming_dir = os.path.join(
+    _project_root, "reference", "python", "execution", "streaming"
+)
 
 # Create a fake package structure so relative imports work
 # This allows the streaming modules to use 'from .models import ...'
@@ -305,7 +301,9 @@ class TestProcessFunctions:
     def test_ema_function(self):
         """Test exponential moving average."""
         # 1 hour window -> alpha = 2/(60+1) ≈ 0.0328
-        fn = EMAProcessFunction("hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">")
+        fn = EMAProcessFunction(
+            "hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">"
+        )
 
         state = {}
 
@@ -408,7 +406,9 @@ class TestLogicEvaluator:
         assert result is True
 
     def test_complex_expression(self):
-        result = LogicEvaluator.evaluate("(a AND b) OR c", {"a": False, "b": True, "c": True})
+        result = LogicEvaluator.evaluate(
+            "(a AND b) OR c", {"a": False, "b": True, "c": True}
+        )
         assert result is True
 
     def test_not_expression(self):
@@ -481,7 +481,9 @@ class TestStreamingEvaluator:
             "scenario": "Test",
             "version": "0.1.0",
             "signals": {"SpO2": {}},
-            "trends": {"hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}},
+            "trends": {
+                "hypoxia": {"expr": "last(SpO2) < 92", "description": "Low oxygen"}
+            },
             "logic": {"alert": {"expr": "hypoxia", "severity": "high"}},
         }
 
@@ -498,7 +500,9 @@ class TestStreamingEvaluator:
         )
 
         state = {}
-        trend_results, logic_results, state = evaluator.evaluate_event(compiled, event, state)
+        trend_results, logic_results, state = evaluator.evaluate_event(
+            compiled, event, state
+        )
 
         assert len(trend_results) == 1
         assert trend_results[0].trend_name == "hypoxia"
@@ -517,7 +521,9 @@ class TestStreamingEvaluator:
                 "tachycardia": {"expr": "last(HR) > 100"},
                 "hypoxia": {"expr": "last(SpO2) < 92"},
             },
-            "logic": {"critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}},
+            "logic": {
+                "critical": {"expr": "tachycardia AND hypoxia", "severity": "critical"}
+            },
         }
 
         evaluator = StreamingEvaluator()

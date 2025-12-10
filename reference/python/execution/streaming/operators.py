@@ -153,7 +153,9 @@ class SlopeWindowFunction(WindowFunction):
 
         # Convert timestamps to minutes from first event
         base_time = sorted_events[0].timestamp
-        x_values = [(e.timestamp - base_time).total_seconds() / 60.0 for e in sorted_events]
+        x_values = [
+            (e.timestamp - base_time).total_seconds() / 60.0 for e in sorted_events
+        ]
         y_values = [e.value for e in sorted_events]
 
         # Calculate means
@@ -253,7 +255,9 @@ class ProcessFunction(ABC):
         self.description = description
 
     @abstractmethod
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """
         Process a single event with state.
 
@@ -298,7 +302,9 @@ class LastProcessFunction(ProcessFunction):
           expr: last(SpO2) < 92
     """
 
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and return the current value."""
         value = event.value
         result = self.evaluate(value)
@@ -362,7 +368,9 @@ class EMAProcessFunction(ProcessFunction):
         window_minutes = window_ms / (60 * 1000)
         self.alpha = 2.0 / (window_minutes + 1)
 
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and update EMA."""
         current_value = event.value
 

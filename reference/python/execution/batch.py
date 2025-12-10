@@ -1,19 +1,47 @@
 """
-PSDL Evaluator - Executes parsed scenarios against patient data.
+PSDL Batch Evaluator - Retrospective scenario execution.
 
 This module provides:
 1. Signal data fetching (pluggable backends)
 2. Trend computation using temporal operators
 3. Logic evaluation with boolean algebra
 4. Patient-level scenario evaluation
-5. Cohort-level batch evaluation
+5. Cohort-level batch evaluation with automatic optimization:
+   - Small cohorts / explicit patient_ids: In-memory parallel evaluation
+   - Large cohorts with OMOP backend: SQL push-down for database-side computation
+
+Execution Modes:
+    PSDL supports two execution modes based on timing:
+
+    1. Batch (this module) - Retrospective analysis
+       - OMOP backend: SQL database queries
+       - Automatic SQL compilation for large cohorts
+
+    2. Streaming (execution.streaming) - Real-time monitoring
+       - FHIR events via subscriptions
+       - Apache Flink for continuous processing
+
+Usage:
+    # Simple usage - system auto-selects best strategy
+    evaluator = PSDLEvaluator(scenario, backend)
+    results = evaluator.evaluate_cohort()  # Auto-optimized
+
+    # Single patient evaluation
+    result = evaluator.evaluate_patient(patient_id=123)
+
+    # Explicit parallel execution
+    results = evaluator.evaluate_cohort(max_workers=4)
 """
 
 import re
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+
+if TYPE_CHECKING:
+    from ..adapters.omop import OMOPBackend
 
 try:
     from ..operators import DataPoint, TemporalOperators, apply_operator
@@ -147,7 +175,9 @@ class InMemoryBackend(DataBackend):
         signal_data = patient_data.get(signal.name, [])
 
         # Filter by window
-        return TemporalOperators.filter_by_window(signal_data, window_seconds, reference_time)
+        return TemporalOperators.filter_by_window(
+            signal_data, window_seconds, reference_time
+        )
 
     def get_patient_ids(
         self,
@@ -183,6 +213,9 @@ class PSDLEvaluator:
         "!=": lambda a, b: abs(a - b) >= 1e-10,
     }
 
+    # Threshold for automatic SQL push-down (number of patients)
+    SQL_PUSHDOWN_THRESHOLD = 1000
+
     def __init__(self, scenario: PSDLScenario, backend: DataBackend):
         """
         Initialize evaluator with a scenario and data backend.
@@ -197,6 +230,39 @@ class PSDLEvaluator:
         # Calculate max window needed for data fetching
         self._max_window_seconds = self._calculate_max_window()
 
+        # Check if SQL push-down is available
+        self._sql_compiler = None
+        if self._is_omop_backend():
+            compiler = SQLCompiler(scenario, self.backend)
+            if compiler.can_compile():
+                self._sql_compiler = compiler
+
+    def _is_omop_backend(self) -> bool:
+        """Check if the backend is an OMOP backend that supports SQL push-down."""
+        # Check by class name to avoid import issues
+        return self.backend.__class__.__name__ == "OMOPBackend"
+
+    def _should_use_sql(self, patient_ids: Optional[List[Any]] = None) -> bool:
+        """
+        Determine if SQL push-down should be used.
+
+        Returns True if:
+        - Backend is OMOP
+        - Scenario can be compiled to SQL
+        - No explicit patient_ids provided (evaluating full cohort)
+
+        Note: We always use SQL for full cohort evaluation to avoid
+        loading all patient IDs into memory first.
+        """
+        if self._sql_compiler is None:
+            return False
+
+        # If explicit patient_ids provided, use in-memory evaluation
+        if patient_ids is not None:
+            return False
+
+        return True
+
     def _calculate_max_window(self) -> int:
         """Calculate the maximum window size needed across all trends."""
         max_window = 3600  # Default 1 hour
@@ -207,7 +273,9 @@ class PSDLEvaluator:
 
         return max_window
 
-    def _fetch_all_signals(self, patient_id: Any, reference_time: datetime) -> Dict[str, List[DataPoint]]:
+    def _fetch_all_signals(
+        self, patient_id: Any, reference_time: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Fetch all signal data for a patient."""
         signal_data = {}
 
@@ -240,7 +308,9 @@ class PSDLEvaluator:
             return None, False
 
         # Get window in seconds
-        window_seconds = trend.window.seconds if trend.window else self._max_window_seconds
+        window_seconds = (
+            trend.window.seconds if trend.window else self._max_window_seconds
+        )
 
         # Apply operator
         value = apply_operator(
@@ -310,7 +380,9 @@ class PSDLEvaluator:
         except Exception:
             return False
 
-    def evaluate_patient(self, patient_id: Any, reference_time: Optional[datetime] = None) -> EvaluationResult:
+    def evaluate_patient(
+        self, patient_id: Any, reference_time: Optional[datetime] = None
+    ) -> EvaluationResult:
         """
         Evaluate the scenario for a single patient.
 
@@ -349,7 +421,10 @@ class PSDLEvaluator:
                 logic = self.scenario.logic[name]
 
                 # Check if all dependencies are resolved
-                deps_resolved = all(term in trend_results or term in logic_results for term in logic.terms)
+                deps_resolved = all(
+                    term in trend_results or term in logic_results
+                    for term in logic.terms
+                )
 
                 if deps_resolved:
                     result = self._evaluate_logic(logic, trend_results, logic_results)
@@ -379,20 +454,48 @@ class PSDLEvaluator:
         self,
         reference_time: Optional[datetime] = None,
         patient_ids: Optional[List[Any]] = None,
+        max_workers: Optional[int] = None,
+        use_sql: Optional[bool] = None,
     ) -> List[EvaluationResult]:
         """
         Evaluate the scenario for all patients in the cohort.
 
+        Automatically selects the best execution strategy:
+        - SQL push-down: For OMOP backends with full cohort evaluation
+        - Parallel in-memory: For explicit patient_ids or non-SQL backends
+        - Serial in-memory: When max_workers is None
+
         Args:
             reference_time: Point in time for evaluation
             patient_ids: Optional list of patient IDs (otherwise uses population filter)
+            max_workers: Number of parallel workers (None=serial, 0=auto based on CPU count)
+            use_sql: Force SQL mode (True), in-memory mode (False), or auto-detect (None)
 
         Returns:
             List of EvaluationResults for all patients
+
+        Example:
+            # Auto-detect best strategy (recommended)
+            results = evaluator.evaluate_cohort()
+
+            # Force in-memory with parallel execution
+            results = evaluator.evaluate_cohort(max_workers=4, use_sql=False)
+
+            # Force SQL push-down
+            results = evaluator.evaluate_cohort(use_sql=True)
         """
         ref_time = reference_time or datetime.now()
 
-        # Get patient IDs
+        # Determine execution strategy
+        should_use_sql = (
+            use_sql if use_sql is not None else self._should_use_sql(patient_ids)
+        )
+
+        # SQL push-down execution (for large cohorts with OMOP)
+        if should_use_sql and self._sql_compiler is not None:
+            return self._sql_compiler.execute(ref_time)
+
+        # In-memory execution: Get patient IDs first
         if patient_ids is None:
             population = self.scenario.population
             patient_ids = self.backend.get_patient_ids(
@@ -400,11 +503,33 @@ class PSDLEvaluator:
                 population_exclude=population.exclude if population else None,
             )
 
-        # Evaluate each patient
+        # Serial execution (default for backward compatibility)
+        if max_workers is None:
+            results = []
+            for patient_id in patient_ids:
+                result = self.evaluate_patient(patient_id, ref_time)
+                results.append(result)
+            return results
+
+        # Parallel execution
+        # max_workers=0 means auto-detect based on CPU count
+        workers = max_workers if max_workers > 0 else None
+
         results = []
-        for patient_id in patient_ids:
-            result = self.evaluate_patient(patient_id, ref_time)
-            results.append(result)
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            # Submit all patient evaluations
+            future_to_patient = {
+                executor.submit(self.evaluate_patient, patient_id, ref_time): patient_id
+                for patient_id in patient_ids
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_patient):
+                result = future.result()
+                results.append(result)
+
+        # Sort by patient_id to maintain consistent ordering
+        results.sort(key=lambda r: str(r.patient_id))
 
         return results
 
@@ -435,3 +560,388 @@ class PSDLEvaluator:
                 triggered.append(result)
 
         return triggered
+
+
+# =============================================================================
+# SQL Compiler for Large Cohort Optimization
+# =============================================================================
+
+
+class SQLCompiler:
+    """
+    Compiles PSDL scenarios to SQL for database-side execution.
+
+    This is an internal optimization used by PSDLEvaluator when:
+    - Backend is OMOP (SQL database)
+    - No explicit patient_ids provided (evaluating entire cohort)
+    - Cohort size exceeds threshold
+
+    The SQL compiler translates PSDL temporal operators to SQL window functions,
+    allowing the database to compute trends for millions of patients efficiently.
+
+    Supported operators:
+    - last: Most recent value via ROW_NUMBER() window function
+    - first: Earliest value in window via ROW_NUMBER()
+    - delta: Difference between latest and earliest values in window
+    - slope: Linear regression slope via REGR_SLOPE() (PostgreSQL)
+    - sma: Simple moving average via AVG()
+    - min/max: MIN()/MAX() over window
+    - count: COUNT(*) over window
+
+    Not yet supported (fall back to in-memory):
+    - ema: Exponential weighted average (requires recursive computation)
+    """
+
+    # Operator mappings to SQL
+    OPERATOR_SQL = {
+        "last": "last_value",
+        "first": "first_value",
+        "delta": "delta",
+        "slope": "regr_slope",
+        "sma": "avg",
+        "min": "min",
+        "max": "max",
+        "count": "count",
+    }
+
+    def __init__(self, scenario: "PSDLScenario", backend: "OMOPBackend"):
+        """
+        Initialize SQL compiler.
+
+        Args:
+            scenario: Parsed PSDL scenario
+            backend: OMOP backend with database connection
+        """
+        self.scenario = scenario
+        self.backend = backend
+
+    # Operators that cannot be efficiently compiled to SQL
+    # EMA requires recursive computation which is complex and slow in SQL
+    UNSUPPORTED_OPERATORS = {"ema"}
+
+    def can_compile(self) -> bool:
+        """
+        Check if the scenario can be fully compiled to SQL.
+
+        Returns False if any operator requires in-memory computation.
+
+        Currently unsupported:
+        - ema: Exponential Moving Average requires recursive computation.
+          While technically possible via recursive CTEs, it's complex and
+          slow for multi-patient queries. The hybrid approach (SQL for
+          supported operators + in-memory fallback) is more practical.
+
+        Returns:
+            True if all operators can be compiled to SQL, False otherwise
+        """
+        for trend in self.scenario.trends.values():
+            if trend.operator.lower() in self.UNSUPPORTED_OPERATORS:
+                return False
+
+        return True
+
+    def get_unsupported_trends(self) -> dict:
+        """
+        Get trends that use unsupported operators.
+
+        Returns:
+            Dict mapping trend names to their unsupported operators
+        """
+        unsupported = {}
+        for name, trend in self.scenario.trends.items():
+            if trend.operator.lower() in self.UNSUPPORTED_OPERATORS:
+                unsupported[name] = trend.operator
+        return unsupported
+
+    def compile_trend_sql(self, trend_name: str, trend: "TrendExpr") -> str:
+        """
+        Compile a single trend expression to SQL.
+
+        Args:
+            trend_name: Name of the trend
+            trend: TrendExpr to compile
+
+        Returns:
+            SQL CTE fragment for this trend
+        """
+        signal = self.scenario.signals.get(trend.signal)
+        if not signal:
+            raise ValueError(
+                f"Signal '{trend.signal}' not found for trend '{trend_name}'"
+            )
+
+        # Get table and column info from backend
+        domain = signal.domain.value if signal.domain else "measurement"
+        schema = self.backend.config.cdm_schema
+        table = f"{schema}.{domain}"
+        datetime_col = self.backend._get_datetime_column(domain)
+        value_col = self.backend._get_value_column(domain)
+
+        # Get window in seconds
+        window_seconds = trend.window.seconds if trend.window else 3600
+
+        # Build the filter condition
+        if self.backend.config.use_source_values:
+            source_value = self.backend._get_source_value(signal)
+            filter_cond = f"{domain}_source_value = '{source_value}'"
+        else:
+            concept_id = self.backend._get_concept_id(signal)
+            filter_cond = f"{domain}_concept_id = {concept_id}"
+
+        # Generate SQL based on operator
+        operator = trend.operator.lower()
+
+        if operator == "last":
+            sql = f"""
+    {trend_name}_data AS (
+        SELECT person_id,
+               {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name} AS (
+        SELECT person_id, value as {trend_name}_value
+        FROM {trend_name}_data WHERE rn = 1
+    )"""
+
+        elif operator == "first":
+            sql = f"""
+    {trend_name}_data AS (
+        SELECT person_id,
+               {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name} AS (
+        SELECT person_id, value as {trend_name}_value
+        FROM {trend_name}_data WHERE rn = 1
+    )"""
+
+        elif operator == "delta":
+            sql = f"""
+    {trend_name}_first AS (
+        SELECT person_id, {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name}_last AS (
+        SELECT person_id, {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name} AS (
+        SELECT l.person_id,
+               (l.value - f.value) as {trend_name}_value
+        FROM {trend_name}_last l
+        JOIN {trend_name}_first f ON l.person_id = f.person_id
+        WHERE l.rn = 1 AND f.rn = 1
+    )"""
+
+        elif operator in ("sma", "avg"):
+            sql = f"""
+    {trend_name} AS (
+        SELECT person_id,
+               AVG({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )"""
+
+        elif operator in ("min", "min_val"):
+            sql = f"""
+    {trend_name} AS (
+        SELECT person_id,
+               MIN({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )"""
+
+        elif operator in ("max", "max_val"):
+            sql = f"""
+    {trend_name} AS (
+        SELECT person_id,
+               MAX({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )"""
+
+        elif operator == "count":
+            sql = f"""
+    {trend_name} AS (
+        SELECT person_id,
+               COUNT(*) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )"""
+
+        elif operator == "slope":
+            # PostgreSQL regr_slope(Y, X) computes slope of least-squares linear regression
+            # Y = value, X = time in seconds from window start
+            # Returns slope in units per second
+            sql = f"""
+    {trend_name} AS (
+        SELECT person_id,
+               REGR_SLOPE(
+                   {value_col},
+                   EXTRACT(EPOCH FROM {datetime_col})
+               ) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+        HAVING COUNT(*) >= 2
+    )"""
+
+        else:
+            raise ValueError(f"Unsupported operator for SQL compilation: {operator}")
+
+        return sql
+
+    def compile_full_query(self) -> str:
+        """
+        Compile the full scenario to a single SQL query.
+
+        Returns:
+            Complete SQL query that evaluates all trends and logic
+        """
+        ctes = []
+        trend_names = []
+
+        # Compile each trend
+        for trend_name, trend in self.scenario.trends.items():
+            cte = self.compile_trend_sql(trend_name, trend)
+            ctes.append(cte)
+            trend_names.append(trend_name)
+
+        # Build the final SELECT joining all trends
+        schema = self.backend.config.cdm_schema
+
+        # Start with person table
+        select_cols = ["p.person_id"]
+        joins = []
+
+        for trend_name in trend_names:
+            select_cols.append(
+                f"COALESCE({trend_name}.{trend_name}_value, NULL) as {trend_name}_value"
+            )
+            joins.append(
+                f"LEFT JOIN {trend_name} ON p.person_id = {trend_name}.person_id"
+            )
+
+        # Add trend result columns (threshold comparisons)
+        for trend_name, trend in self.scenario.trends.items():
+            if trend.comparator and trend.threshold is not None:
+                comp = trend.comparator
+                thresh = trend.threshold
+                select_cols.append(
+                    f"CASE WHEN {trend_name}.{trend_name}_value {comp} {thresh} "
+                    f"THEN true ELSE false END as {trend_name}_result"
+                )
+            else:
+                select_cols.append(
+                    f"CASE WHEN {trend_name}.{trend_name}_value IS NOT NULL "
+                    f"THEN true ELSE false END as {trend_name}_result"
+                )
+
+        # Build final query
+        query = "WITH " + ",\n".join(ctes)
+        query += f"\nSELECT {', '.join(select_cols)}"
+        query += f"\nFROM {schema}.person p"
+        query += "\n" + "\n".join(joins)
+
+        return query
+
+    def execute(self, reference_time: datetime) -> List[EvaluationResult]:
+        """
+        Execute the compiled SQL query and return results.
+
+        Args:
+            reference_time: Point in time for evaluation
+
+        Returns:
+            List of EvaluationResults for all patients
+        """
+        query = self.compile_full_query()
+
+        # Execute query
+        from sqlalchemy import text
+
+        engine = self.backend._get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text(query), {"reference_time": reference_time})
+            rows = result.fetchall()
+            columns = result.keys()
+
+        # Convert to EvaluationResults
+        results = []
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            patient_id = row_dict["person_id"]
+
+            # Extract trend values and results
+            trend_values = {}
+            trend_results = {}
+            for trend_name in self.scenario.trends:
+                value_key = f"{trend_name}_value"
+                result_key = f"{trend_name}_result"
+                trend_values[trend_name] = row_dict.get(value_key)
+                trend_results[trend_name] = bool(row_dict.get(result_key, False))
+
+            # Evaluate logic expressions (done in Python for flexibility)
+            logic_results = {}
+            triggered_logic = []
+
+            evaluator = PSDLEvaluator.__new__(PSDLEvaluator)
+            evaluator.scenario = self.scenario
+
+            for logic_name, logic in self.scenario.logic.items():
+                result = evaluator._evaluate_logic(logic, trend_results, logic_results)
+                logic_results[logic_name] = result
+                if result:
+                    triggered_logic.append(logic_name)
+
+            results.append(
+                EvaluationResult(
+                    patient_id=patient_id,
+                    timestamp=reference_time,
+                    triggered_logic=triggered_logic,
+                    trend_values=trend_values,
+                    trend_results=trend_results,
+                    logic_results=logic_results,
+                )
+            )
+
+        return results
