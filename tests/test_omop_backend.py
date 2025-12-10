@@ -177,9 +177,7 @@ class TestOMOPBackend:
             {"person_id": 3, "obs_count": 10},
         ]
 
-        patient_ids = backend.get_patient_ids_with_signal(
-            creatinine_signal, min_observations=3
-        )
+        patient_ids = backend.get_patient_ids_with_signal(creatinine_signal, min_observations=3)
 
         assert patient_ids == [1, 3]
 
@@ -220,17 +218,13 @@ class TestPopulationFiltering:
         params = {}
 
         # Test male
-        sql, params, idx = backend._parse_population_criterion(
-            "gender == 'M'", params, 0
-        )
+        sql, params, idx = backend._parse_population_criterion("gender == 'M'", params, 0)
         assert sql is not None
         assert "gender_concept_id" in sql
         assert params["gender_0"] == 8507  # OMOP Male concept
 
         # Test female
-        sql, params, idx = backend._parse_population_criterion(
-            'gender == "F"', params, idx
-        )
+        sql, params, idx = backend._parse_population_criterion('gender == "F"', params, idx)
         assert sql is not None
         assert params["gender_1"] == 8532  # OMOP Female concept
 
@@ -238,9 +232,7 @@ class TestPopulationFiltering:
         """Test parsing condition filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion(
-            "has_condition(201826)", params, 0
-        )  # Type 2 Diabetes
+        sql, params, idx = backend._parse_population_criterion("has_condition(201826)", params, 0)  # Type 2 Diabetes
         assert sql is not None
         assert "condition_occurrence" in sql
         assert "EXISTS" in sql
@@ -250,9 +242,7 @@ class TestPopulationFiltering:
         """Test parsing measurement filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion(
-            "has_measurement(3016723)", params, 0
-        )  # Creatinine
+        sql, params, idx = backend._parse_population_criterion("has_measurement(3016723)", params, 0)  # Creatinine
         assert sql is not None
         assert "measurement" in sql.lower()
         assert "EXISTS" in sql
@@ -262,9 +252,7 @@ class TestPopulationFiltering:
         """Test parsing drug filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion(
-            "has_drug(1332419)", params, 0
-        )  # Metformin
+        sql, params, idx = backend._parse_population_criterion("has_drug(1332419)", params, 0)  # Metformin
         assert sql is not None
         assert "drug_exposure" in sql
         assert "EXISTS" in sql
@@ -275,18 +263,14 @@ class TestPopulationFiltering:
         params = {}
 
         # ICU visit
-        sql, params, idx = backend._parse_population_criterion(
-            "visit_type == 'ICU'", params, 0
-        )
+        sql, params, idx = backend._parse_population_criterion("visit_type == 'ICU'", params, 0)
         assert sql is not None
         assert "visit_occurrence" in sql
         assert "EXISTS" in sql
         assert params["visit_0"] == 32037  # ICU concept
 
         # Inpatient visit
-        sql, params, idx = backend._parse_population_criterion(
-            "visit_type == 'IP'", params, idx
-        )
+        sql, params, idx = backend._parse_population_criterion("visit_type == 'IP'", params, idx)
         assert sql is not None
         assert params["visit_1"] == 9201  # Inpatient concept
 
@@ -294,9 +278,7 @@ class TestPopulationFiltering:
         """Test that unknown criteria return None (skip gracefully)."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion(
-            "unknown_filter == 'value'", params, 0
-        )
+        sql, params, idx = backend._parse_population_criterion("unknown_filter == 'value'", params, 0)
         assert sql is None
         assert idx == 0
 
@@ -305,9 +287,7 @@ class TestPopulationFiltering:
         """Test get_patient_ids with inclusion criteria."""
         mock_query.return_value = [{"person_id": 1}, {"person_id": 2}]
 
-        patient_ids = backend.get_patient_ids(
-            population_include=["age >= 18", "gender == 'M'"]
-        )
+        patient_ids = backend.get_patient_ids(population_include=["age >= 18", "gender == 'M'"])
 
         assert patient_ids == [1, 2]
         # Verify query was built with AND for multiple include criteria
@@ -321,9 +301,7 @@ class TestPopulationFiltering:
         """Test get_patient_ids with exclusion criteria."""
         mock_query.return_value = [{"person_id": 1}]
 
-        patient_ids = backend.get_patient_ids(
-            population_exclude=["has_condition(201826)"]  # Exclude diabetics
-        )
+        patient_ids = backend.get_patient_ids(population_exclude=["has_condition(201826)"])  # Exclude diabetics
 
         assert patient_ids == [1]
         call_args = mock_query.call_args

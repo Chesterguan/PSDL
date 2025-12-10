@@ -52,16 +52,12 @@ class FHIRTestDataLoader:
             }
         )
 
-    def create_patient(
-        self, patient_id: str, name: str, birth_date: str = "1970-01-01"
-    ) -> Dict:
+    def create_patient(self, patient_id: str, name: str, birth_date: str = "1970-01-01") -> Dict:
         """Create a patient resource."""
         patient = {
             "resourceType": "Patient",
             "id": patient_id,
-            "identifier": [
-                {"system": "http://psdl.test/patient-id", "value": patient_id}
-            ],
+            "identifier": [{"system": "http://psdl.test/patient-id", "value": patient_id}],
             "name": [
                 {
                     "family": name.split()[-1] if " " in name else name,
@@ -72,9 +68,7 @@ class FHIRTestDataLoader:
             "gender": "unknown",
         }
 
-        response = self.session.put(
-            f"{self.base_url}/Patient/{patient_id}", json=patient
-        )
+        response = self.session.put(f"{self.base_url}/Patient/{patient_id}", json=patient)
         response.raise_for_status()
         return response.json()
 
@@ -113,9 +107,7 @@ class FHIRTestDataLoader:
             },
         }
 
-        response = self.session.put(
-            f"{self.base_url}/Observation/{obs_id}", json=observation
-        )
+        response = self.session.put(f"{self.base_url}/Observation/{obs_id}", json=observation)
         response.raise_for_status()
         return response.json()
 
@@ -207,9 +199,7 @@ class FHIRTestDataLoader:
         ]
 
         for ts, val in hr_values:
-            self.create_observation(
-                patient_id, LOINC["heart_rate"], float(val), "bpm", ts
-            )
+            self.create_observation(patient_id, LOINC["heart_rate"], float(val), "bpm", ts)
 
         # Blood pressure falling
         bp_values = [
@@ -221,9 +211,7 @@ class FHIRTestDataLoader:
         ]
 
         for ts, val in bp_values:
-            self.create_observation(
-                patient_id, LOINC["systolic_bp"], float(val), "mmHg", ts
-            )
+            self.create_observation(patient_id, LOINC["systolic_bp"], float(val), "mmHg", ts)
 
         print(f"  Created {len(hr_values)} HR + {len(bp_values)} BP observations")
 
@@ -266,9 +254,7 @@ class FHIRTestDataLoader:
             (now, 125),
         ]
         for ts, val in hr_values:
-            self.create_observation(
-                patient_id, LOINC["heart_rate"], float(val), "bpm", ts
-            )
+            self.create_observation(patient_id, LOINC["heart_rate"], float(val), "bpm", ts)
 
         print("  Created temp + lactate + HR observations")
 
@@ -287,30 +273,22 @@ class FHIRTestDataLoader:
         # Normal creatinine
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(
-                patient_id, LOINC["creatinine"], 0.9 + (i % 2) * 0.1, "mg/dL", ts
-            )
+            self.create_observation(patient_id, LOINC["creatinine"], 0.9 + (i % 2) * 0.1, "mg/dL", ts)
 
         # Normal heart rate
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(
-                patient_id, LOINC["heart_rate"], 70 + (i % 2) * 5, "bpm", ts
-            )
+            self.create_observation(patient_id, LOINC["heart_rate"], 70 + (i % 2) * 5, "bpm", ts)
 
         # Normal blood pressure
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(
-                patient_id, LOINC["systolic_bp"], 118 + (i % 2) * 4, "mmHg", ts
-            )
+            self.create_observation(patient_id, LOINC["systolic_bp"], 118 + (i % 2) * 4, "mmHg", ts)
 
         # Normal temperature
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(
-                patient_id, LOINC["temperature"], 36.8 + (i % 2) * 0.2, "Cel", ts
-            )
+            self.create_observation(patient_id, LOINC["temperature"], 36.8 + (i % 2) * 0.2, "Cel", ts)
 
         print("  Created all normal observations")
 
@@ -357,12 +335,8 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Load FHIR test data")
-    parser.add_argument(
-        "--base-url", default="http://localhost:8080/fhir", help="FHIR server base URL"
-    )
-    parser.add_argument(
-        "--verify-only", action="store_true", help="Only verify existing data"
-    )
+    parser.add_argument("--base-url", default="http://localhost:8080/fhir", help="FHIR server base URL")
+    parser.add_argument("--verify-only", action="store_true", help="Only verify existing data")
     args = parser.parse_args()
 
     loader = FHIRTestDataLoader(args.base_url)

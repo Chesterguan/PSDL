@@ -175,9 +175,7 @@ class InMemoryBackend(DataBackend):
         signal_data = patient_data.get(signal.name, [])
 
         # Filter by window
-        return TemporalOperators.filter_by_window(
-            signal_data, window_seconds, reference_time
-        )
+        return TemporalOperators.filter_by_window(signal_data, window_seconds, reference_time)
 
     def get_patient_ids(
         self,
@@ -273,9 +271,7 @@ class PSDLEvaluator:
 
         return max_window
 
-    def _fetch_all_signals(
-        self, patient_id: Any, reference_time: datetime
-    ) -> Dict[str, List[DataPoint]]:
+    def _fetch_all_signals(self, patient_id: Any, reference_time: datetime) -> Dict[str, List[DataPoint]]:
         """Fetch all signal data for a patient."""
         signal_data = {}
 
@@ -308,9 +304,7 @@ class PSDLEvaluator:
             return None, False
 
         # Get window in seconds
-        window_seconds = (
-            trend.window.seconds if trend.window else self._max_window_seconds
-        )
+        window_seconds = trend.window.seconds if trend.window else self._max_window_seconds
 
         # Apply operator
         value = apply_operator(
@@ -380,9 +374,7 @@ class PSDLEvaluator:
         except Exception:
             return False
 
-    def evaluate_patient(
-        self, patient_id: Any, reference_time: Optional[datetime] = None
-    ) -> EvaluationResult:
+    def evaluate_patient(self, patient_id: Any, reference_time: Optional[datetime] = None) -> EvaluationResult:
         """
         Evaluate the scenario for a single patient.
 
@@ -421,10 +413,7 @@ class PSDLEvaluator:
                 logic = self.scenario.logic[name]
 
                 # Check if all dependencies are resolved
-                deps_resolved = all(
-                    term in trend_results or term in logic_results
-                    for term in logic.terms
-                )
+                deps_resolved = all(term in trend_results or term in logic_results for term in logic.terms)
 
                 if deps_resolved:
                     result = self._evaluate_logic(logic, trend_results, logic_results)
@@ -487,9 +476,7 @@ class PSDLEvaluator:
         ref_time = reference_time or datetime.now()
 
         # Determine execution strategy
-        should_use_sql = (
-            use_sql if use_sql is not None else self._should_use_sql(patient_ids)
-        )
+        should_use_sql = use_sql if use_sql is not None else self._should_use_sql(patient_ids)
 
         # SQL push-down execution (for large cohorts with OMOP)
         if should_use_sql and self._sql_compiler is not None:
@@ -519,8 +506,7 @@ class PSDLEvaluator:
         with ThreadPoolExecutor(max_workers=workers) as executor:
             # Submit all patient evaluations
             future_to_patient = {
-                executor.submit(self.evaluate_patient, patient_id, ref_time): patient_id
-                for patient_id in patient_ids
+                executor.submit(self.evaluate_patient, patient_id, ref_time): patient_id for patient_id in patient_ids
             }
 
             # Collect results as they complete
@@ -666,9 +652,7 @@ class SQLCompiler:
         """
         signal = self.scenario.signals.get(trend.signal)
         if not signal:
-            raise ValueError(
-                f"Signal '{trend.signal}' not found for trend '{trend_name}'"
-            )
+            raise ValueError(f"Signal '{trend.signal}' not found for trend '{trend_name}'")
 
         # Get table and column info from backend
         domain = signal.domain.value if signal.domain else "measurement"
@@ -854,12 +838,8 @@ class SQLCompiler:
         joins = []
 
         for trend_name in trend_names:
-            select_cols.append(
-                f"COALESCE({trend_name}.{trend_name}_value, NULL) as {trend_name}_value"
-            )
-            joins.append(
-                f"LEFT JOIN {trend_name} ON p.person_id = {trend_name}.person_id"
-            )
+            select_cols.append(f"COALESCE({trend_name}.{trend_name}_value, NULL) as {trend_name}_value")
+            joins.append(f"LEFT JOIN {trend_name} ON p.person_id = {trend_name}.person_id")
 
         # Add trend result columns (threshold comparisons)
         for trend_name, trend in self.scenario.trends.items():

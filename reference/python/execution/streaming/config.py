@@ -241,36 +241,26 @@ class StreamingConfig:
 
         # Parse checkpoint config
         if "checkpointing" in execution:
-            config.checkpointing = CheckpointConfig.from_dict(
-                execution["checkpointing"]
-            )
+            config.checkpointing = CheckpointConfig.from_dict(execution["checkpointing"])
 
         # Parse error handling
         if "error_handling" in execution:
-            config.error_handling = ErrorHandlingConfig.from_dict(
-                execution["error_handling"]
-            )
+            config.error_handling = ErrorHandlingConfig.from_dict(execution["error_handling"])
 
         # Parse sources
         for name, source_config in scenario.get("sources", {}).items():
             source_type = source_config.get("type", "kafka")
             if source_type == "kafka":
-                config.sources[name] = KafkaSourceConfig.from_dict(
-                    source_config.get("config", {})
-                )
+                config.sources[name] = KafkaSourceConfig.from_dict(source_config.get("config", {}))
             # Add other source types as needed
 
         # Parse sinks
         for name, sink_config in scenario.get("sinks", {}).items():
             sink_type = sink_config.get("type", "kafka")
             if sink_type == "kafka":
-                config.sinks[name] = KafkaSinkConfig.from_dict(
-                    sink_config.get("config", {})
-                )
+                config.sinks[name] = KafkaSinkConfig.from_dict(sink_config.get("config", {}))
             elif sink_type == "jdbc":
-                config.sinks[name] = JDBCSinkConfig.from_dict(
-                    sink_config.get("config", {})
-                )
+                config.sinks[name] = JDBCSinkConfig.from_dict(sink_config.get("config", {}))
             # Add other sink types as needed
 
         return config

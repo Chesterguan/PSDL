@@ -477,9 +477,7 @@ class TestMappingProviderIntegration:
 
         config = FHIRConfig(
             base_url="https://fhir.test.org/r4",
-            loinc_mappings={
-                "creatinine": "22222-2"
-            },  # Config override (lower priority)
+            loinc_mappings={"creatinine": "22222-2"},  # Config override (lower priority)
         )
         backend = FHIRBackend(config, mapping=mapping)
 
@@ -544,11 +542,7 @@ class TestConditionHandling:
                     "resource": {
                         "resourceType": "Condition",
                         "onsetDateTime": "2024-01-10T08:00:00Z",
-                        "code": {
-                            "coding": [
-                                {"system": "http://snomed.info/sct", "code": "123456"}
-                            ]
-                        },
+                        "code": {"coding": [{"system": "http://snomed.info/sct", "code": "123456"}]},
                     }
                 },
             ],

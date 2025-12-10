@@ -136,9 +136,7 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="aki-triggered", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="aki-triggered", reference_time=datetime.utcnow())
 
         # This patient has creatinine: 1.0 -> 1.2 -> 1.5 -> 1.8
         # last(Cr) = 1.8 > 1.5 (True)
@@ -153,9 +151,7 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="aki-stable", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="aki-stable", reference_time=datetime.utcnow())
 
         # This patient has creatinine: 1.0 -> 0.95 -> 1.05 -> 1.0
         # last(Cr) = 1.0 NOT > 1.5 (False)
@@ -169,9 +165,7 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="normal-patient", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
 
         assert result.trend_results["cr_high"] is False
         assert "aki_risk" not in result.triggered_logic
@@ -223,9 +217,7 @@ logic:
         scenario = parser.parse_string(self.ICU_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="icu-deteriorating", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="icu-deteriorating", reference_time=datetime.utcnow())
 
         # This patient has:
         # HR: 75 -> 82 -> 95 -> 108 -> 120 (rising, last=120 > 100)
@@ -238,9 +230,7 @@ logic:
         scenario = parser.parse_string(self.ICU_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="normal-patient", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
 
         # Normal patient has stable vitals
         assert "deterioration" not in result.triggered_logic
@@ -292,9 +282,7 @@ logic:
         scenario = parser.parse_string(self.SEPSIS_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="sepsis-positive", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="sepsis-positive", reference_time=datetime.utcnow())
 
         # This patient has:
         # Temp: last = 39.2 > 38.3 (True)
@@ -311,9 +299,7 @@ logic:
         scenario = parser.parse_string(self.SEPSIS_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(
-            patient_id="normal-patient", reference_time=datetime.utcnow()
-        )
+        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
 
         assert result.trend_results["fever"] is False
         assert "sepsis_risk" not in result.triggered_logic
@@ -348,9 +334,7 @@ logic:
         patient_ids = backend.get_patient_ids()
 
         # Evaluate cohort
-        results = evaluator.evaluate_cohort(
-            reference_time=datetime.utcnow(), patient_ids=patient_ids
-        )
+        results = evaluator.evaluate_cohort(reference_time=datetime.utcnow(), patient_ids=patient_ids)
 
         assert len(results) == len(patient_ids)
 
@@ -394,9 +378,7 @@ class TestDataFetching:
 
         # Verify values are reasonable
         values = [dp.value for dp in data_points]
-        assert all(
-            0.5 < v < 10 for v in values
-        ), "Creatinine values should be in reasonable range"
+        assert all(0.5 < v < 10 for v in values), "Creatinine values should be in reasonable range"
 
     def test_fetch_heart_rate_data(self, backend):
         """Test fetching heart rate observations."""
@@ -419,9 +401,7 @@ class TestDataFetching:
 
         # Verify heart rate values are reasonable
         values = [dp.value for dp in data_points]
-        assert all(
-            40 < v < 200 for v in values
-        ), "Heart rate values should be in reasonable range"
+        assert all(40 < v < 200 for v in values), "Heart rate values should be in reasonable range"
 
 
 if __name__ == "__main__":
