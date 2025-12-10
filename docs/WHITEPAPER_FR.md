@@ -333,6 +333,84 @@ PSDL comble un vide spécifique dans la pile technologique de la santé. Compren
 | Entraîne les modèles ML | PSDL déploie les modèles entraînés |
 | Définit les parcours de soins | Déclenchez les systèmes de parcours depuis PSDL |
 
+---
+
+## Portée et Limitations
+
+**L'honnêteté intellectuelle exige de la clarté sur ce que PSDL peut et ne peut pas faire.** PSDL est une spécification pour exprimer la logique de détection clinique — comprendre ses limites est essentiel.
+
+### Le Principe Central : QUOI vs COMMENT
+
+PSDL suit la même séparation des responsabilités que SQL, GraphQL et ONNX :
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SÉPARATION DES RESPONSABILITÉS                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Standard    │  Définit QUOI              │  PAS COMMENT        │
+│   ──────────  │  ────────────              │  ───────            │
+│   SQL         │  Quelles données requêter  │  Comment DB stocke  │
+│   GraphQL     │  Quelle forme de réponse   │  Comment srv obtient│
+│   ONNX        │  Ce que le modèle calcule  │  Comment rt exécute │
+│   PSDL        │  Quel pattern détecter     │  Comment collecter  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**PSDL définit QUOI détecter, pas COMMENT collecter les données.**
+
+### Ce Que PSDL Définit (La Spécification)
+
+PSDL comme langage spécifie :
+
+| Composant | But | Exemple |
+|-----------|-----|---------|
+| **Signaux** | Quelles données lier | `Cr: creatinine (mg/dL)` |
+| **Tendances** | Quels patterns temporels | `delta(Cr, 6h) > 0.3` |
+| **Logique** | Quelles conditions détecter | `cr_rising AND cr_elevated` |
+| **Déclencheurs** | Quelles actions au déclenchement | `notify_team("nephrology")` |
+
+### Ce Que PSDL Ne Définit PAS
+
+PSDL ne spécifie pas :
+
+| Hors Portée | Pourquoi | Géré Par |
+|-------------|----------|----------|
+| Comment collecter les scores douleur | Collecte, pas détection | Apps infirmières |
+| Comment interroger les APIs | Détail d'implémentation | Implémentation de référence |
+| Comment exécuter les modèles ML | Responsabilité du runtime | ONNX runtime |
+| Comment exécuter les workflows | Travail du runtime | Moteur de workflow |
+
+### L'Insight Clé : Disponibilité des Données
+
+**Une fois que les données existent, PSDL peut les utiliser — quelle que soit la source.**
+
+| Scénario | PSDL peut ? | Pourquoi |
+|----------|-------------|----------|
+| Tendances labo → Alerte | **Oui** | Données labo existent dans EHR |
+| Sortie modèle ML → Alerte | **Oui** | La sortie est des données |
+| Score douleur (documenté) → Alerte | **Oui** | Ce sont des données structurées |
+| Collecter score douleur | **Non** | C'est de la collecte |
+| État mental (enregistré) → Alerte | **Oui** | Ce sont des données documentées |
+| Effectuer examen mental | **Non** | C'est de la collecte |
+
+### Spécification vs Implémentation de Référence
+
+Cette distinction compte :
+
+| Aspect | Spécification PSDL | Implémentation Référence |
+|--------|-------------------|--------------------------|
+| **But** | Définir le langage | Démontrer une façon d'exécuter |
+| **Portée** | Logique de détection uniquement | Peut inclure des commodités |
+| **Déclencheurs** | Déclare QUELLE action | COMMENT exécuter est du runtime |
+
+L'implémentation de référence peut faire beaucoup de choses, mais **la spécification PSDL reste élégante et focalisée**.
+
+### Philosophie de Conception
+
+> **PSDL opère sur les données qui existent — il n'orchestre pas la collecte de données.**
+
 ### Contexte Historique
 
 PSDL s'appuie sur [Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992), qui a été pionnier des règles cliniques partageables. Les Medical Logic Modules (MLMs) d'Arden ont introduit des patterns événement-déclencheur-action toujours pertinents aujourd'hui.

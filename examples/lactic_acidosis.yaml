@@ -1,0 +1,199 @@
+# PSDL Example: Lactic Acidosis Detection
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Detects lactic acidosis - a critical metabolic emergency
+# indicating tissue hypoxia or metabolic dysfunction.
+#
+# Clinical Significance:
+# - Lactate > 2 mmol/L with pH < 7.35 = lactic acidosis
+# - Type A: Tissue hypoxia (shock, sepsis, hypoperfusion)
+# - Type B: Metabolic (metformin, liver failure, malignancy)
+#
+# Mortality increases significantly with higher lactate levels:
+# - Lactate 2-4: ~15% mortality
+# - Lactate 4-10: ~25% mortality
+# - Lactate > 10: ~50% mortality
+#
+# Reference: Rhodes et al. Surviving Sepsis Campaign Guidelines
+
+scenario: Lactic_Acidosis_Detection
+version: "0.1.0"
+description: "Detect lactic acidosis through lactate and pH patterns"
+
+# ── Population ───────────────────────────────────
+population:
+  include:
+    - age >= 18
+  exclude:
+    - status == "comfort_care_only"
+
+# ── Signal Bindings ──────────────────────────────
+signals:
+  Lact:
+    source: lactate
+    concept_id: 3047181
+    unit: mmol/L
+    domain: measurement
+
+  pH:
+    source: blood_ph
+    concept_id: 3019977
+    unit: pH
+    domain: measurement
+
+  HCO3:
+    source: bicarbonate
+    concept_id: 3015632
+    unit: mEq/L
+    domain: measurement
+
+  Cr:
+    source: creatinine
+    concept_id: 3016723
+    unit: mg/dL
+    domain: measurement
+
+  Glucose:
+    source: glucose
+    concept_id: 3004501
+    unit: mg/dL
+    domain: measurement
+
+# ── Trend Computations ───────────────────────────
+trends:
+  # Lactate thresholds
+  lactate_elevated:
+    expr: last(Lact) > 2.0
+    description: "Lactate > 2.0 mmol/L (elevated)"
+
+  lactate_high:
+    expr: last(Lact) > 4.0
+    description: "Lactate > 4.0 mmol/L (high - significant hypoperfusion)"
+
+  lactate_severe:
+    expr: last(Lact) > 6.0
+    description: "Lactate > 6.0 mmol/L (severe)"
+
+  lactate_critical:
+    expr: last(Lact) > 10.0
+    description: "Lactate > 10.0 mmol/L (critical - high mortality)"
+
+  # Lactate trajectory
+  lactate_rising:
+    expr: slope(Lact, 6h) > 0
+    description: "Lactate trending upward"
+
+  lactate_rising_fast:
+    expr: delta(Lact, 6h) > 2.0
+    description: "Rapid lactate rise (>2 mmol/L in 6h)"
+
+  lactate_falling:
+    expr: slope(Lact, 6h) < 0
+    description: "Lactate falling (treatment response)"
+
+  lactate_clearing:
+    expr: delta(Lact, 6h) < -1.0
+    description: "Lactate clearance > 1 mmol/L in 6h (good response)"
+
+  # pH and acid-base status
+  acidosis:
+    expr: last(pH) < 7.35
+    description: "Acidemia (pH < 7.35)"
+
+  severe_acidosis:
+    expr: last(pH) < 7.20
+    description: "Severe acidemia (pH < 7.20)"
+
+  critical_acidosis:
+    expr: last(pH) < 7.10
+    description: "Critical acidemia (pH < 7.10)"
+
+  ph_falling:
+    expr: slope(pH, 6h) < 0
+    description: "pH trending down"
+
+  # Bicarbonate (metabolic component)
+  bicarb_low:
+    expr: last(HCO3) < 22
+    description: "Low bicarbonate (metabolic acidosis)"
+
+  bicarb_very_low:
+    expr: last(HCO3) < 18
+    description: "Very low bicarbonate (severe metabolic acidosis)"
+
+  # Contributing factors
+  aki_present:
+    expr: delta(Cr, 48h) >= 0.3
+    description: "AKI present (reduced lactate clearance)"
+
+  hypoglycemia:
+    expr: last(Glucose) < 70
+    description: "Hypoglycemia (altered metabolism)"
+
+# ── Logic Layer ──────────────────────────────────
+logic:
+  # Core lactic acidosis definition
+  lactic_acidosis_mild:
+    expr: lactate_elevated AND acidosis AND NOT lactate_high
+    severity: medium
+    description: "Mild lactic acidosis (lactate 2-4, pH < 7.35)"
+
+  lactic_acidosis_moderate:
+    expr: lactate_high AND acidosis AND NOT lactate_severe
+    severity: high
+    description: "Moderate lactic acidosis (lactate 4-6)"
+
+  lactic_acidosis_severe:
+    expr: lactate_severe AND acidosis
+    severity: critical
+    description: "Severe lactic acidosis (lactate > 6)"
+
+  lactic_acidosis_critical:
+    expr: lactate_critical OR (lactate_severe AND severe_acidosis)
+    severity: critical
+    description: "Critical lactic acidosis - high mortality risk"
+
+  # Trajectory-based alerts
+  acidosis_worsening:
+    expr: lactate_elevated AND lactate_rising AND ph_falling
+    severity: high
+    description: "Acidosis worsening - lactate rising, pH falling"
+
+  acidosis_rapid_onset:
+    expr: lactate_rising_fast
+    severity: critical
+    description: "Rapid lactate rise - acute decompensation"
+
+  # Isolated hyperlactatemia (without acidosis)
+  hyperlactatemia_isolated:
+    expr: lactate_high AND NOT acidosis
+    severity: medium
+    description: "Isolated hyperlactatemia - lactate high but pH normal"
+
+  # Recovery indicators
+  lactic_acidosis_responding:
+    expr: lactate_elevated AND lactate_clearing
+    severity: low
+    description: "Lactic acidosis responding to treatment"
+
+  lactate_normalized:
+    expr: NOT lactate_elevated AND lactate_falling
+    severity: low
+    description: "Lactate normalizing"
+
+  # Multi-factor severe patterns
+  metabolic_crisis:
+    expr: severe_acidosis AND bicarb_very_low AND lactate_high
+    severity: critical
+    description: "Metabolic crisis - severe acidosis with high lactate"
+
+  lactic_acidosis_with_aki:
+    expr: lactic_acidosis_moderate AND aki_present
+    severity: critical
+    description: "Lactic acidosis with AKI - impaired clearance"
+
+  # Shock indicator
+  tissue_hypoxia_likely:
+    expr: lactate_high AND lactate_rising
+    severity: high
+    description: "Rising high lactate - tissue hypoxia/shock likely"

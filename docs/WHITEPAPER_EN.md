@@ -332,6 +332,129 @@ PSDL fills a specific gap in the healthcare technology stack. Understanding wher
 | Train ML models | PSDL deploys trained models |
 | Define treatment pathways | Trigger pathway systems from PSDL |
 
+---
+
+## Scope and Limitations
+
+**Intellectual honesty requires clarity about what PSDL can and cannot do.** PSDL is a specification for expressing clinical detection logic — understanding its boundaries is essential.
+
+### The Core Principle: WHAT vs HOW
+
+PSDL follows the same separation of concerns as SQL, GraphQL, and ONNX:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SEPARATION OF CONCERNS                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Standard    │  Defines WHAT              │  NOT HOW            │
+│   ──────────  │  ────────────              │  ───────            │
+│   SQL         │  What data to query        │  How DB stores it   │
+│   GraphQL     │  What shape of response    │  How server fetches │
+│   ONNX        │  What model computes       │  How runtime runs   │
+│   PSDL        │  What pattern to detect    │  How data collected │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**PSDL defines WHAT to detect, not HOW to collect data.**
+
+### What PSDL Defines (The Specification)
+
+PSDL as a language specifies:
+
+| Component | Purpose | Example |
+|-----------|---------|---------|
+| **Signals** | What data to bind | `Cr: creatinine (mg/dL)` |
+| **Trends** | What temporal patterns | `delta(Cr, 6h) > 0.3` |
+| **Logic** | What conditions to detect | `cr_rising AND cr_elevated` |
+| **Triggers** | What actions when detected | `notify_team("nephrology")` |
+
+### What PSDL Does NOT Define
+
+PSDL does not specify:
+
+| Outside PSDL Scope | Why | Handled By |
+|-------------------|-----|------------|
+| How to collect pain scores | Data collection, not detection | Nursing apps, tablets |
+| How to poll APIs | Implementation detail | Reference implementation |
+| How to prompt clinicians | Workflow orchestration | EHR workflows |
+| How to store in EHR | Data infrastructure | FHIR servers, databases |
+| How to run ML models | Runtime concern | ONNX runtime, model servers |
+
+### The Key Insight: Data Availability
+
+**Once data exists, PSDL can use it — regardless of source.**
+
+| Scenario | Can PSDL Handle? | Why |
+|----------|------------------|-----|
+| Lab trends → Alert | **Yes** | Lab data exists in EHR |
+| ML model output → Alert | **Yes** | Model output becomes data |
+| Pain score (after documented) → Alert | **Yes** | It's now structured data |
+| Collect pain score from patient | **No** | That's data collection |
+| Mental status findings (after charted) → Alert | **Yes** | It's documented data |
+| Perform mental status exam | **No** | That's data collection |
+| Radiology AI interpretation → Alert | **Yes** | AI output is data |
+| Discuss goals of care | **No** | Interactive dialogue |
+
+### Architecture: Clean Separation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   DATA COLLECTION LAYER          │   PSDL DETECTION LAYER       │
+│   (Outside PSDL Scope)           │   (PSDL Specification)        │
+│                                  │                               │
+│   Tablet → Pain Score ─────┐     │                               │
+│                            │     │   signals:                    │
+│   Nurse → Assessment ──────┼──→  │     pain: pain_score          │
+│                            │     │   trends:                     │
+│   ML Model → Prediction ───┤     │     pain_high: last(pain) > 7 │
+│                            │     │   logic:                      │
+│   Lab System → Results ────┘     │     needs_eval: pain_high     │
+│                                  │                               │
+│   [HOW data gets there]          │   [WHAT to detect]            │
+│                                  │                               │
+└──────────────────────────────────┴───────────────────────────────┘
+```
+
+### Specification vs Reference Implementation
+
+This distinction matters:
+
+| Aspect | PSDL Specification | Reference Implementation |
+|--------|-------------------|-------------------------|
+| **Purpose** | Define the language | Demonstrate one way to run it |
+| **Scope** | Detection logic only | May include conveniences |
+| **Portability** | Must be portable | Python-specific |
+| **Triggers** | Declares WHAT action | HOW to execute is runtime's job |
+
+The reference implementation can do many things (API calls, complex integrations), but **PSDL the specification remains elegant and focused** on expressing detection logic.
+
+### Design Philosophy
+
+> **PSDL operates on data that exists — it does not orchestrate data collection.**
+
+This clean separation enables:
+- **Deterministic execution** — same data always produces same result
+- **Regulatory clarity** — auditors see exactly what triggers alerts
+- **Portability** — scenarios work across any system with the data
+- **Elegance** — the specification stays simple and focused
+
+### Summary
+
+**Q: Can PSDL handle pain assessment?**
+- **Yes** — if pain scores exist as data, PSDL detects patterns on them
+- **No** — PSDL doesn't define how to collect pain scores from patients
+
+**Q: Can PSDL work with ML models?**
+- **Yes** — model outputs are data that PSDL can consume
+- **No** — PSDL doesn't define how to run the models
+
+**Q: Can PSDL trigger complex workflows?**
+- **Yes** — PSDL triggers declare what should happen
+- **No** — How workflows execute is the runtime's responsibility
+
 ### Historical Context
 
 PSDL builds on [Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992), which pioneered shareable clinical rules. Arden's Medical Logic Modules (MLMs) introduced event-trigger-action patterns still relevant today.

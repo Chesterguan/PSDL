@@ -1,0 +1,159 @@
+# PSDL Example: Hyperkalemia Detection
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Detects dangerous potassium elevations that can cause
+# life-threatening cardiac arrhythmias.
+#
+# Clinical Significance:
+# - K > 5.5 mEq/L: Mild hyperkalemia
+# - K > 6.0 mEq/L: Moderate hyperkalemia (ECG changes)
+# - K > 6.5 mEq/L: Severe hyperkalemia (cardiac arrest risk)
+#
+# Risk factors: AKI, ACE inhibitors, potassium supplements,
+# tissue breakdown, metabolic acidosis
+#
+# Reference: AHA/ACC Guidelines for Hyperkalemia Management
+
+scenario: Hyperkalemia_Detection
+version: "0.1.0"
+description: "Detect and stage hyperkalemia with trajectory analysis"
+
+# ── Population ───────────────────────────────────
+population:
+  include:
+    - age >= 18
+  exclude:
+    - dialysis_status == "chronic_hemodialysis"
+
+# ── Signal Bindings ──────────────────────────────
+signals:
+  K:
+    source: potassium
+    concept_id: 3023103
+    unit: mEq/L
+    domain: measurement
+
+  Cr:
+    source: creatinine
+    concept_id: 3016723
+    unit: mg/dL
+    domain: measurement
+
+  pH:
+    source: blood_ph
+    concept_id: 3019977
+    unit: pH
+    domain: measurement
+
+  Glucose:
+    source: glucose
+    concept_id: 3004501
+    unit: mg/dL
+    domain: measurement
+
+# ── Trend Computations ───────────────────────────
+trends:
+  # Absolute potassium levels
+  k_elevated_mild:
+    expr: last(K) > 5.5
+    description: "Potassium > 5.5 mEq/L (mild hyperkalemia)"
+
+  k_elevated_moderate:
+    expr: last(K) > 6.0
+    description: "Potassium > 6.0 mEq/L (moderate - ECG changes likely)"
+
+  k_elevated_severe:
+    expr: last(K) > 6.5
+    description: "Potassium > 6.5 mEq/L (severe - cardiac arrest risk)"
+
+  k_critical:
+    expr: last(K) > 7.0
+    description: "Potassium > 7.0 mEq/L (critical emergency)"
+
+  # Potassium trajectory
+  k_rising:
+    expr: slope(K, 24h) > 0
+    description: "Potassium trending upward"
+
+  k_rising_fast:
+    expr: delta(K, 12h) > 0.5
+    description: "Rapid potassium rise (>0.5 mEq/L in 12h)"
+
+  k_rising_very_fast:
+    expr: delta(K, 6h) > 0.5
+    description: "Very rapid potassium rise (>0.5 mEq/L in 6h)"
+
+  # Recovery pattern
+  k_falling:
+    expr: slope(K, 12h) < 0
+    description: "Potassium trending downward (treatment response)"
+
+  # Contributing factors
+  aki_present:
+    expr: delta(Cr, 48h) >= 0.3
+    description: "AKI present (impaired K excretion)"
+
+  acidosis_present:
+    expr: last(pH) < 7.35
+    description: "Acidosis (shifts K extracellular)"
+
+  hyperglycemia:
+    expr: last(Glucose) > 250
+    description: "Severe hyperglycemia (osmotic K shift)"
+
+# ── Logic Layer ──────────────────────────────────
+logic:
+  # Staging
+  hyperkalemia_mild:
+    expr: k_elevated_mild AND NOT k_elevated_moderate
+    severity: low
+    description: "Mild hyperkalemia (5.5-6.0) - monitor and investigate cause"
+
+  hyperkalemia_moderate:
+    expr: k_elevated_moderate AND NOT k_elevated_severe
+    severity: medium
+    description: "Moderate hyperkalemia (6.0-6.5) - ECG, prepare treatment"
+
+  hyperkalemia_severe:
+    expr: k_elevated_severe AND NOT k_critical
+    severity: high
+    description: "Severe hyperkalemia (6.5-7.0) - urgent treatment required"
+
+  hyperkalemia_critical:
+    expr: k_critical
+    severity: critical
+    description: "Critical hyperkalemia (>7.0) - immediate intervention"
+
+  # Trajectory-based alerts
+  hyperkalemia_worsening:
+    expr: k_elevated_mild AND k_rising_fast
+    severity: high
+    description: "Hyperkalemia with rapid rise - escalating risk"
+
+  hyperkalemia_rapid_onset:
+    expr: k_rising_very_fast
+    severity: high
+    description: "Very rapid K rise - investigate tissue breakdown, transfusion"
+
+  # Context-aware alerts
+  hyperkalemia_with_aki:
+    expr: k_elevated_moderate AND aki_present
+    severity: high
+    description: "Hyperkalemia with AKI - impaired excretion, monitor closely"
+
+  hyperkalemia_with_acidosis:
+    expr: k_elevated_moderate AND acidosis_present
+    severity: high
+    description: "Hyperkalemia with acidosis - pH correction may help"
+
+  # Recovery indicator
+  hyperkalemia_responding:
+    expr: k_elevated_mild AND k_falling
+    severity: low
+    description: "Hyperkalemia responding to treatment"
+
+  # Any hyperkalemia
+  hyperkalemia_present:
+    expr: k_elevated_mild OR k_elevated_moderate OR k_elevated_severe OR k_critical
+    severity: medium
+    description: "Hyperkalemia present at any level"

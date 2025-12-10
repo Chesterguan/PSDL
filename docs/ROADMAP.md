@@ -150,6 +150,45 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 ---
 
+## Whitepaper Versioning
+
+The whitepaper evolves with the specification. Major updates are versioned to maintain translation synchronization.
+
+### Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| **0.1.0** | Dec 2025 | Initial release — Core specification, batch execution |
+| **0.1.1** | Dec 2025 | Added "Scope and Limitations" section (WHAT vs HOW) |
+
+### Planned Whitepaper Updates
+
+| Version | Target | Content |
+|---------|--------|---------|
+| **0.2.0** | Phase 2 | Streaming execution, Triggers & Actions |
+| **0.3.0** | Phase 3 | AI/ML integration (RFC-0001) |
+| **1.0.0** | Phase 4 | Production-ready specification |
+
+### Translation Sync Policy
+
+When the English whitepaper is updated:
+1. Update `docs/WHITEPAPER.md` (index) with new translation status
+2. All translations should be updated within 2 weeks
+3. Mark translations as "Needs Update" if behind English version
+4. Critical sections (Scope, Core Concepts) prioritized for sync
+
+### Current Translation Status
+
+| Language | Version | Status |
+|----------|---------|--------|
+| English (EN) | 0.1.1 | Current |
+| 简体中文 (ZH) | 0.1.1 | Current |
+| Español (ES) | 0.1.1 | Current |
+| Français (FR) | 0.1.1 | Current |
+| 日本語 (JA) | 0.1.1 | Current |
+
+---
+
 ## RFCs
 
 Major features are proposed through RFCs:

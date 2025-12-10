@@ -1,0 +1,199 @@
+# PSDL Example: Hemorrhage / Acute Blood Loss Detection
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Detects acute blood loss through laboratory patterns.
+# Critical for post-operative patients, trauma, GI bleeding.
+#
+# Clinical Significance:
+# - Falling hemoglobin is the hallmark of bleeding
+# - Platelet consumption suggests ongoing hemorrhage
+# - Rising lactate indicates tissue hypoperfusion
+# - These patterns together suggest clinically significant bleeding
+#
+# Thresholds based on transfusion guidelines and clinical practice.
+#
+# Reference: AABB Transfusion Guidelines, Trauma Resuscitation Protocols
+
+scenario: Hemorrhage_Detection
+version: "0.1.0"
+description: "Detect acute blood loss through hemoglobin, platelet, and lactate patterns"
+
+# ── Population ───────────────────────────────────
+population:
+  include:
+    - age >= 18
+  exclude:
+    - status == "comfort_care_only"
+
+# ── Signal Bindings ──────────────────────────────
+signals:
+  Hgb:
+    source: hemoglobin
+    concept_id: 3000963
+    unit: g/dL
+    domain: measurement
+
+  Plt:
+    source: platelet_count
+    concept_id: 3024929
+    unit: "10^9/L"
+    domain: measurement
+
+  Lact:
+    source: lactate
+    concept_id: 3047181
+    unit: mmol/L
+    domain: measurement
+
+  Cr:
+    source: creatinine
+    concept_id: 3016723
+    unit: mg/dL
+    domain: measurement
+
+# ── Trend Computations ───────────────────────────
+trends:
+  # Hemoglobin levels
+  hgb_low:
+    expr: last(Hgb) < 10.0
+    description: "Hemoglobin < 10 g/dL (anemia)"
+
+  hgb_very_low:
+    expr: last(Hgb) < 8.0
+    description: "Hemoglobin < 8 g/dL (moderate anemia)"
+
+  hgb_critical:
+    expr: last(Hgb) < 7.0
+    description: "Hemoglobin < 7 g/dL (severe - transfusion threshold)"
+
+  hgb_life_threatening:
+    expr: last(Hgb) < 5.0
+    description: "Hemoglobin < 5 g/dL (life-threatening)"
+
+  # Hemoglobin trajectory (key for bleeding detection)
+  hgb_falling:
+    expr: slope(Hgb, 24h) < 0
+    description: "Hemoglobin trending downward"
+
+  hgb_drop_mild:
+    expr: delta(Hgb, 24h) < -1.0
+    description: "Hemoglobin drop > 1 g/dL in 24h"
+
+  hgb_drop_moderate:
+    expr: delta(Hgb, 24h) < -2.0
+    description: "Hemoglobin drop > 2 g/dL in 24h (significant bleeding)"
+
+  hgb_drop_severe:
+    expr: delta(Hgb, 12h) < -2.0
+    description: "Hemoglobin drop > 2 g/dL in 12h (rapid bleeding)"
+
+  hgb_drop_acute:
+    expr: delta(Hgb, 6h) < -1.5
+    description: "Hemoglobin drop > 1.5 g/dL in 6h (acute hemorrhage)"
+
+  # Platelet patterns
+  plt_low:
+    expr: last(Plt) < 100
+    description: "Platelets < 100 (thrombocytopenia)"
+
+  plt_critical:
+    expr: last(Plt) < 50
+    description: "Platelets < 50 (severe - bleeding risk)"
+
+  plt_falling:
+    expr: slope(Plt, 24h) < 0
+    description: "Platelet count falling"
+
+  plt_consumption:
+    expr: delta(Plt, 24h) < -30
+    description: "Platelet drop > 30 in 24h (consumption)"
+
+  # Tissue perfusion markers
+  lactate_elevated:
+    expr: last(Lact) > 2.0
+    description: "Lactate > 2.0 mmol/L (hypoperfusion)"
+
+  lactate_high:
+    expr: last(Lact) > 4.0
+    description: "Lactate > 4.0 mmol/L (severe hypoperfusion)"
+
+  lactate_rising:
+    expr: slope(Lact, 6h) > 0
+    description: "Lactate trending up (worsening perfusion)"
+
+  # Renal impact
+  aki_developing:
+    expr: delta(Cr, 24h) >= 0.3
+    description: "AKI developing (possible hypovolemia)"
+
+# ── Logic Layer ──────────────────────────────────
+logic:
+  # Severity staging
+  anemia_mild:
+    expr: hgb_low AND NOT hgb_very_low
+    severity: low
+    description: "Mild anemia (Hgb 8-10) - monitor"
+
+  anemia_moderate:
+    expr: hgb_very_low AND NOT hgb_critical
+    severity: medium
+    description: "Moderate anemia (Hgb 7-8) - evaluate for transfusion"
+
+  anemia_severe:
+    expr: hgb_critical AND NOT hgb_life_threatening
+    severity: high
+    description: "Severe anemia (Hgb < 7) - transfusion likely needed"
+
+  anemia_critical:
+    expr: hgb_life_threatening
+    severity: critical
+    description: "Life-threatening anemia (Hgb < 5) - emergent transfusion"
+
+  # Active bleeding detection
+  bleeding_likely:
+    expr: hgb_drop_mild AND hgb_falling
+    severity: medium
+    description: "Likely bleeding - Hgb falling > 1 g/dL/day"
+
+  bleeding_significant:
+    expr: hgb_drop_moderate
+    severity: high
+    description: "Significant bleeding - Hgb drop > 2 g/dL in 24h"
+
+  bleeding_rapid:
+    expr: hgb_drop_severe
+    severity: high
+    description: "Rapid bleeding - Hgb drop > 2 g/dL in 12h"
+
+  bleeding_acute:
+    expr: hgb_drop_acute
+    severity: critical
+    description: "Acute hemorrhage - Hgb drop > 1.5 g/dL in 6h"
+
+  # Multi-signal hemorrhage patterns
+  hemorrhagic_shock_developing:
+    expr: hgb_drop_moderate AND lactate_elevated
+    severity: critical
+    description: "Hemorrhage with hypoperfusion - shock developing"
+
+  hemorrhage_with_coagulopathy:
+    expr: hgb_drop_mild AND plt_consumption
+    severity: high
+    description: "Bleeding with platelet consumption - coagulopathy risk"
+
+  massive_hemorrhage:
+    expr: hgb_drop_severe AND plt_falling AND lactate_rising
+    severity: critical
+    description: "Massive hemorrhage - Hgb falling, platelets consumed, lactate rising"
+
+  # Combined patterns
+  bleeding_with_aki:
+    expr: bleeding_likely AND aki_developing
+    severity: high
+    description: "Bleeding with AKI - hypovolemia affecting kidneys"
+
+  # Transfusion decision support
+  transfusion_indicated:
+    expr: hgb_critical OR (hgb_very_low AND bleeding_likely)
+    severity: high
+    description: "Transfusion likely indicated - Hgb < 7 or actively bleeding"

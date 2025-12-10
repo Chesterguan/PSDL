@@ -332,6 +332,84 @@ PSDL llena un vacío específico en la pila tecnológica sanitaria. Comprender d
 | Entrena modelos de ML | PSDL despliega modelos entrenados |
 | Define rutas de tratamiento | Dispara sistemas de rutas desde PSDL |
 
+---
+
+## Alcance y Limitaciones
+
+**La honestidad intelectual requiere claridad sobre lo que PSDL puede y no puede hacer.** PSDL es una especificación para expresar lógica de detección clínica — entender sus límites es esencial.
+
+### El Principio Central: QUÉ vs CÓMO
+
+PSDL sigue la misma separación de responsabilidades que SQL, GraphQL y ONNX:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SEPARACIÓN DE RESPONSABILIDADES               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Estándar    │  Define QUÉ                │  NO CÓMO           │
+│   ──────────  │  ────────────              │  ───────           │
+│   SQL         │  Qué datos consultar       │  Cómo almacena DB  │
+│   GraphQL     │  Qué forma de respuesta    │  Cómo obtiene srv  │
+│   ONNX        │  Qué computa el modelo     │  Cómo ejecuta rt   │
+│   PSDL        │  Qué patrón detectar       │  Cómo recolectar   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**PSDL define QUÉ detectar, no CÓMO recolectar datos.**
+
+### Qué Define PSDL (La Especificación)
+
+PSDL como lenguaje especifica:
+
+| Componente | Propósito | Ejemplo |
+|------------|-----------|---------|
+| **Señales** | Qué datos vincular | `Cr: creatinine (mg/dL)` |
+| **Tendencias** | Qué patrones temporales | `delta(Cr, 6h) > 0.3` |
+| **Lógica** | Qué condiciones detectar | `cr_rising AND cr_elevated` |
+| **Disparadores** | Qué acciones al detectar | `notify_team("nephrology")` |
+
+### Qué NO Define PSDL
+
+PSDL no especifica:
+
+| Fuera del Alcance | Por qué | Manejado Por |
+|-------------------|---------|--------------|
+| Cómo recolectar puntuaciones de dolor | Recolección, no detección | Apps de enfermería |
+| Cómo consultar APIs | Detalle de implementación | Implementación de referencia |
+| Cómo ejecutar modelos ML | Responsabilidad del runtime | ONNX runtime |
+| Cómo ejecutar flujos de trabajo | Trabajo del runtime | Motor de workflows |
+
+### La Clave: Disponibilidad de Datos
+
+**Una vez que los datos existen, PSDL puede usarlos — sin importar la fuente.**
+
+| Escenario | ¿PSDL puede? | Por qué |
+|-----------|--------------|---------|
+| Tendencias de lab → Alerta | **Sí** | Datos de lab existen en EHR |
+| Salida de modelo ML → Alerta | **Sí** | La salida es datos |
+| Puntuación dolor (documentada) → Alerta | **Sí** | Ya son datos estructurados |
+| Recolectar puntuación de dolor | **No** | Eso es recolección |
+| Estado mental (registrado) → Alerta | **Sí** | Son datos documentados |
+| Realizar examen mental | **No** | Eso es recolección |
+
+### Especificación vs Implementación de Referencia
+
+Esta distinción importa:
+
+| Aspecto | Especificación PSDL | Implementación Referencia |
+|---------|---------------------|---------------------------|
+| **Propósito** | Definir el lenguaje | Demostrar una forma de ejecutar |
+| **Alcance** | Solo lógica de detección | Puede incluir conveniencias |
+| **Disparadores** | Declara QUÉ acción | CÓMO ejecutar es del runtime |
+
+La implementación de referencia puede hacer muchas cosas, pero **la especificación PSDL permanece elegante y enfocada**.
+
+### Filosofía de Diseño
+
+> **PSDL opera sobre datos que existen — no orquesta la recolección de datos.**
+
 ### Contexto Histórico
 
 PSDL se basa en [Arden Syntax](https://en.wikipedia.org/wiki/Arden_syntax) (HL7, 1992), que fue pionero en reglas clínicas compartibles. Los Medical Logic Modules (MLMs) de Arden introdujeron patrones evento-disparador-acción que siguen siendo relevantes hoy.
