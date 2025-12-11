@@ -33,6 +33,18 @@
 
 ---
 
+## Try It Now (No Setup Required)
+
+Run PSDL in your browser with Google Colab - zero installation, real clinical data:
+
+| Notebook | Data | Description |
+|----------|------|-------------|
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_Sepsis_Challenge.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
+
+---
+
 ## The Problem
 
 Despite significant advances in clinical AI and machine learning, **real-time decision support in healthcare remains fragmented, non-portable, non-reproducible, and exceptionally difficult to audit or regulate**.
