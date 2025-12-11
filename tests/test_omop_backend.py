@@ -18,7 +18,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from psdl.adapters.omop import OMOPBackend, OMOPConfig, create_omop_backend  # noqa: E402
-from psdl.parser import Domain, Signal  # noqa: E402
+from psdl.core.ir import Domain, Signal  # noqa: E402
 
 
 class TestOMOPConfig:

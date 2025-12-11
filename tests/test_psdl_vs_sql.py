@@ -19,9 +19,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from psdl.execution.batch import InMemoryBackend, PSDLEvaluator
+from psdl.core import PSDLParser
 from psdl.operators import DataPoint
-from psdl.parser import PSDLParser
+from psdl.runtimes.single import InMemoryBackend, SinglePatientEvaluator
+
+PSDLEvaluator = SinglePatientEvaluator
 
 
 class SQLEmulator:

@@ -43,17 +43,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 if TYPE_CHECKING:
     from ..adapters.omop import OMOPBackend
 
-try:
-    from ..operators import DataPoint, TemporalOperators, apply_operator
-    from ..parser import LogicExpr, PSDLScenario, Signal, TrendExpr
-except ImportError:
-    import os
-    import sys
-
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from parser import LogicExpr, PSDLScenario, Signal, TrendExpr
-
-    from operators import DataPoint, TemporalOperators, apply_operator
+from ..core.ir import LogicExpr, PSDLScenario, Signal, TrendExpr
+from ..operators import DataPoint, TemporalOperators, apply_operator
 
 
 @dataclass

@@ -1,0 +1,95 @@
+"""
+Auto-generated operator metadata from spec/operators.yaml
+Generated: {{ timestamp }}
+
+DO NOT EDIT - Regenerate with: python tools/codegen.py --operators
+"""
+
+from typing import TypedDict, Literal, Optional
+
+
+SPEC_VERSION = "{{ version }}"
+
+
+class OperatorMeta(TypedDict, total=False):
+    """Metadata for a PSDL operator."""
+    name: str
+    category: Literal["windowed", "pointwise"]
+    signature: str
+    description: str
+    null_handling: Literal["filter", "include", "passthrough"]
+    min_points: int
+    aliases: list[str]
+    runtimes: list[str]
+
+
+# Windowed operators (require time window)
+WINDOWED_OPERATORS: dict[str, OperatorMeta] = {
+{% for name, meta in windowed_operators.items() %}
+    "{{ name }}": {
+        "name": "{{ name }}",
+        "category": "windowed",
+        "signature": "{{ meta.signature }}",
+        "description": """{{ meta.description }}""",
+        "null_handling": "{{ meta.semantics.null_handling | default('filter') }}",
+        "min_points": {{ meta.semantics.min_points | default(1) }},
+        "aliases": {{ meta.aliases | default([]) | tojson }},
+        "runtimes": {{ meta.implementations.keys() | list | tojson }},
+    },
+{% endfor %}
+}
+
+
+# Pointwise operators (no time window)
+POINTWISE_OPERATORS: dict[str, OperatorMeta] = {
+{% for name, meta in pointwise_operators.items() %}
+    "{{ name }}": {
+        "name": "{{ name }}",
+        "category": "pointwise",
+        "signature": "{{ meta.signature }}",
+        "description": """{{ meta.description }}""",
+        "null_handling": "{{ meta.semantics.null_handling | default('passthrough') }}",
+        "min_points": {{ meta.semantics.min_points | default(0) }},
+        "aliases": {{ meta.aliases | default([]) | tojson }},
+        "runtimes": {{ meta.implementations.keys() | list | tojson }},
+    },
+{% endfor %}
+}
+
+
+# All operators combined
+ALL_OPERATORS: dict[str, OperatorMeta] = {
+    **WINDOWED_OPERATORS,
+    **POINTWISE_OPERATORS,
+}
+
+
+# Operator name to canonical name (handles aliases)
+OPERATOR_ALIASES: dict[str, str] = {
+{% for name, meta in windowed_operators.items() %}
+    "{{ name }}": "{{ name }}",
+{% for alias in meta.aliases | default([]) %}
+    "{{ alias }}": "{{ name }}",
+{% endfor %}
+{% endfor %}
+{% for name, meta in pointwise_operators.items() %}
+    "{{ name }}": "{{ name }}",
+{% for alias in meta.aliases | default([]) %}
+    "{{ alias }}": "{{ name }}",
+{% endfor %}
+{% endfor %}
+}
+
+
+def get_operator(name: str) -> Optional[OperatorMeta]:
+    """Get operator metadata by name or alias."""
+    canonical = OPERATOR_ALIASES.get(name)
+    if canonical:
+        return ALL_OPERATORS.get(canonical)
+    return None
+
+
+def is_windowed(name: str) -> bool:
+    """Check if operator requires a time window."""
+    canonical = OPERATOR_ALIASES.get(name, name)
+    return canonical in WINDOWED_OPERATORS

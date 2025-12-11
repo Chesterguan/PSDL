@@ -54,19 +54,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 if TYPE_CHECKING:
     from ..mapping import MappingProvider
 
-try:
-    from ..execution.batch import DataBackend
-    from ..operators import DataPoint
-    from ..parser import Signal
-except ImportError:
-    import os
-    import sys
-
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from parser import Signal
-
-    from execution.batch import DataBackend
-    from operators import DataPoint
+from ..core.ir import Signal
+from ..operators import DataPoint
+from ..runtimes.single import DataBackend
 
 
 class CDMVersion(Enum):

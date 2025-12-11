@@ -73,7 +73,7 @@ def show_version():
 
 def validate_scenario(file_path: Path, strict: bool = False) -> int:
     """Validate a PSDL scenario file."""
-    from .parser import PSDLParser
+    from .core import PSDLParser
 
     if not file_path.exists():
         print(f"Error: File not found: {file_path}", file=sys.stderr)
@@ -113,7 +113,7 @@ def validate_scenario(file_path: Path, strict: bool = False) -> int:
 
 def parse_scenario(file_path: Path, output_json: bool = False) -> int:
     """Parse and display scenario structure."""
-    from .parser import PSDLParser
+    from .core import PSDLParser
 
     if not file_path.exists():
         print(f"Error: File not found: {file_path}", file=sys.stderr)

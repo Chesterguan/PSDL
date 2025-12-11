@@ -1,0 +1,972 @@
+# PSDL Operator Specification
+# Version: 0.2.0
+# Last Updated: 2024-12-11
+#
+# This file is the SOURCE OF TRUTH for all PSDL temporal operators.
+# Code generation tools use this file to generate:
+#   - Python operator implementations (_generated/operators_python.py)
+#   - SQL templates for PostgreSQL (_generated/operators_sql.py)
+#   - Flink SQL templates (_generated/operators_flink.py)
+#
+# DO NOT hand-edit generated files. Edit this specification instead.
+
+$schema: "https://psdl-lang.org/schema/v0.2/operators"
+version: "0.2.0"
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+types:
+  DataPoint:
+    description: "A single time-series observation"
+    fields:
+      timestamp:
+        type: "datetime"
+        description: "ISO 8601 timestamp of the observation"
+      value:
+        type: "float | null"
+        description: "Observed value (numeric or null)"
+
+  Window:
+    description: "Time window specification"
+    fields:
+      value:
+        type: "integer"
+        minimum: 1
+      unit:
+        type: "enum"
+        values: ["s", "m", "h", "d", "w"]
+
+  WindowUnits:
+    description: "Window duration in seconds for each unit"
+    values:
+      s: 1
+      m: 60
+      h: 3600
+      d: 86400
+      w: 604800
+
+# =============================================================================
+# Null Handling Strategies
+# =============================================================================
+
+null_handling:
+  filter:
+    description: "Filter out null values before computation"
+    applies_to: [delta, slope, sma, ema, min, max, std, first, percentile]
+
+  include:
+    description: "Include null values in computation"
+    applies_to: [count]
+
+  passthrough:
+    description: "Return null if most recent value is null"
+    applies_to: [last]
+
+# =============================================================================
+# Windowed Operators
+# =============================================================================
+
+operators:
+  windowed:
+    # -------------------------------------------------------------------------
+    # delta - Absolute change over window
+    # -------------------------------------------------------------------------
+    delta:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute absolute change: last_value - first_value in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 2
+        algorithm:
+          - "1. Filter data points to window [reference_time - window, reference_time]"
+          - "2. Remove data points with null values"
+          - "3. If fewer than 2 points remain, return null"
+          - "4. Return: last_non_null.value - first_non_null.value"
+        mathematical_definition: "δ(S, W) = S[t_max] - S[t_min]"
+
+      edge_cases:
+        empty_window: null
+        single_value: null
+        all_nulls: null
+        some_nulls: "Computed from non-null values only"
+
+      implementations:
+        python: |
+          def delta(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if len(non_null) < 2:
+                  return None
+              return non_null[-1].value - non_null[0].value
+
+        postgresql: |
+          -- Delta computation using CTEs
+          -- Requires: window_seconds, reference_time, table, filter_cond, value_col, datetime_col
+          {trend_name}_first AS (
+              SELECT person_id, {value_col} as value,
+                     ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+          ),
+          {trend_name}_last AS (
+              SELECT person_id, {value_col} as value,
+                     ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+          ),
+          {trend_name} AS (
+              SELECT l.person_id,
+                     (l.value - f.value) as {trend_name}_value
+              FROM {trend_name}_last l
+              JOIN {trend_name}_first f ON l.person_id = f.person_id
+              WHERE l.rn = 1 AND f.rn = 1
+          )
+
+        flink_sql: |
+          -- Flink SQL for delta computation
+          -- Uses OVER window for streaming computation
+          SELECT
+              patient_id,
+              LAST_VALUE({value_col}) OVER w - FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # slope - Linear regression slope
+    # -------------------------------------------------------------------------
+    slope:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute linear regression slope over window (units per second)"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 2
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If fewer than 2 points, return null"
+          - "4. Compute least squares regression: y = mx + b"
+          - "5. Return slope m (value change per second)"
+        mathematical_definition: "slope = Σ((x_i - x̄)(y_i - ȳ)) / Σ((x_i - x̄)²)"
+        unit: "value_unit per second"
+
+      edge_cases:
+        empty_window: null
+        single_value: null
+        all_same_time: null
+        all_same_value: 0.0
+
+      implementations:
+        python: |
+          def slope(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if len(non_null) < 2:
+                  return None
+
+              t0 = non_null[0].timestamp
+              x = [(dp.timestamp - t0).total_seconds() for dp in non_null]
+              y = [dp.value for dp in non_null]
+
+              n = len(x)
+              sum_x, sum_y = sum(x), sum(y)
+              sum_xy = sum(xi * yi for xi, yi in zip(x, y))
+              sum_x2 = sum(xi * xi for xi in x)
+
+              denom = n * sum_x2 - sum_x * sum_x
+              if abs(denom) < 1e-10:
+                  return 0.0
+
+              return (n * sum_xy - sum_x * sum_y) / denom
+
+        postgresql: |
+          -- PostgreSQL REGR_SLOPE for linear regression
+          {trend_name} AS (
+              SELECT person_id,
+                     REGR_SLOPE(
+                         {value_col},
+                         EXTRACT(EPOCH FROM {datetime_col})
+                     ) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+              HAVING COUNT(*) >= 2
+          )
+
+        flink_sql: |
+          -- Flink SQL does not have built-in REGR_SLOPE
+          -- Requires UDF implementation
+          -- UNSUPPORTED: Use Python runtime for slope computation in streaming
+
+    # -------------------------------------------------------------------------
+    # sma - Simple Moving Average
+    # -------------------------------------------------------------------------
+    sma:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute simple moving average over window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If no points remain, return null"
+          - "4. Return: sum(values) / count(values)"
+        mathematical_definition: "SMA = (1/N) × Σ(V_i)"
+
+      edge_cases:
+        empty_window: null
+        all_nulls: null
+        single_value: "That value"
+
+      implementations:
+        python: |
+          def sma(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if not non_null:
+                  return None
+              return sum(dp.value for dp in non_null) / len(non_null)
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     AVG({value_col}) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              AVG({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # ema - Exponential Moving Average
+    # -------------------------------------------------------------------------
+    ema:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute exponential moving average over window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If no points remain, return null"
+          - "4. Compute alpha = 2 / (N + 1) where N is count of points"
+          - "5. EMA[0] = first_value"
+          - "6. EMA[i] = alpha × value[i] + (1 - alpha) × EMA[i-1]"
+          - "7. Return final EMA value"
+        mathematical_definition: "EMA_t = α × V_t + (1 - α) × EMA_{t-1}, α = 2/(N+1)"
+
+      edge_cases:
+        empty_window: null
+        all_nulls: null
+        single_value: "That value (EMA of 1 point is itself)"
+
+      sql_support: false
+      sql_support_reason: "EMA requires recursive computation which is inefficient in SQL"
+
+      implementations:
+        python: |
+          def ema(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if not non_null:
+                  return None
+              if len(non_null) == 1:
+                  return non_null[0].value
+
+              span = len(non_null)
+              alpha = 2.0 / (span + 1)
+
+              ema_val = non_null[0].value
+              for dp in non_null[1:]:
+                  ema_val = alpha * dp.value + (1 - alpha) * ema_val
+
+              return ema_val
+
+        postgresql: null  # Not supported - would require recursive CTE
+
+        flink_sql: |
+          -- Flink can compute EMA using stateful UDF
+          -- Requires custom AggregateFunction implementation
+          SELECT
+              patient_id,
+              EMA_UDF({value_col}, {alpha}) OVER w AS {trend_name}_value
+          FROM {table}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+          )
+
+    # -------------------------------------------------------------------------
+    # min - Minimum value
+    # -------------------------------------------------------------------------
+    min:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Find minimum value in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If no points remain, return null"
+          - "4. Return minimum of all values"
+
+      edge_cases:
+        empty_window: null
+        all_nulls: null
+
+      implementations:
+        python: |
+          def min_val(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if not non_null:
+                  return None
+              return min(dp.value for dp in non_null)
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     MIN({value_col}) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              MIN({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # max - Maximum value
+    # -------------------------------------------------------------------------
+    max:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Find maximum value in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If no points remain, return null"
+          - "4. Return maximum of all values"
+
+      edge_cases:
+        empty_window: null
+        all_nulls: null
+
+      implementations:
+        python: |
+          def max_val(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if not non_null:
+                  return None
+              return max(dp.value for dp in non_null)
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     MAX({value_col}) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              MAX({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # count - Observation count (INCLUDES nulls)
+    # -------------------------------------------------------------------------
+    count:
+      signature: "(signal: Signal, window: Window) -> int"
+      description: "Count observations in window (includes null values)"
+      category: "temporal"
+
+      semantics:
+        null_handling: include
+        min_points: 0
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Return count of ALL data points (including nulls)"
+        note: "count() counts observations, not valid values. Use count_valid() for non-null only."
+
+      edge_cases:
+        empty_window: 0
+        all_nulls: "Count of null observations (not 0)"
+
+      implementations:
+        python: |
+          def count(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> int:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              return len(filtered)  # Includes nulls!
+
+        postgresql: |
+          -- IMPORTANT: count ALL observations including nulls
+          -- Use COUNT(*) not COUNT(value_col) to include nulls
+          {trend_name} AS (
+              SELECT person_id,
+                     COUNT(*) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+              GROUP BY person_id
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              COUNT(*) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # first - First value in window
+    # -------------------------------------------------------------------------
+    first:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Get the earliest value in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: passthrough
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. If no points, return null"
+          - "3. Sort by timestamp ascending"
+          - "4. Return value of first data point (may be null)"
+        note: "Unlike delta, first() returns the actual first value even if null"
+
+      edge_cases:
+        empty_window: null
+        first_is_null: null
+
+      implementations:
+        python: |
+          def first(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              if not filtered:
+                  return None
+              return filtered[0].value  # May be null
+
+        postgresql: |
+          {trend_name}_data AS (
+              SELECT person_id,
+                     {value_col} as value,
+                     ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+          ),
+          {trend_name} AS (
+              SELECT person_id, value as {trend_name}_value
+              FROM {trend_name}_data WHERE rn = 1
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # std / stddev - Standard deviation
+    # -------------------------------------------------------------------------
+    std:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      aliases: ["stddev"]
+      description: "Compute sample standard deviation in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 2
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If fewer than 2 points, return null"
+          - "4. Compute sample standard deviation (N-1 denominator)"
+        mathematical_definition: "σ = sqrt(Σ(x_i - μ)² / (N-1))"
+        note: "Uses sample stddev (N-1), not population stddev (N)"
+
+      edge_cases:
+        empty_window: null
+        single_value: null
+        all_same_value: 0.0
+
+      sql_support: true
+      sql_support_reason: "PostgreSQL has STDDEV_SAMP function"
+
+      implementations:
+        python: |
+          import math
+
+          def std(data: List[DataPoint], window_seconds: int, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if len(non_null) < 2:
+                  return None
+
+              mean = sum(dp.value for dp in non_null) / len(non_null)
+              variance = sum((dp.value - mean) ** 2 for dp in non_null) / (len(non_null) - 1)
+              return math.sqrt(variance)
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     STDDEV_SAMP({value_col}) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+              HAVING COUNT(*) >= 2
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              STDDEV_SAMP({value_col}) OVER w AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          WINDOW w AS (
+              PARTITION BY patient_id
+              ORDER BY {datetime_col}
+              RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+          )
+
+    # -------------------------------------------------------------------------
+    # percentile - Percentile value
+    # -------------------------------------------------------------------------
+    percentile:
+      signature: "(signal: Signal, window: Window, p: float) -> float | null"
+      description: "Compute percentile value in window"
+      category: "temporal"
+
+      semantics:
+        null_handling: filter
+        min_points: 1
+        algorithm:
+          - "1. Filter data points to window"
+          - "2. Remove null values"
+          - "3. If no points, return null"
+          - "4. Sort values ascending"
+          - "5. Use linear interpolation for percentile"
+        note: "p is percentile (0-100), e.g., p=50 for median"
+
+      edge_cases:
+        empty_window: null
+        all_nulls: null
+        single_value: "That value for any percentile"
+
+      sql_support: true
+      sql_support_reason: "PostgreSQL has PERCENTILE_CONT"
+
+      implementations:
+        python: |
+          import math
+
+          def percentile(data: List[DataPoint], window_seconds: int, p: float, reference_time: datetime) -> Optional[float]:
+              filtered = filter_by_window(data, window_seconds, reference_time)
+              non_null = [dp for dp in filtered if dp.value is not None]
+              if not non_null:
+                  return None
+
+              values = sorted(dp.value for dp in non_null)
+              n = len(values)
+
+              if n == 1:
+                  return values[0]
+
+              k = (p / 100) * (n - 1)
+              f, c = math.floor(k), math.ceil(k)
+
+              if f == c:
+                  return values[int(k)]
+
+              return values[int(f)] * (c - k) + values[int(c)] * (k - f)
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     PERCENTILE_CONT({p} / 100.0) WITHIN GROUP (ORDER BY {value_col}) as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+                AND {datetime_col} <= :reference_time
+                AND {value_col} IS NOT NULL
+              GROUP BY person_id
+          )
+
+        flink_sql: null  # Flink does not support PERCENTILE_CONT in OVER windows
+
+  # ===========================================================================
+  # Pointwise Operators (no window)
+  # ===========================================================================
+
+  pointwise:
+    # -------------------------------------------------------------------------
+    # last - Most recent value
+    # -------------------------------------------------------------------------
+    last:
+      signature: "(signal: Signal) -> float | null"
+      description: "Get the most recent value for signal"
+      category: "pointwise"
+
+      semantics:
+        null_handling: passthrough
+        algorithm:
+          - "1. Get all data points up to reference_time"
+          - "2. If no points, return null"
+          - "3. Return value of most recent data point (may be null)"
+        note: "No time window - considers all historical data"
+
+      edge_cases:
+        no_data: null
+        last_is_null: null
+
+      implementations:
+        python: |
+          def last(data: List[DataPoint]) -> Optional[float]:
+              if not data:
+                  return None
+              return data[-1].value  # May be null
+
+        postgresql: |
+          {trend_name}_data AS (
+              SELECT person_id,
+                     {value_col} as value,
+                     ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} <= :reference_time
+          ),
+          {trend_name} AS (
+              SELECT person_id, value as {trend_name}_value
+              FROM {trend_name}_data WHERE rn = 1
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              LAST_VALUE({value_col}) AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+
+    # -------------------------------------------------------------------------
+    # exists - Data existence check
+    # -------------------------------------------------------------------------
+    exists:
+      signature: "(signal: Signal) -> bool"
+      description: "Check if any data exists for signal"
+      category: "pointwise"
+
+      semantics:
+        null_handling: include
+        algorithm:
+          - "1. Get all data points up to reference_time"
+          - "2. Return true if at least 1 data point exists"
+        note: "Returns true even if all values are null"
+
+      edge_cases:
+        no_data: false
+        all_nulls: true
+
+      implementations:
+        python: |
+          def exists(data: List[DataPoint]) -> bool:
+              return len(data) > 0
+
+        postgresql: |
+          {trend_name} AS (
+              SELECT person_id,
+                     CASE WHEN COUNT(*) > 0 THEN true ELSE false END as {trend_name}_value
+              FROM {table}
+              WHERE {filter_cond}
+                AND {datetime_col} <= :reference_time
+              GROUP BY person_id
+          )
+
+        flink_sql: |
+          SELECT
+              patient_id,
+              CASE WHEN COUNT(*) > 0 THEN true ELSE false END AS {trend_name}_value
+          FROM {table}
+          WHERE {filter_cond}
+          GROUP BY patient_id
+
+    # -------------------------------------------------------------------------
+    # missing - Data absence check
+    # -------------------------------------------------------------------------
+    missing:
+      signature: "(signal: Signal) -> bool"
+      description: "Check if no data exists for signal (inverse of exists)"
+      category: "pointwise"
+
+      semantics:
+        null_handling: include
+        algorithm:
+          - "1. Return NOT exists(signal)"
+        equivalent: "missing(S) ≡ !exists(S)"
+
+      edge_cases:
+        no_data: true
+        has_data: false
+
+      implementations:
+        python: |
+          def missing(data: List[DataPoint]) -> bool:
+              return len(data) == 0
+
+        postgresql: |
+          -- missing is computed as NOT EXISTS in the final query
+          -- For patients with no data, use LEFT JOIN and check for NULL
+          {trend_name} AS (
+              SELECT p.person_id,
+                     CASE WHEN s.person_id IS NULL THEN true ELSE false END as {trend_name}_value
+              FROM {schema}.person p
+              LEFT JOIN (
+                  SELECT DISTINCT person_id
+                  FROM {table}
+                  WHERE {filter_cond}
+                    AND {datetime_col} <= :reference_time
+              ) s ON p.person_id = s.person_id
+          )
+
+        flink_sql: |
+          -- Requires outer join pattern in Flink SQL
+          SELECT
+              p.patient_id,
+              CASE WHEN s.patient_id IS NULL THEN true ELSE false END AS {trend_name}_value
+          FROM patients p
+          LEFT JOIN (
+              SELECT DISTINCT patient_id FROM {table} WHERE {filter_cond}
+          ) s ON p.patient_id = s.patient_id
+
+# =============================================================================
+# Comparison Operators
+# =============================================================================
+
+comparison:
+  operators:
+    - symbol: "=="
+      name: "equal"
+      description: "Equal to"
+    - symbol: "!="
+      name: "not_equal"
+      description: "Not equal to"
+    - symbol: "<"
+      name: "less_than"
+      description: "Less than"
+    - symbol: "<="
+      name: "less_equal"
+      description: "Less than or equal to"
+    - symbol: ">"
+      name: "greater_than"
+      description: "Greater than"
+    - symbol: ">="
+      name: "greater_equal"
+      description: "Greater than or equal to"
+
+  semantics:
+    null_handling: "Any comparison involving null returns false"
+    type_rules:
+      left_operand: "Result of temporal operator (float | int | null)"
+      right_operand: "Numeric literal"
+      return_type: "bool"
+
+    implementation:
+      python: |
+        COMPARATORS = {
+            "==": lambda a, b: abs(a - b) < 1e-10 if a is not None else False,
+            "!=": lambda a, b: abs(a - b) >= 1e-10 if a is not None else False,
+            "<":  lambda a, b: a < b if a is not None else False,
+            "<=": lambda a, b: a <= b if a is not None else False,
+            ">":  lambda a, b: a > b if a is not None else False,
+            ">=": lambda a, b: a >= b if a is not None else False,
+        }
+
+# =============================================================================
+# Boolean Logic
+# =============================================================================
+
+boolean_logic:
+  operators:
+    AND:
+      signature: "(bool, bool) -> bool"
+      precedence: 2
+      associativity: "left"
+    OR:
+      signature: "(bool, bool) -> bool"
+      precedence: 1
+      associativity: "left"
+    NOT:
+      signature: "(bool) -> bool"
+      precedence: 3
+      associativity: "right"
+
+  precedence_order:
+    - "OR (lowest, 1)"
+    - "AND (2)"
+    - "NOT (highest, 3)"
+
+  note: "Parentheses can override precedence"
+
+# =============================================================================
+# Code Generation Metadata
+# =============================================================================
+
+codegen:
+  python:
+    output_file: "src/psdl/_generated/operators_python.py"
+    template_vars:
+      - "data: List[DataPoint]"
+      - "window_seconds: int"
+      - "reference_time: datetime"
+    imports:
+      - "from datetime import datetime, timedelta"
+      - "from typing import List, Optional"
+      - "import math"
+    helper_functions:
+      - "filter_by_window"
+      - "filter_non_null"
+
+  postgresql:
+    output_file: "src/psdl/_generated/operators_sql.py"
+    template_vars:
+      - "trend_name"
+      - "table"
+      - "filter_cond"
+      - "value_col"
+      - "datetime_col"
+      - "window_seconds"
+      - "schema"
+    dialect: "postgresql"
+    min_version: "12"
+
+  flink_sql:
+    output_file: "src/psdl/_generated/operators_flink.py"
+    template_vars:
+      - "trend_name"
+      - "table"
+      - "filter_cond"
+      - "value_col"
+      - "datetime_col"
+      - "window_seconds"
+    dialect: "flink_sql"
+    min_version: "1.17"
+
+# =============================================================================
+# Runtime Compatibility Matrix
+# =============================================================================
+
+compatibility:
+  single_runtime:  # Python evaluation
+    supported: [delta, slope, sma, ema, min, max, count, first, last, std, percentile, exists, missing]
+    unsupported: []
+
+  cohort_runtime:  # SQL (PostgreSQL)
+    supported: [delta, slope, sma, min, max, count, first, last, std, percentile, exists, missing]
+    unsupported:
+      - operator: ema
+        reason: "Requires recursive computation, inefficient in SQL"
+        fallback: "Use single runtime or pre-compute in Python"
+
+  streaming_runtime:  # Flink SQL
+    supported: [delta, sma, min, max, count, first, last, exists, missing]
+    unsupported:
+      - operator: ema
+        reason: "Requires custom UDF"
+        fallback: "Implement EMA_UDF aggregate function"
+      - operator: slope
+        reason: "No built-in REGR_SLOPE"
+        fallback: "Implement SLOPE_UDF aggregate function"
+      - operator: std
+        reason: "Limited support in OVER windows"
+        fallback: "May work depending on Flink version"
+      - operator: percentile
+        reason: "PERCENTILE_CONT not supported in OVER windows"
+        fallback: "Use approximate percentiles or pre-compute"

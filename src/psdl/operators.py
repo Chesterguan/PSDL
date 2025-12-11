@@ -101,6 +101,32 @@ class TemporalOperators:
         return data[-1].value
 
     @staticmethod
+    def exists(data: List[DataPoint]) -> bool:
+        """
+        Check if any data exists for the signal.
+
+        Args:
+            data: List of DataPoints sorted by timestamp
+
+        Returns:
+            True if any data points exist, False otherwise
+        """
+        return len(data) > 0
+
+    @staticmethod
+    def missing(data: List[DataPoint]) -> bool:
+        """
+        Check if no data exists for the signal (inverse of exists).
+
+        Args:
+            data: List of DataPoints sorted by timestamp
+
+        Returns:
+            True if no data points exist, False otherwise
+        """
+        return len(data) == 0
+
+    @staticmethod
     def first(
         data: List[DataPoint],
         window_seconds: int,
@@ -397,6 +423,7 @@ class TemporalOperators:
 
 # Operator registry for dynamic lookup
 OPERATORS = {
+    # Windowed operators
     "delta": TemporalOperators.delta,
     "slope": TemporalOperators.slope,
     "ema": TemporalOperators.ema,
@@ -404,9 +431,14 @@ OPERATORS = {
     "min": TemporalOperators.min_val,
     "max": TemporalOperators.max_val,
     "count": TemporalOperators.count,
-    "last": lambda data, *args: TemporalOperators.last(data),
     "first": TemporalOperators.first,
     "std": TemporalOperators.std,
+    "stddev": TemporalOperators.std,  # Alias for std
+    "percentile": TemporalOperators.percentile,
+    # Pointwise operators
+    "last": lambda data, *args: TemporalOperators.last(data),
+    "exists": lambda data, *args: TemporalOperators.exists(data),
+    "missing": lambda data, *args: TemporalOperators.missing(data),
 }
 
 
@@ -415,6 +447,7 @@ def apply_operator(
     data: List[DataPoint],
     window_seconds: Optional[int] = None,
     reference_time: Optional[datetime] = None,
+    percentile_value: Optional[float] = None,
 ) -> Optional[float]:
     """
     Apply a named operator to data.
@@ -424,6 +457,7 @@ def apply_operator(
         data: List of DataPoints
         window_seconds: Window size (required for windowed operators)
         reference_time: Reference time for window
+        percentile_value: Percentile value (0-100) for percentile operator
 
     Returns:
         Computed value, or None if computation fails
@@ -433,9 +467,18 @@ def apply_operator(
 
     op_func = OPERATORS[operator]
 
-    if operator == "last":
+    # Pointwise operators (no window required)
+    if operator in ("last", "exists", "missing"):
         return op_func(data)
-    elif window_seconds is None:
+
+    # Windowed operators require window
+    if window_seconds is None:
         raise ValueError(f"Operator '{operator}' requires a window specification")
-    else:
-        return op_func(data, window_seconds, reference_time)
+
+    # Percentile requires additional parameter
+    if operator == "percentile":
+        if percentile_value is None:
+            raise ValueError("percentile operator requires percentile_value parameter")
+        return TemporalOperators.percentile(data, window_seconds, percentile_value, reference_time)
+
+    return op_func(data, window_seconds, reference_time)

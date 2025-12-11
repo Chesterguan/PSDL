@@ -1,6 +1,16 @@
 """
 PSDL Execution Module - Unified interface for batch and streaming execution.
 
+DEPRECATED: This module is maintained for backward compatibility.
+New code should import from psdl.runtimes instead:
+
+    # New imports (recommended)
+    from psdl.runtimes.single import SinglePatientEvaluator, InMemoryBackend
+    from psdl.runtimes.cohort import CohortCompiler
+
+    # Old imports (deprecated, still work)
+    from psdl.execution import PSDLEvaluator, InMemoryBackend
+
 PSDL supports two execution modes based on timing:
 
 1. **Batch (Retrospective)** - For research and historical analysis
@@ -33,9 +43,14 @@ Usage:
     job = evaluator.deploy(scenario, kafka_config)
 """
 
+# Import DataPoint from operators (needed by many users of this module)
+from ..operators import DataPoint
+
+# Re-export from batch.py for backward compatibility
+# Note: batch.py still exists and works, so existing code continues to work
 from .batch import (
     DataBackend,
-    DataPoint,
+    EvaluationContext,
     EvaluationResult,
     InMemoryBackend,
     PSDLEvaluator,
@@ -79,6 +94,7 @@ __all__ = [
     "InMemoryBackend",
     "DataBackend",
     "DataPoint",
+    "EvaluationContext",
     "EvaluationResult",
     "SQLCompiler",
     # Streaming execution

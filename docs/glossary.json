@@ -1,0 +1,218 @@
+{
+  "$schema": "https://psdl-lang.org/glossary/v1",
+  "version": "0.2.0",
+  "description": "PSDL terminology and definitions",
+
+  "categories": {
+    "core": "Core PSDL concepts",
+    "architecture": "System architecture components",
+    "runtime": "Execution environments",
+    "data": "Data models and sources",
+    "clinical": "Clinical domain terms"
+  },
+
+  "terms": {
+    "PSDL": {
+      "full_name": "Patient Scenario Definition Language",
+      "category": "core",
+      "definition": "A declarative, vendor-neutral language for expressing clinical scenarios. PSDL defines WHAT to detect, not HOW to compute it.",
+      "analogy": "What SQL is for data queries, PSDL is for clinical logic."
+    },
+
+    "Scenario": {
+      "category": "core",
+      "definition": "A complete PSDL definition that describes a clinical situation to detect. Contains signals, trends, logic, and optionally population filters.",
+      "example": "AKI_Detection, Sepsis_Screening, ICU_Deterioration",
+      "file_format": "YAML or JSON"
+    },
+
+    "Signal": {
+      "category": "core",
+      "definition": "A binding from a logical name to a clinical data source. Signals represent time-series clinical data like labs, vitals, or observations.",
+      "example": "Cr (creatinine), HR (heart rate), MAP (mean arterial pressure)",
+      "properties": ["source", "concept_id", "unit", "domain"]
+    },
+
+    "Trend": {
+      "category": "core",
+      "definition": "A temporal computation over a signal that produces a boolean result. Trends apply operators to signals and compare against thresholds.",
+      "example": "delta(Cr, 48h) > 0.3 (creatinine rise in 48 hours)",
+      "components": ["operator", "signal", "window", "comparator", "threshold"]
+    },
+
+    "Logic": {
+      "category": "core",
+      "definition": "Boolean expressions that combine trends into clinical states. Uses AND, OR, NOT operators.",
+      "example": "aki_stage1 AND NOT recovering",
+      "properties": ["expr", "severity", "description"]
+    },
+
+    "Population": {
+      "category": "core",
+      "definition": "Criteria defining which patients a scenario applies to. Contains include and exclude filters.",
+      "example": "include: [age >= 18, unit == 'ICU'], exclude: [comfort_care_only]"
+    },
+
+    "Operator": {
+      "category": "core",
+      "definition": "A function that computes a value from time-series signal data. Operators are the computational primitives of PSDL.",
+      "types": {
+        "windowed": ["delta", "slope", "sma", "ema", "min", "max", "count", "first", "std"],
+        "pointwise": ["last", "exists", "missing"]
+      }
+    },
+
+    "Window": {
+      "category": "core",
+      "definition": "A time duration that defines the lookback period for windowed operators.",
+      "format": "<integer><unit>",
+      "units": {
+        "s": "seconds",
+        "m": "minutes",
+        "h": "hours",
+        "d": "days",
+        "w": "weeks"
+      },
+      "example": "6h (6 hours), 48h (48 hours), 7d (7 days)"
+    },
+
+    "Specification": {
+      "category": "architecture",
+      "definition": "The formal definition of PSDL - what the language IS. Includes schema, grammar, operator semantics, and constraints. This is the source of truth.",
+      "location": "spec/",
+      "files": ["schema.json", "grammar/expression.lark", "operators.yaml"]
+    },
+
+    "IR": {
+      "full_name": "Intermediate Representation",
+      "category": "architecture",
+      "definition": "The in-memory data structure representing a parsed and validated scenario. IR is independent of execution method - it can be compiled to SQL, Flink, or evaluated in Python.",
+      "types": ["ScenarioIR", "SignalIR", "TrendIR", "LogicIR", "PopulationIR"]
+    },
+
+    "Parser": {
+      "category": "architecture",
+      "definition": "Component that transforms YAML/JSON scenario files into IR. Uses Lark grammar for expression parsing and JSON Schema for structure validation.",
+      "input": "YAML/JSON file",
+      "output": "ScenarioIR"
+    },
+
+    "Validator": {
+      "category": "architecture",
+      "definition": "Component that checks if an IR is semantically valid. Verifies signal references, operator usage, circular dependencies, etc.",
+      "input": "ScenarioIR",
+      "output": "List of validation errors or success"
+    },
+
+    "Runtime": {
+      "category": "runtime",
+      "definition": "An execution environment that evaluates scenarios against patient data. Different runtimes exist for different use cases.",
+      "types": ["single", "cohort", "streaming"]
+    },
+
+    "Single Runtime": {
+      "category": "runtime",
+      "definition": "Evaluates a scenario for ONE patient at a specific point in time. Used for testing, debugging, and small-scale evaluation. Implemented in Python.",
+      "use_case": "Development, testing, single-patient alerts",
+      "implementation": "Python"
+    },
+
+    "Cohort Runtime": {
+      "category": "runtime",
+      "definition": "Evaluates a scenario for MANY patients in batch mode. Used for retrospective analysis and research. Compiles PSDL to SQL for efficient database execution.",
+      "use_case": "Retrospective studies, cohort screening, research",
+      "implementation": "SQL (PostgreSQL, BigQuery, etc.)"
+    },
+
+    "Streaming Runtime": {
+      "category": "runtime",
+      "definition": "Evaluates a scenario CONTINUOUSLY as new data arrives. Used for real-time monitoring and alerts. Compiles PSDL to Apache Flink jobs.",
+      "use_case": "Real-time ICU monitoring, live alerts",
+      "implementation": "Apache Flink"
+    },
+
+    "Compiler": {
+      "category": "architecture",
+      "definition": "Component that transforms IR into executable code for a specific runtime. Each runtime has its own compiler.",
+      "types": {
+        "SQL Compiler": "IR → SQL query",
+        "Flink Compiler": "IR → Flink DataStream job"
+      }
+    },
+
+    "Adapter": {
+      "category": "data",
+      "definition": "Component that connects PSDL to a specific data source. Adapters abstract away the details of data retrieval.",
+      "types": ["OMOPAdapter", "FHIRAdapter", "InMemoryAdapter"]
+    },
+
+    "OMOP": {
+      "full_name": "Observational Medical Outcomes Partnership",
+      "category": "data",
+      "definition": "A common data model (CDM) for observational healthcare data. PSDL uses OMOP concept_ids for portable signal definitions.",
+      "link": "https://ohdsi.org/omop/"
+    },
+
+    "FHIR": {
+      "full_name": "Fast Healthcare Interoperability Resources",
+      "category": "data",
+      "definition": "A standard for healthcare data exchange. PSDL can consume FHIR resources as signal data sources.",
+      "version": "R4",
+      "link": "https://hl7.org/fhir/"
+    },
+
+    "DataPoint": {
+      "category": "data",
+      "definition": "A single observation in a time series. Contains a timestamp and an optional value (value can be null).",
+      "properties": {
+        "timestamp": "datetime",
+        "value": "float | null"
+      }
+    },
+
+    "Reference Time": {
+      "category": "data",
+      "definition": "The point in time at which a scenario is evaluated. All windows are calculated relative to this time. For real-time: now. For retrospective: a specific historical moment.",
+      "example": "2024-01-15T14:30:00Z"
+    },
+
+    "Trigger": {
+      "category": "clinical",
+      "definition": "When a logic expression evaluates to TRUE, the scenario is said to 'trigger' for that patient. A triggered scenario typically results in an alert or action.",
+      "result": "EvaluationResult with is_triggered=True"
+    },
+
+    "Severity": {
+      "category": "clinical",
+      "definition": "Clinical importance level assigned to logic expressions. Used for alert prioritization.",
+      "values": ["low", "medium", "high", "critical"]
+    },
+
+    "AKI": {
+      "full_name": "Acute Kidney Injury",
+      "category": "clinical",
+      "definition": "A sudden decline in kidney function. PSDL example scenarios detect AKI using creatinine trends based on KDIGO criteria.",
+      "stages": ["Stage 1: Cr rise >= 0.3 mg/dL in 48h", "Stage 2: Cr 2x baseline", "Stage 3: Cr 3x baseline or >= 4.0 mg/dL"]
+    },
+
+    "KDIGO": {
+      "full_name": "Kidney Disease: Improving Global Outcomes",
+      "category": "clinical",
+      "definition": "Clinical practice guidelines for kidney disease. PSDL AKI detection scenarios implement KDIGO staging criteria.",
+      "link": "https://kdigo.org/"
+    },
+
+    "Codegen": {
+      "full_name": "Code Generation",
+      "category": "architecture",
+      "definition": "The process of automatically generating code from specification files. PSDL generates Python types from JSON Schema, parsers from Lark grammar, and operator implementations from operators.yaml.",
+      "command": "make codegen"
+    },
+
+    "Conformance Test": {
+      "category": "architecture",
+      "definition": "Tests that verify all runtimes produce identical results for the same scenario and data. Ensures SQL output matches Python output matches Flink output.",
+      "location": "tests/conformance/"
+    }
+  }
+}

@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psdl-lang.org/schema/v0.2/scenario",
+  "title": "PSDL Scenario Schema v0.2",
+  "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.2 scenario documents. This schema is the SOURCE OF TRUTH for scenario structure and can be used with datamodel-codegen to generate Python types.",
+  "version": "0.2.0",
+  "type": "object",
+  "required": ["scenario", "version", "signals", "logic"],
+  "additionalProperties": false,
+
+  "properties": {
+    "scenario": {
+      "$ref": "#/$defs/ScenarioName",
+      "description": "Unique identifier for this scenario"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name (optional, defaults to scenario id)"
+    },
+    "version": {
+      "$ref": "#/$defs/SemanticVersion",
+      "description": "Semantic version of this scenario definition"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what this scenario detects"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or organization that created this scenario"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for categorization and search",
+      "examples": [["aki", "nephrology", "kdigo"]]
+    },
+    "population": {
+      "$ref": "#/$defs/PopulationFilter",
+      "description": "Define which patients this scenario applies to"
+    },
+    "signals": {
+      "$ref": "#/$defs/SignalDefinitions",
+      "description": "Map logical signal names to data sources"
+    },
+    "trends": {
+      "$ref": "#/$defs/TrendDefinitions",
+      "description": "Define computed trends over signals"
+    },
+    "logic": {
+      "$ref": "#/$defs/LogicDefinitions",
+      "description": "Boolean logic combining trends into clinical states"
+    },
+    "mapping": {
+      "$ref": "#/$defs/MappingConfig",
+      "description": "Site-specific mappings for portability"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ScenarioMetadata",
+      "description": "Additional metadata for documentation and tooling"
+    }
+  },
+
+  "$defs": {
+    "ScenarioName": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Valid scenario identifier (starts with letter, alphanumeric with underscores/hyphens)",
+      "examples": ["AKI_Detection", "Sepsis_Early_Warning", "ICU_Deterioration_v1"]
+    },
+
+    "SemanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?(-[a-zA-Z0-9]+)?$",
+      "description": "Semantic version with optional prerelease suffix",
+      "examples": ["0.1", "1.0.0", "2.1.3", "1.0.0-beta"]
+    },
+
+    "Identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Valid identifier for signals, trends, and logic (starts with letter)"
+    },
+
+    "PopulationFilter": {
+      "type": "object",
+      "description": "Criteria defining which patients a scenario applies to",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Inclusion criteria - ALL must be true (AND logic)",
+          "items": { "type": "string" },
+          "examples": [["age >= 18", "unit == 'ICU'", "admission_type == 'emergency'"]]
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Exclusion criteria - ANY excludes patient (OR logic)",
+          "items": { "type": "string" },
+          "examples": [["status == 'comfort_care_only'", "dnr == true"]]
+        }
+      }
+    },
+
+    "SignalDefinitions": {
+      "type": "object",
+      "description": "Map of signal names to their definitions",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/SignalSpec"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/Identifier"
+      }
+    },
+
+    "SignalSpec": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Shorthand: source identifier only (e.g., 'creatinine')"
+        },
+        {
+          "type": "object",
+          "required": ["source"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "Source identifier (concept name, OMOP concept_id, LOINC code)",
+              "examples": ["creatinine", "3016723", "LOINC:2160-0"]
+            },
+            "type": {
+              "$ref": "#/$defs/SignalType",
+              "default": "numeric"
+            },
+            "concept_id": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "OMOP concept_id for portable scenarios"
+            },
+            "unit": {
+              "type": "string",
+              "description": "Expected unit of measurement",
+              "examples": ["mg/dL", "mmol/L", "mmHg", "bpm", "celsius", "%"]
+            },
+            "domain": {
+              "$ref": "#/$defs/OMOPDomain",
+              "default": "measurement"
+            },
+            "description": {
+              "type": "string",
+              "description": "Human-readable description of this signal"
+            }
+          }
+        }
+      ]
+    },
+
+    "SignalType": {
+      "type": "string",
+      "enum": ["numeric", "categorical", "boolean", "datetime"],
+      "description": "Data type of signal values",
+      "default": "numeric"
+    },
+
+    "OMOPDomain": {
+      "type": "string",
+      "enum": ["measurement", "condition", "drug", "procedure", "observation", "device", "specimen"],
+      "description": "OMOP CDM domain for this signal",
+      "default": "measurement"
+    },
+
+    "TrendDefinitions": {
+      "type": "object",
+      "description": "Map of trend names to their definitions",
+      "additionalProperties": {
+        "$ref": "#/$defs/TrendSpec"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/Identifier"
+      }
+    },
+
+    "TrendSpec": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TrendExpression",
+          "description": "Shorthand: expression string only"
+        },
+        {
+          "type": "object",
+          "required": ["expr"],
+          "additionalProperties": false,
+          "properties": {
+            "expr": {
+              "$ref": "#/$defs/TrendExpression"
+            },
+            "description": {
+              "type": "string",
+              "description": "Human-readable explanation of this trend"
+            }
+          }
+        }
+      ]
+    },
+
+    "TrendExpression": {
+      "type": "string",
+      "description": "Trend expression using PSDL operators. See spec/grammar/expression.lark for full grammar.",
+      "minLength": 1,
+      "examples": [
+        "delta(Cr, 48h) >= 0.3",
+        "slope(Lact, 3h) > 0",
+        "ema(MAP, 30m) < 65",
+        "last(HR) > 100",
+        "count(Cr, 48h) >= 2",
+        "max(Temp, 24h) > 38.3",
+        "min(SpO2, 1h) < 90"
+      ]
+    },
+
+    "LogicDefinitions": {
+      "type": "object",
+      "description": "Map of logic names to their boolean expressions",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/LogicSpec"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/Identifier"
+      }
+    },
+
+    "LogicSpec": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LogicExpression",
+          "description": "Shorthand: expression string only"
+        },
+        {
+          "type": "object",
+          "required": ["expr"],
+          "additionalProperties": false,
+          "properties": {
+            "expr": {
+              "$ref": "#/$defs/LogicExpression"
+            },
+            "severity": {
+              "$ref": "#/$defs/SeverityLevel"
+            },
+            "description": {
+              "type": "string",
+              "description": "Clinical interpretation of this state"
+            },
+            "recommendation": {
+              "type": "string",
+              "description": "Suggested clinical action when triggered"
+            }
+          }
+        }
+      ]
+    },
+
+    "LogicExpression": {
+      "type": "string",
+      "description": "Boolean expression combining trends using AND, OR, NOT operators",
+      "minLength": 1,
+      "examples": [
+        "cr_rising AND lactate_elevated",
+        "aki_stage1 OR aki_stage2 OR aki_stage3",
+        "NOT recovering AND deteriorating",
+        "(fever OR hypothermia) AND tachycardia"
+      ]
+    },
+
+    "SeverityLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Clinical severity level for alerting and prioritization"
+    },
+
+    "MappingConfig": {
+      "type": "object",
+      "description": "Site-specific concept mappings for portability across institutions",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Reference to external mapping file (relative path or URL)",
+          "examples": ["mappings/hospital_a.yaml", "https://example.org/mappings/omop_v5.yaml"]
+        },
+        "inline": {
+          "type": "object",
+          "description": "Inline concept mappings (signal_name -> mapping)",
+          "additionalProperties": {
+            "$ref": "#/$defs/ConceptMapping"
+          }
+        }
+      }
+    },
+
+    "ConceptMapping": {
+      "type": "object",
+      "description": "Mapping from signal to physical data location",
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": {
+          "type": "integer",
+          "description": "Target OMOP concept_id"
+        },
+        "table": {
+          "type": "string",
+          "description": "Database table name"
+        },
+        "value_column": {
+          "type": "string",
+          "description": "Column containing the signal value"
+        },
+        "datetime_column": {
+          "type": "string",
+          "description": "Column containing the timestamp"
+        }
+      }
+    },
+
+    "ScenarioMetadata": {
+      "type": "object",
+      "description": "Additional metadata for documentation and tooling",
+      "additionalProperties": true,
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date",
+          "description": "Date scenario was created"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "description": "Date scenario was last updated"
+        },
+        "references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Clinical references or citations",
+          "examples": [["KDIGO 2012 Clinical Practice Guideline for AKI"]]
+        },
+        "validation_status": {
+          "type": "string",
+          "enum": ["draft", "validated", "clinical_review", "production"],
+          "description": "Current validation status of the scenario"
+        },
+        "icd10_codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Related ICD-10 diagnosis codes"
+        },
+        "snomed_codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Related SNOMED CT codes"
+        }
+      }
+    },
+
+    "Window": {
+      "type": "string",
+      "pattern": "^\\d+[smhdw]$",
+      "description": "Time window specification: <integer><unit> where unit is s/m/h/d/w",
+      "examples": ["30s", "5m", "6h", "48h", "7d", "2w"]
+    },
+
+    "WindowedOperator": {
+      "type": "string",
+      "enum": ["delta", "slope", "sma", "ema", "min", "max", "count", "first", "std", "stddev", "percentile"],
+      "description": "Operators that require a time window parameter"
+    },
+
+    "PointwiseOperator": {
+      "type": "string",
+      "enum": ["last", "exists", "missing"],
+      "description": "Operators that do not require a time window"
+    },
+
+    "ComparisonOperator": {
+      "type": "string",
+      "enum": ["==", "!=", "<", "<=", ">", ">="],
+      "description": "Comparison operators for threshold expressions"
+    },
+
+    "BooleanOperator": {
+      "type": "string",
+      "enum": ["AND", "OR", "NOT"],
+      "description": "Boolean operators for logic expressions"
+    }
+  }
+}

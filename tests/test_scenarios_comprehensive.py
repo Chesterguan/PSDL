@@ -14,9 +14,11 @@ from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.core import PSDLParser  # noqa: E402
 from psdl.operators import DataPoint  # noqa: E402
-from psdl.parser import PSDLParser  # noqa: E402
+from psdl.runtimes.single import InMemoryBackend, SinglePatientEvaluator  # noqa: E402
+
+PSDLEvaluator = SinglePatientEvaluator
 
 
 class TestAKIDetectionScenario:

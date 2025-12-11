@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from psdl.parser import Domain, PSDLParseError, PSDLParser, Severity, WindowSpec
+from psdl.core import PSDLParser
+from psdl.core.ir import Domain, Severity, WindowSpec
+from psdl.core.parser import PSDLParseError
 
 
 class TestWindowSpec:

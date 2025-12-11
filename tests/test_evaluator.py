@@ -13,9 +13,11 @@ import pytest
 # Add runtime to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.core import PSDLParser  # noqa: E402
 from psdl.operators import DataPoint, TemporalOperators  # noqa: E402
-from psdl.parser import PSDLParser  # noqa: E402
+from psdl.runtimes.single import InMemoryBackend, SinglePatientEvaluator  # noqa: E402
+
+PSDLEvaluator = SinglePatientEvaluator
 
 
 class TestTemporalOperators:
@@ -105,7 +107,7 @@ class TestInMemoryBackend:
             DataPoint(base_time, 2.0),
         ]
 
-        from psdl.parser import Signal
+        from psdl.core.ir import Signal
 
         signal = Signal(name="Cr", source="creatinine")
 

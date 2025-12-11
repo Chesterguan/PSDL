@@ -23,7 +23,7 @@ from psdl.adapters.fhir import (  # noqa: E402
     FHIRResourceType,
     create_fhir_backend,
 )
-from psdl.parser import Domain, Signal  # noqa: E402
+from psdl.core.ir import Domain, Signal  # noqa: E402
 
 # Skip tests that require requests if not available
 requires_requests = pytest.mark.skipif(

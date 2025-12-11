@@ -1,0 +1,79 @@
+"""
+Auto-generated SQL templates from spec/operators.yaml
+Generated: {{ timestamp }}
+
+DO NOT EDIT - Regenerate with: python tools/codegen.py --sql
+"""
+
+from typing import Optional, TypedDict
+
+
+class SQLTemplate(TypedDict, total=False):
+    """SQL template for an operator."""
+    name: str
+    cte_template: str
+    description: str
+    placeholders: list[str]
+
+
+# PostgreSQL CTE templates for windowed operators
+POSTGRESQL_TEMPLATES: dict[str, SQLTemplate] = {
+{% for name, meta in windowed_operators.items() %}
+{% if meta.implementations.postgresql and meta.implementations.postgresql != 'null' %}
+    "{{ name }}": {
+        "name": "{{ name }}",
+        "description": "{{ meta.description }}",
+        "placeholders": ["trend_name", "table", "filter_cond", "value_col", "datetime_col", "window_seconds"{% if name == 'percentile' %}, "percentile_value"{% endif %}],
+        "cte_template": """{{ meta.implementations.postgresql | trim }}""",
+    },
+{% endif %}
+{% endfor %}
+}
+
+# PostgreSQL templates for pointwise operators
+POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
+{% for name, meta in pointwise_operators.items() %}
+{% if meta.implementations.postgresql and meta.implementations.postgresql != 'null' %}
+    "{{ name }}": {
+        "name": "{{ name }}",
+        "description": "{{ meta.description }}",
+        "placeholders": ["trend_name", "table", "filter_cond"{% if name == 'last' %}, "value_col"{% endif %}, "datetime_col"],
+        "cte_template": """{{ meta.implementations.postgresql | trim }}""",
+    },
+{% endif %}
+{% endfor %}
+}
+
+# Alias mapping
+TEMPLATE_ALIASES: dict[str, str] = {
+{% for name, meta in windowed_operators.items() %}
+{% for alias in meta.aliases | default([]) %}
+    "{{ alias }}": "{{ name }}",
+{% endfor %}
+{% endfor %}
+{% for name, meta in pointwise_operators.items() %}
+{% for alias in meta.aliases | default([]) %}
+    "{{ alias }}": "{{ name }}",
+{% endfor %}
+{% endfor %}
+}
+
+
+def get_sql_template(operator: str, dialect: str = "postgresql") -> Optional[SQLTemplate]:
+    """Get SQL template for an operator."""
+    # Handle aliases
+    canonical = TEMPLATE_ALIASES.get(operator, operator)
+
+    if dialect == "postgresql":
+        template = POSTGRESQL_TEMPLATES.get(canonical)
+        if template:
+            return template
+        return POSTGRESQL_POINTWISE_TEMPLATES.get(canonical)
+
+    return None
+
+
+def is_windowed_operator(operator: str) -> bool:
+    """Check if operator requires a time window."""
+    canonical = TEMPLATE_ALIASES.get(operator, operator)
+    return canonical in POSTGRESQL_TEMPLATES

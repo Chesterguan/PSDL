@@ -25,15 +25,18 @@ Structure:
 - adapters/: Data source adapters (OMOP, FHIR)
 """
 
-__version__ = "0.2.0"
-
-# Execution backends
-from .execution import BatchEvaluator, PSDLEvaluator
-from .execution.batch import InMemoryBackend
+__version__ = "0.2.1"
 
 # Core components
+from .core import PSDLParser, PSDLScenario
 from .operators import DataPoint, TemporalOperators
-from .parser import PSDLParser, PSDLScenario
+
+# Runtimes
+from .runtimes.single import InMemoryBackend, SinglePatientEvaluator
+
+# Legacy aliases
+PSDLEvaluator = SinglePatientEvaluator
+BatchEvaluator = SinglePatientEvaluator
 
 # Streaming (optional - requires apache-flink)
 try:
@@ -43,7 +46,7 @@ except ImportError:
     StreamingEvaluator = None
 
 # Built-in example scenarios
-from . import examples
+from . import examples  # noqa: E402
 
 
 # Adapters (optional - lazy loaded)

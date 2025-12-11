@@ -78,7 +78,7 @@ def get_scenario(name: str):
         >>> print(scenario.name)
         'AKI_Detection'
     """
-    from ..parser import PSDLParser
+    from ..core import PSDLParser
 
     path = get_scenario_path(name)
     parser = PSDLParser()

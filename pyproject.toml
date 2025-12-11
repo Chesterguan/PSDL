@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "psdl-lang"
-version = "0.2.0"
+version = "0.2.1"
 description = "Patient Scenario Definition Language - Reference Implementation"
-readme = "README.md"
+readme = "README_PYPI.md"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "Ziyuan Guan", email = "ziyuan.guan@ufl.edu"}
@@ -114,6 +114,7 @@ include = ["psdl*"]
 
 [tool.setuptools.package-data]
 psdl = ["py.typed", "*.yaml", "*.json", "*.lark", "*.ebnf"]
+"psdl.examples" = ["*.yaml"]
 
 # ============================================================
 # Tool Configuration

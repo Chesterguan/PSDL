@@ -1,0 +1,16 @@
+# Include example YAML scenarios
+recursive-include src/psdl/examples *.yaml
+
+# Include schema files
+include spec/*.yaml
+
+# Include documentation
+include README.md
+include README_PYPI.md
+include LICENSE
+include CHANGELOG.md
+
+# Exclude unnecessary files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
