@@ -1,0 +1,199 @@
+# PSDL Example: Sepsis Screening (qSOFA + Lactate)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Implements qSOFA (quick Sequential Organ Failure Assessment)
+# combined with lactate-based sepsis screening.
+#
+# qSOFA Criteria (2+ = positive screen):
+# - Respiratory rate ≥22/min
+# - Altered mental status (GCS <15)
+# - Systolic BP ≤100 mmHg
+#
+# Sepsis-3 Definition:
+# - Suspected infection + organ dysfunction (SOFA ≥2)
+# - Simplified: qSOFA ≥2 + lactate >2 mmol/L
+#
+# Reference: Singer et al. JAMA 2016 (Sepsis-3)
+
+scenario: Sepsis_Screening_v1
+version: "0.1.0"
+description: "Sepsis screening using qSOFA criteria and lactate"
+
+# ── Population ───────────────────────────────────
+population:
+  include:
+    - age >= 18
+    - location IN ["ED", "ICU", "Ward"]
+  exclude:
+    - status == "comfort_care_only"
+
+# ── Signal Bindings ──────────────────────────────
+signals:
+  # Vital signs
+  RR:
+    source: respiratory_rate
+    concept_id: 3024171
+    unit: breaths/min
+    domain: measurement
+
+  SBP:
+    source: systolic_blood_pressure
+    concept_id: 3004249
+    unit: mmHg
+    domain: measurement
+
+  HR:
+    source: heart_rate
+    concept_id: 3027018
+    unit: beats/min
+    domain: measurement
+
+  Temp:
+    source: body_temperature
+    concept_id: 3020891
+    unit: "°C"
+    domain: measurement
+
+  # Mental status
+  GCS:
+    source: glasgow_coma_scale
+    concept_id: 3032652
+    unit: score
+    domain: measurement
+
+  # Labs
+  Lact:
+    source: lactate
+    concept_id: 3047181
+    unit: mmol/L
+    domain: measurement
+
+  WBC:
+    source: white_blood_cell_count
+    concept_id: 3010813
+    unit: "10^9/L"
+    domain: measurement
+
+  Plt:
+    source: platelet_count
+    concept_id: 3024929
+    unit: "10^9/L"
+    domain: measurement
+
+  Cr:
+    source: creatinine
+    concept_id: 3016723
+    unit: mg/dL
+    domain: measurement
+
+# ── Trend Computations ───────────────────────────
+trends:
+  # qSOFA components
+  tachypnea:
+    expr: last(RR) >= 22
+    description: "Respiratory rate ≥22/min (qSOFA criterion)"
+
+  hypotension:
+    expr: last(SBP) <= 100
+    description: "Systolic BP ≤100 mmHg (qSOFA criterion)"
+
+  altered_mental_status:
+    expr: last(GCS) < 15
+    description: "GCS <15 (qSOFA criterion)"
+
+  # Lactate criteria
+  lactate_elevated:
+    expr: last(Lact) > 2.0
+    description: "Lactate >2.0 mmol/L"
+
+  lactate_high:
+    expr: last(Lact) > 4.0
+    description: "Lactate >4.0 mmol/L (severe)"
+
+  lactate_rising:
+    expr: slope(Lact, 2h) > 0.5
+    description: "Rapidly rising lactate"
+
+  # SIRS criteria (supplementary)
+  fever:
+    expr: last(Temp) > 38.3
+    description: "Temperature >38.3°C"
+
+  hypothermia:
+    expr: last(Temp) < 36.0
+    description: "Temperature <36.0°C"
+
+  tachycardia:
+    expr: last(HR) > 90
+    description: "Heart rate >90 bpm"
+
+  leukocytosis:
+    expr: last(WBC) > 12.0
+    description: "WBC >12.0 x10^9/L"
+
+  leukopenia:
+    expr: last(WBC) < 4.0
+    description: "WBC <4.0 x10^9/L"
+
+  # Organ dysfunction markers
+  thrombocytopenia:
+    expr: last(Plt) < 100
+    description: "Platelets <100 x10^9/L"
+
+  aki_marker:
+    expr: delta(Cr, 24h) > 0.5
+    description: "Creatinine rise >0.5 in 24h"
+
+# ── Logic Layer ──────────────────────────────────
+logic:
+  # qSOFA score components (count >= 2 is positive)
+  qsofa_1:
+    expr: tachypnea
+    severity: low
+    description: "qSOFA: 1 criterion (tachypnea)"
+
+  qsofa_2:
+    expr: tachypnea AND (hypotension OR altered_mental_status)
+    severity: medium
+    description: "qSOFA ≥2 criteria - positive screen"
+
+  qsofa_3:
+    expr: tachypnea AND hypotension AND altered_mental_status
+    severity: high
+    description: "qSOFA 3/3 criteria - high risk"
+
+  # SIRS criteria (supplementary)
+  sirs_positive:
+    expr: (fever OR hypothermia) AND (tachycardia OR tachypnea) AND (leukocytosis OR leukopenia)
+    severity: medium
+    description: "SIRS criteria positive"
+
+  # Combined sepsis screening
+  sepsis_screen_positive:
+    expr: qsofa_2 AND lactate_elevated
+    severity: high
+    description: "Sepsis screen positive - qSOFA ≥2 + elevated lactate"
+
+  # Septic shock criteria
+  septic_shock:
+    expr: sepsis_screen_positive AND hypotension AND lactate_high
+    severity: critical
+    description: "Septic shock - vasopressor requirement + lactate >4"
+
+  # Deteriorating sepsis
+  sepsis_worsening:
+    expr: sepsis_screen_positive AND lactate_rising
+    severity: critical
+    description: "Sepsis with worsening trajectory"
+
+  # Organ dysfunction
+  multi_organ_dysfunction:
+    expr: sepsis_screen_positive AND (thrombocytopenia OR aki_marker)
+    severity: critical
+    description: "Sepsis with multi-organ dysfunction"
+
+  # Early warning (lower threshold)
+  infection_possible:
+    expr: (fever OR hypothermia) AND (tachycardia AND tachypnea)
+    severity: low
+    description: "Possible infection - monitor closely"

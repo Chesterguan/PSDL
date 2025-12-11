@@ -42,6 +42,9 @@ except ImportError:
     STREAMING_AVAILABLE = False
     StreamingEvaluator = None
 
+# Built-in example scenarios
+from . import examples
+
 
 # Adapters (optional - lazy loaded)
 def get_omop_adapter():
@@ -76,4 +79,6 @@ __all__ = [
     # Adapter factories
     "get_omop_adapter",
     "get_fhir_adapter",
+    # Examples
+    "examples",
 ]

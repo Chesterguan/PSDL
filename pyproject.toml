@@ -7,7 +7,7 @@ name = "psdl-lang"
 version = "0.2.0"
 description = "Patient Scenario Definition Language - Reference Implementation"
 readme = "README.md"
-license = "Apache-2.0"
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Ziyuan Guan", email = "ziyuan.guan@ufl.edu"}
 ]

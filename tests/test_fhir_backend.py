@@ -27,8 +27,7 @@ from psdl.parser import Domain, Signal  # noqa: E402
 
 # Skip tests that require requests if not available
 requires_requests = pytest.mark.skipif(
-    not REQUESTS_AVAILABLE,
-    reason="requests library not installed"
+    not REQUESTS_AVAILABLE, reason="requests library not installed"
 )
 
 
