@@ -115,12 +115,17 @@ logic:
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Chesterguan/PSDL.git
-cd psdl
+# Install from PyPI
+pip install psdl-lang
 
-# Install dependencies
-pip install -r requirements.txt
+# With OMOP adapter support
+pip install psdl-lang[omop]
+
+# With FHIR adapter support
+pip install psdl-lang[fhir]
+
+# Full installation (all adapters)
+pip install psdl-lang[full]
 ```
 
 ## Usage
