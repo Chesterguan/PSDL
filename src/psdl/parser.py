@@ -244,7 +244,9 @@ class PSDLParser:
             raise PSDLParseError(f"Missing required field: '{field}'")
         value = data[field]
         if not isinstance(value, expected_type):
-            raise PSDLParseError(f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}")
+            raise PSDLParseError(
+                f"Field '{field}' must be {expected_type.__name__}, got {type(value).__name__}"
+            )
         return value
 
     def _parse_population(self, data: Optional[dict]) -> Optional[PopulationFilter]:
@@ -272,7 +274,9 @@ class PSDLParser:
                     try:
                         domain = Domain(spec["domain"])
                     except ValueError:
-                        self.warnings.append(f"Unknown domain '{spec['domain']}' for signal '{name}'")
+                        self.warnings.append(
+                            f"Unknown domain '{spec['domain']}' for signal '{name}'"
+                        )
 
                 signals[name] = Signal(
                     name=name,
@@ -301,7 +305,8 @@ class PSDLParser:
         if not match:
             # Try simpler pattern without comparison (for boolean trends)
             simple_pattern = re.compile(
-                r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)" r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
+                r"^(delta|slope|ema|sma|min|max|count|last|first)\s*\(\s*(\w+)"
+                r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
             )
             simple_match = simple_pattern.match(expr)
             if simple_match:
@@ -383,7 +388,9 @@ class PSDLParser:
                     try:
                         severity = Severity(spec["severity"])
                     except ValueError:
-                        self.warnings.append(f"Unknown severity '{spec['severity']}' for logic '{name}'")
+                        self.warnings.append(
+                            f"Unknown severity '{spec['severity']}' for logic '{name}'"
+                        )
 
                 logic[name] = LogicExpr(
                     name=name,

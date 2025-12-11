@@ -13,12 +13,9 @@ import pytest
 # Add runtime to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from reference.python.execution.batch import (
-    InMemoryBackend,
-    PSDLEvaluator,
-)  # noqa: E402
-from reference.python.operators import DataPoint, TemporalOperators  # noqa: E402
-from reference.python.parser import PSDLParser  # noqa: E402
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.operators import DataPoint, TemporalOperators  # noqa: E402
+from psdl.parser import PSDLParser  # noqa: E402
 
 
 class TestTemporalOperators:
@@ -108,7 +105,7 @@ class TestInMemoryBackend:
             DataPoint(base_time, 2.0),
         ]
 
-        from reference.python.parser import Signal
+        from psdl.parser import Signal
 
         signal = Signal(name="Cr", source="creatinine")
 
@@ -273,7 +270,9 @@ logic:
         serial_results = evaluator.evaluate_cohort(reference_time=base_time, patient_ids=[1, 2, 3])
 
         # Parallel execution with explicit workers
-        parallel_results = evaluator.evaluate_cohort(reference_time=base_time, patient_ids=[1, 2, 3], max_workers=2)
+        parallel_results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3], max_workers=2
+        )
 
         assert len(parallel_results) == len(serial_results)
 
@@ -297,7 +296,9 @@ logic:
         evaluator = PSDLEvaluator(scenario, backend)
 
         # max_workers=0 means auto-detect
-        results = evaluator.evaluate_cohort(reference_time=base_time, patient_ids=[1, 2, 3], max_workers=0)
+        results = evaluator.evaluate_cohort(
+            reference_time=base_time, patient_ids=[1, 2, 3], max_workers=0
+        )
 
         assert len(results) == 3
 

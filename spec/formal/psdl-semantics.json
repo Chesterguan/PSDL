@@ -1,0 +1,445 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psdl-lang.org/schema/v0.2/semantics",
+  "title": "PSDL Operator Semantics Specification",
+  "description": "Formal semantic definitions for PSDL temporal operators, including type signatures, edge cases, and null handling behavior.",
+  "version": "0.2.0",
+
+  "definitions": {
+    "DataPoint": {
+      "description": "A single observation with timestamp and value",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of the observation"
+        },
+        "value": {
+          "oneOf": [
+            {"type": "number"},
+            {"type": "null"}
+          ],
+          "description": "Observed value (numeric or null)"
+        }
+      },
+      "required": ["timestamp", "value"]
+    },
+
+    "Window": {
+      "description": "Time window specification",
+      "type": "object",
+      "properties": {
+        "value": {"type": "integer", "minimum": 1},
+        "unit": {"enum": ["s", "m", "h", "d", "w"]}
+      },
+      "required": ["value", "unit"],
+      "examples": [
+        {"value": 6, "unit": "h"},
+        {"value": 48, "unit": "h"},
+        {"value": 30, "unit": "m"}
+      ]
+    },
+
+    "WindowDuration": {
+      "description": "Window duration in seconds for each unit",
+      "type": "object",
+      "properties": {
+        "s": {"const": 1},
+        "m": {"const": 60},
+        "h": {"const": 3600},
+        "d": {"const": 86400},
+        "w": {"const": 604800}
+      }
+    }
+  },
+
+  "operators": {
+    "windowed": {
+      "delta": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Compute the change in signal value over the specified time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If fewer than 2 DataPoints remain, return null",
+            "4. Sort DataPoints by timestamp ascending",
+            "5. Return: last_datapoint.value - first_datapoint.value"
+          ],
+          "mathematicalDefinition": "delta(S, W) = S[t_max] - S[t_min] where t_min, t_max are earliest and latest timestamps in window"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "singleValue": {"input": "Exactly 1 data point", "output": null},
+          "allNulls": {"input": "All values are null", "output": null},
+          "someNulls": {"input": "Some values null, 2+ non-null", "output": "Computed from non-null values"}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "Same numeric type as signal, or null"
+        },
+        "examples": [
+          {
+            "input": {
+              "signal": [
+                {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+                {"timestamp": "2024-01-01T03:00:00Z", "value": 1.5},
+                {"timestamp": "2024-01-01T06:00:00Z", "value": 2.0}
+              ],
+              "window": {"value": 6, "unit": "h"},
+              "evaluationTime": "2024-01-01T06:00:00Z"
+            },
+            "output": 1.0,
+            "explanation": "2.0 - 1.0 = 1.0"
+          },
+          {
+            "input": {
+              "signal": [{"timestamp": "2024-01-01T05:00:00Z", "value": 1.5}],
+              "window": {"value": 6, "unit": "h"},
+              "evaluationTime": "2024-01-01T06:00:00Z"
+            },
+            "output": null,
+            "explanation": "Only 1 data point, cannot compute delta"
+          }
+        ]
+      },
+
+      "slope": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Compute the linear regression slope of signal values over the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If fewer than 2 DataPoints remain, return null",
+            "4. Compute linear regression: y = mx + b where x is time, y is value",
+            "5. Return: m (slope coefficient)"
+          ],
+          "mathematicalDefinition": "slope = Σ((x_i - x̄)(y_i - ȳ)) / Σ((x_i - x̄)²) where x is time in seconds from window start",
+          "unit": "value_unit per second"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "singleValue": {"input": "Exactly 1 data point", "output": null},
+          "allSameTime": {"input": "All data points at same timestamp", "output": null, "reason": "Division by zero in regression"},
+          "allSameValue": {"input": "All values identical", "output": 0.0}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "float64"
+        }
+      },
+
+      "ema": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Compute exponential moving average over the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If no DataPoints remain, return null",
+            "4. Sort DataPoints by timestamp ascending",
+            "5. Compute alpha = 2 / (N + 1) where N is number of data points",
+            "6. EMA[0] = first value",
+            "7. EMA[i] = alpha * value[i] + (1 - alpha) * EMA[i-1]",
+            "8. Return: final EMA value"
+          ],
+          "mathematicalDefinition": "EMA_t = α * V_t + (1 - α) * EMA_{t-1}, where α = 2/(N+1)"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "singleValue": {"input": "Exactly 1 data point", "output": "That value (EMA of 1 point is itself)"}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "float64"
+        }
+      },
+
+      "sma": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Compute simple moving average over the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If no DataPoints remain, return null",
+            "4. Return: sum(values) / count(values)"
+          ],
+          "mathematicalDefinition": "SMA = (1/N) * Σ(V_i)"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "singleValue": {"input": "Exactly 1 data point", "output": "That value"}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "float64"
+        }
+      },
+
+      "min": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Find minimum value in the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If no DataPoints remain, return null",
+            "4. Return: minimum of all values"
+          ]
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "allNulls": {"input": "All values are null", "output": null}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "Same as signal type"
+        }
+      },
+
+      "max": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Find maximum value in the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If no DataPoints remain, return null",
+            "4. Return: maximum of all values"
+          ]
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "allNulls": {"input": "All values are null", "output": null}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "Same as signal type"
+        }
+      },
+
+      "count": {
+        "signature": "(signal: Signal, window: Window) -> Integer",
+        "description": "Count number of observations in the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Return: count of all DataPoints (including those with null values)"
+          ],
+          "note": "count() includes null values because it counts observations, not valid values"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": 0}
+        },
+        "typeRules": {
+          "signalType": "Any",
+          "returnType": "integer (non-negative)"
+        }
+      },
+
+      "first": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Get the earliest value in the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. If no DataPoints, return null",
+            "3. Sort DataPoints by timestamp ascending",
+            "4. Return: value of first DataPoint (may be null)"
+          ]
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "firstIsNull": {"input": "First data point has null value", "output": null}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "Same as signal type, or null"
+        }
+      },
+
+      "stddev": {
+        "signature": "(signal: Signal, window: Window) -> Numeric | Null",
+        "description": "Compute standard deviation of values in the time window",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal within window ending at evaluation_time",
+            "2. Filter out DataPoints where value is null",
+            "3. If fewer than 2 DataPoints remain, return null",
+            "4. Compute population standard deviation: sqrt(Σ(x_i - μ)² / N)"
+          ],
+          "mathematicalDefinition": "σ = sqrt((1/N) * Σ(V_i - μ)²) where μ is the mean",
+          "note": "Uses population stddev (N), not sample stddev (N-1)"
+        },
+        "edgeCases": {
+          "emptyWindow": {"input": "No data points in window", "output": null},
+          "singleValue": {"input": "Exactly 1 data point", "output": null, "reason": "Stddev requires 2+ points"},
+          "allSameValue": {"input": "All values identical", "output": 0.0}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "float64"
+        }
+      }
+    },
+
+    "pointwise": {
+      "last": {
+        "signature": "(signal: Signal) -> Numeric | Null",
+        "description": "Get the most recent value for the signal",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal up to evaluation_time",
+            "2. If no DataPoints, return null",
+            "3. Sort DataPoints by timestamp descending",
+            "4. Return: value of first (most recent) DataPoint"
+          ],
+          "note": "No time window - considers all historical data up to evaluation time"
+        },
+        "edgeCases": {
+          "noData": {"input": "No data points exist for signal", "output": null},
+          "lastIsNull": {"input": "Most recent data point has null value", "output": null}
+        },
+        "typeRules": {
+          "signalType": "Must be numeric",
+          "returnType": "Same as signal type, or null"
+        }
+      },
+
+      "exists": {
+        "signature": "(signal: Signal) -> Boolean",
+        "description": "Check if any data exists for the signal",
+        "semantics": {
+          "algorithm": [
+            "1. Get all DataPoints for signal up to evaluation_time",
+            "2. Return: true if at least 1 DataPoint exists, false otherwise"
+          ],
+          "note": "Returns true even if all values are null - checks data existence, not validity"
+        },
+        "edgeCases": {
+          "noData": {"input": "No data points exist", "output": false},
+          "allNulls": {"input": "All data points have null values", "output": true}
+        },
+        "typeRules": {
+          "signalType": "Any",
+          "returnType": "boolean"
+        }
+      },
+
+      "missing": {
+        "signature": "(signal: Signal) -> Boolean",
+        "description": "Check if no data exists for the signal (inverse of exists)",
+        "semantics": {
+          "algorithm": [
+            "1. Return: NOT exists(signal)"
+          ],
+          "equivalent": "missing(S) ≡ !exists(S)"
+        },
+        "edgeCases": {
+          "noData": {"input": "No data points exist", "output": true},
+          "hasData": {"input": "At least 1 data point exists", "output": false}
+        },
+        "typeRules": {
+          "signalType": "Any",
+          "returnType": "boolean"
+        }
+      }
+    }
+  },
+
+  "comparison": {
+    "operators": ["==", "!=", "<", "<=", ">", ">="],
+    "semantics": {
+      "nullHandling": "Any comparison involving null returns false",
+      "examples": [
+        {"expression": "null > 5", "result": false},
+        {"expression": "null == null", "result": false},
+        {"expression": "3.0 > 2.0", "result": true}
+      ]
+    },
+    "typeRules": {
+      "leftOperand": "Numeric | Null (from temporal operator)",
+      "rightOperand": "Numeric literal",
+      "returnType": "boolean"
+    }
+  },
+
+  "booleanLogic": {
+    "operators": {
+      "AND": {
+        "signature": "(Boolean, Boolean) -> Boolean",
+        "truthTable": {
+          "true AND true": true,
+          "true AND false": false,
+          "false AND true": false,
+          "false AND false": false
+        },
+        "precedence": 2,
+        "associativity": "left"
+      },
+      "OR": {
+        "signature": "(Boolean, Boolean) -> Boolean",
+        "truthTable": {
+          "true OR true": true,
+          "true OR false": true,
+          "false OR true": true,
+          "false OR false": false
+        },
+        "precedence": 1,
+        "associativity": "left"
+      },
+      "NOT": {
+        "signature": "(Boolean) -> Boolean",
+        "truthTable": {
+          "NOT true": false,
+          "NOT false": true
+        },
+        "precedence": 3,
+        "associativity": "right"
+      }
+    },
+    "precedenceOrder": ["OR (lowest)", "AND", "NOT (highest)"],
+    "note": "Parentheses can override precedence: (a OR b) AND c"
+  },
+
+  "evaluationContext": {
+    "description": "Every PSDL evaluation occurs within a context",
+    "required": {
+      "patientId": "Identifier for the patient being evaluated",
+      "evaluationTime": "ISO 8601 timestamp - the 'now' for window calculations",
+      "signalData": "Map of signal names to arrays of DataPoints"
+    },
+    "optional": {
+      "timezone": "Default: UTC. All timestamps normalized to UTC before comparison"
+    }
+  },
+
+  "semanticValidation": {
+    "description": "Checks beyond grammar validation",
+    "rules": [
+      {
+        "id": "SIGNAL_EXISTS",
+        "description": "All signal references must be defined in the signals section",
+        "example": {"invalid": "delta(UndefinedSignal, 6h)", "reason": "UndefinedSignal not in signals"}
+      },
+      {
+        "id": "TREND_EXISTS",
+        "description": "All trend references in logic must be defined in trends section",
+        "example": {"invalid": "undefined_trend AND other_trend", "reason": "undefined_trend not in trends"}
+      },
+      {
+        "id": "NO_CIRCULAR_REFS",
+        "description": "Trends cannot reference themselves directly or indirectly",
+        "example": {"invalid": "trend_a references trend_b, trend_b references trend_a"}
+      },
+      {
+        "id": "TYPE_COMPATIBILITY",
+        "description": "Comparison operators require numeric operands",
+        "example": {"invalid": "exists(Cr) > 5", "reason": "exists() returns boolean, cannot compare with >"}
+      }
+    ]
+  }
+}

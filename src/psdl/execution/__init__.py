@@ -18,7 +18,7 @@ Execution mode is a deployment concern, not part of the clinical specification.
 
 Usage:
     # Batch execution (auto-selects best strategy)
-    from reference.python.execution import PSDLEvaluator
+    from psdl.execution import PSDLEvaluator
 
     evaluator = PSDLEvaluator(scenario, backend)
     results = evaluator.evaluate_cohort()  # Auto-optimized
@@ -27,7 +27,7 @@ Usage:
     result = evaluator.evaluate_patient(patient_id=123)
 
     # Streaming execution (requires PyFlink)
-    from reference.python.execution import StreamingEvaluator
+    from psdl.execution import StreamingEvaluator
 
     evaluator = StreamingEvaluator(runtime="flink")
     job = evaluator.deploy(scenario, kafka_config)

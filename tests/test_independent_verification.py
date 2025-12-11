@@ -13,17 +13,17 @@ Each test case includes:
 If PSDL matches manual calculations, the implementation is correct.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from reference.python.parser import PSDLParser
-from reference.python.execution.batch import PSDLEvaluator, InMemoryBackend
-from reference.python.operators import DataPoint, TemporalOperators
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator
+from psdl.operators import DataPoint, TemporalOperators
+from psdl.parser import PSDLParser
 
 
 class TestManualDeltaVerification:
@@ -61,7 +61,9 @@ class TestManualDeltaVerification:
         print(f"Manual calculation: 1.4 - 1.0 = {EXPECTED_DELTA}")
         print(f"PSDL result: {psdl_delta}")
 
-        assert abs(psdl_delta - EXPECTED_DELTA) < 0.001, f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
+        assert (
+            abs(psdl_delta - EXPECTED_DELTA) < 0.001
+        ), f"PSDL delta {psdl_delta} != manual {EXPECTED_DELTA}"
 
     def test_delta_with_partial_window(self):
         """

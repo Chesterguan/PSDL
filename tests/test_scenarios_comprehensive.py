@@ -5,8 +5,8 @@ Tests all example scenarios with various data patterns to ensure
 correct evaluation under different clinical conditions.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -14,12 +14,9 @@ from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from reference.python.parser import PSDLParser  # noqa: E402
-from reference.python.execution.batch import (
-    PSDLEvaluator,
-    InMemoryBackend,
-)  # noqa: E402
-from reference.python.operators import DataPoint  # noqa: E402
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.operators import DataPoint  # noqa: E402
+from psdl.parser import PSDLParser  # noqa: E402
 
 
 class TestAKIDetectionScenario:

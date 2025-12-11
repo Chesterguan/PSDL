@@ -8,50 +8,14 @@ The actual Flink integration (PyFlink runtime) is optional - these tests
 verify the core streaming operators, compiler, and evaluator work correctly.
 """
 
-import sys
-import os
 from datetime import datetime, timedelta
-import types
 
-# Get paths
-_project_root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-_streaming_dir = os.path.join(_project_root, "reference", "python", "execution", "streaming")
+from psdl.execution.streaming import compiler as _compiler
+from psdl.execution.streaming import config as _config
+from psdl.execution.streaming import operators as _operators
 
-# Create a fake package structure so relative imports work
-# This allows the streaming modules to use 'from .models import ...'
-
-
-def _setup_streaming_package():
-    """Set up streaming as a standalone package for testing."""
-    # Create the streaming package module
-    streaming_pkg = types.ModuleType("streaming")
-    streaming_pkg.__path__ = [_streaming_dir]
-    streaming_pkg.__file__ = os.path.join(_streaming_dir, "__init__.py")
-    sys.modules["streaming"] = streaming_pkg
-
-    # Add streaming dir to path so submodules can be found
-    if _streaming_dir not in sys.path:
-        sys.path.insert(0, _streaming_dir)
-
-    # Now import submodules - they will resolve .models as streaming.models
-    import importlib
-
-    # Import in dependency order
-    models = importlib.import_module("streaming.models")
-    config = importlib.import_module("streaming.config")
-    operators = importlib.import_module("streaming.operators")
-    compiler = importlib.import_module("streaming.compiler")
-
-    return models, config, operators, compiler
-
-
-_models, _config, _operators, _compiler = _setup_streaming_package()
-
-# Import what we need from the loaded modules
-ClinicalEvent = _models.ClinicalEvent
-TrendResult = _models.TrendResult
-WindowSpec = _models.WindowSpec
-Severity = _models.Severity
+# Import from the psdl package
+from psdl.execution.streaming.models import ClinicalEvent, Severity, TrendResult, WindowSpec
 
 DeltaWindowFunction = _operators.DeltaWindowFunction
 SlopeWindowFunction = _operators.SlopeWindowFunction
@@ -297,7 +261,9 @@ class TestProcessFunctions:
     def test_ema_function(self):
         """Test exponential moving average."""
         # 1 hour window -> alpha = 2/(60+1) ≈ 0.0328
-        fn = EMAProcessFunction("hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">")
+        fn = EMAProcessFunction(
+            "hr_smoothed", window_ms=60 * 60 * 1000, threshold=100, comparison=">"
+        )
 
         state = {}
 
@@ -578,7 +544,7 @@ class TestLogicJoinFunction:
     """Test logic join functionality."""
 
     def test_join_all_trends_present(self):
-        from streaming.compiler import CompiledLogic
+        from psdl.execution.streaming.compiler import CompiledLogic
 
         logic = CompiledLogic(
             name="test_logic",
@@ -613,7 +579,7 @@ class TestLogicJoinFunction:
         assert result.logic_name == "test_logic"
 
     def test_join_missing_trend(self):
-        from streaming.compiler import CompiledLogic
+        from psdl.execution.streaming.compiler import CompiledLogic
 
         logic = CompiledLogic(
             name="test_logic",

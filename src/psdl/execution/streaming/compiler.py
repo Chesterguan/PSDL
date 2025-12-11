@@ -117,7 +117,8 @@ class ExpressionParser:
 
     # Pattern: operator(signal, window, [slide]) comparison threshold
     OPERATOR_PATTERN = re.compile(
-        r"(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\d+[smhd])\s*)?" r"(?:,\s*(\d+[smhd]))?\s*\)\s*([><=!]+)\s*(-?[\d.]+)"
+        r"(\w+)\s*\(\s*(\w+)\s*(?:,\s*(\d+[smhd])\s*)?"
+        r"(?:,\s*(\d+[smhd]))?\s*\)\s*([><=!]+)\s*(-?[\d.]+)"
     )
 
     # Pattern: last(signal) comparison threshold
@@ -151,7 +152,9 @@ class ExpressionParser:
         if match:
             op_name, signal, window, slide, comparison, threshold = match.groups()
 
-            op_type = OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
+            op_type = (
+                OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
+            )
 
             return ParsedOperator(
                 name=op_name,
@@ -168,7 +171,9 @@ class ExpressionParser:
         if match:
             op_name, signal, comparison, threshold = match.groups()
 
-            op_type = OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
+            op_type = (
+                OperatorType.WINDOW if op_name in cls.WINDOW_OPERATORS else OperatorType.PROCESS
+            )
 
             return ParsedOperator(
                 name=op_name,
@@ -413,7 +418,11 @@ class LogicJoinFunction:
             return None
 
         # Extract boolean values from trend results
-        trend_values = {name: result.result for name, result in trend_results.items() if name in self.logic.trend_refs}
+        trend_values = {
+            name: result.result
+            for name, result in trend_results.items()
+            if name in self.logic.trend_refs
+        }
 
         # Evaluate the logic expression
         result = self.evaluator.evaluate(self.logic.expr, trend_values)
@@ -508,7 +517,9 @@ class StreamingEvaluator:
                 if trend.window_spec:
                     cutoff = event.timestamp.timestamp() * 1000 - trend.window_spec.size_ms
                     patient_state["windows"][window_key] = [
-                        e for e in patient_state["windows"][window_key] if e.timestamp.timestamp() * 1000 >= cutoff
+                        e
+                        for e in patient_state["windows"][window_key]
+                        if e.timestamp.timestamp() * 1000 >= cutoff
                     ]
 
                 # Compute window result
@@ -516,7 +527,9 @@ class StreamingEvaluator:
                 if window_events:
                     window_start = min(e.timestamp for e in window_events)
                     window_end = max(e.timestamp for e in window_events)
-                    result = trend.window_function.process(patient_id, window_events, window_start, window_end)
+                    result = trend.window_function.process(
+                        patient_id, window_events, window_start, window_end
+                    )
                     trend_results.append(result)
                     patient_state["trend_results"][trend_name] = result
 

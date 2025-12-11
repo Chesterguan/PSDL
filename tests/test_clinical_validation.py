@@ -8,24 +8,21 @@ that PSDL correctly identifies them.
 This is critical validation - not just "does it run" but "does it work correctly".
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from datetime import datetime, timedelta  # noqa: E402
-from dataclasses import dataclass  # noqa: E402
-from typing import List, Dict  # noqa: E402
 import random  # noqa: E402
+from dataclasses import dataclass  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
+from typing import Dict, List  # noqa: E402
 
 import pytest  # noqa: E402
 
-from reference.python.parser import PSDLParser  # noqa: E402
-from reference.python.execution.batch import (
-    PSDLEvaluator,
-    InMemoryBackend,
-)  # noqa: E402
-from reference.python.operators import DataPoint  # noqa: E402
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.operators import DataPoint  # noqa: E402
+from psdl.parser import PSDLParser  # noqa: E402
 
 
 @dataclass
@@ -280,7 +277,9 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         # Clinical expectation: NO AKI
         assert (
@@ -295,7 +294,9 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         # Clinical expectation: AKI detected
         assert (
@@ -311,7 +312,9 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         assert result.is_triggered == patient.expected_aki
         # Should trigger stage 2 or higher
@@ -325,7 +328,9 @@ class TestAKIDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         # Clinical expectation: NO AKI (chronic, not acute)
         # The delta should be near 0
@@ -358,7 +363,9 @@ class TestSepsisDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         assert (
             result.is_triggered == patient.expected_sepsis
@@ -372,7 +379,9 @@ class TestSepsisDetectionValidation:
         self._load_patient_data(backend, patient.patient_id, data)
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id=patient.patient_id, reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id=patient.patient_id, reference_time=datetime.now()
+        )
 
         assert (
             result.is_triggered == patient.expected_sepsis
@@ -439,10 +448,14 @@ class TestCohortValidation:
 
         # Calculate metrics
         sensitivity = (
-            true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+            true_positives / (true_positives + false_negatives)
+            if (true_positives + false_negatives) > 0
+            else 0
         )
         specificity = (
-            true_negatives / (true_negatives + false_positives) if (true_negatives + false_positives) > 0 else 0
+            true_negatives / (true_negatives + false_positives)
+            if (true_negatives + false_positives) > 0
+            else 0
         )
         accuracy = (true_positives + true_negatives) / len(cohort)
 
@@ -501,7 +514,9 @@ class TestCohortValidation:
             else:
                 incorrect += 1
                 status = "✗"
-                print(f"  {status} {patient.patient_id}: expected={patient.expected_aki}, got={result.is_triggered}")
+                print(
+                    f"  {status} {patient.patient_id}: expected={patient.expected_aki}, got={result.is_triggered}"
+                )
                 print(f"      Notes: {patient.clinical_notes}")
                 print(f"      Trends: {result.trend_results}")
 
@@ -538,7 +553,9 @@ class TestEdgeCases:
         result = evaluator.evaluate_patient(patient_id="borderline", reference_time=now)
 
         # KDIGO says >= 0.3, so this should trigger
-        print(f"Borderline (0.3 rise): triggered={result.is_triggered}, trends={result.trend_values}")
+        print(
+            f"Borderline (0.3 rise): triggered={result.is_triggered}, trends={result.trend_values}"
+        )
 
     def test_just_below_threshold(self, aki_scenario):
         """Test just below threshold (should NOT trigger)."""
@@ -582,7 +599,9 @@ class TestEdgeCases:
         evaluator = PSDLEvaluator(aki_scenario, backend)
         result = evaluator.evaluate_patient(patient_id="recovering", reference_time=now)
 
-        print(f"Recovering patient: triggered={result.is_triggered}, rules={result.triggered_logic}")
+        print(
+            f"Recovering patient: triggered={result.is_triggered}, rules={result.triggered_logic}"
+        )
         # May still trigger aki_stage1 but should also show recovery pattern
 
 

@@ -11,6 +11,12 @@ These operators form the computational core of PSDL trend expressions:
 - count(signal, window) - Observation count in window
 - last(signal)          - Most recent value
 - first(signal, window) - First value in window
+
+Null Handling (per PSDL spec):
+- DataPoint.value can be None (null observation)
+- count() includes null values (counts observations)
+- Other operators filter out null values before computing
+- last()/first() return null if most recent/first value is null
 """
 
 import math
@@ -21,10 +27,10 @@ from typing import List, Optional
 
 @dataclass
 class DataPoint:
-    """A single time-series data point."""
+    """A single time-series data point with optional null value."""
 
     timestamp: datetime
-    value: float
+    value: Optional[float]  # Can be None per PSDL spec
 
 
 class TemporalOperators:
@@ -34,6 +40,11 @@ class TemporalOperators:
     These operators work on lists of DataPoint objects sorted by timestamp.
     All window-based operators filter data to the specified time window
     before computing.
+
+    Null Handling:
+    - count() includes all observations (even nulls)
+    - last()/first() return the value as-is (may be null)
+    - Other operators filter out null values before computing
     """
 
     @staticmethod
@@ -51,7 +62,7 @@ class TemporalOperators:
             reference_time: End of window (defaults to now)
 
         Returns:
-            Filtered list of DataPoints within the window
+            Filtered list of DataPoints within the window (includes nulls)
         """
         if not data:
             return []
@@ -60,6 +71,19 @@ class TemporalOperators:
         window_start = ref_time - timedelta(seconds=window_seconds)
 
         return [dp for dp in data if window_start <= dp.timestamp <= ref_time]
+
+    @staticmethod
+    def filter_non_null(data: List[DataPoint]) -> List[DataPoint]:
+        """
+        Filter out data points with null values.
+
+        Args:
+            data: List of DataPoints
+
+        Returns:
+            List of DataPoints with non-null values only
+        """
+        return [dp for dp in data if dp.value is not None]
 
     @staticmethod
     def last(data: List[DataPoint]) -> Optional[float]:
@@ -114,14 +138,16 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Absolute change, or None if insufficient data
+            Absolute change, or None if insufficient data (< 2 non-null values)
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if len(filtered) < 2:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if len(non_null) < 2:
             return None
 
-        first_val = filtered[0].value
-        last_val = filtered[-1].value
+        first_val = non_null[0].value
+        last_val = non_null[-1].value
         return last_val - first_val
 
     @staticmethod
@@ -140,16 +166,18 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Slope (units per second), or None if insufficient data
+            Slope (units per second), or None if insufficient data (< 2 non-null values)
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if len(filtered) < 2:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if len(non_null) < 2:
             return None
 
         # Convert timestamps to seconds from first point
-        t0 = filtered[0].timestamp
-        x = [(dp.timestamp - t0).total_seconds() for dp in filtered]
-        y = [dp.value for dp in filtered]
+        t0 = non_null[0].timestamp
+        x = [(dp.timestamp - t0).total_seconds() for dp in non_null]
+        y = [dp.value for dp in non_null]
 
         n = len(x)
         sum_x = sum(x)
@@ -179,13 +207,15 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Simple moving average, or None if no data
+            Simple moving average, or None if no non-null data
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if not filtered:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if not non_null:
             return None
 
-        return sum(dp.value for dp in filtered) / len(filtered)
+        return sum(dp.value for dp in non_null) / len(non_null)
 
     @staticmethod
     def ema(
@@ -203,22 +233,24 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Exponential moving average, or None if no data
+            Exponential moving average, or None if no non-null data
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if not filtered:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if not non_null:
             return None
 
-        if len(filtered) == 1:
-            return filtered[0].value
+        if len(non_null) == 1:
+            return non_null[0].value
 
         # Calculate span based on number of points
-        span = len(filtered)
+        span = len(non_null)
         alpha = 2.0 / (span + 1)
 
         # Calculate EMA
-        ema = filtered[0].value
-        for dp in filtered[1:]:
+        ema = non_null[0].value
+        for dp in non_null[1:]:
             ema = alpha * dp.value + (1 - alpha) * ema
 
         return ema
@@ -238,12 +270,14 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Minimum value, or None if no data
+            Minimum value, or None if no non-null data
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if not filtered:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if not non_null:
             return None
-        return min(dp.value for dp in filtered)
+        return min(dp.value for dp in non_null)
 
     @staticmethod
     def max_val(
@@ -260,12 +294,14 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Maximum value, or None if no data
+            Maximum value, or None if no non-null data
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if not filtered:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if not non_null:
             return None
-        return max(dp.value for dp in filtered)
+        return max(dp.value for dp in non_null)
 
     @staticmethod
     def count(
@@ -276,13 +312,16 @@ class TemporalOperators:
         """
         Count observations within the window.
 
+        Note: Per PSDL spec, count() includes ALL observations,
+        even those with null values (counts observations, not valid values).
+
         Args:
             data: List of DataPoints sorted by timestamp
             window_seconds: Window size in seconds
             reference_time: End of window
 
         Returns:
-            Number of observations in window
+            Number of observations in window (including nulls)
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
         return len(filtered)
@@ -302,14 +341,16 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Standard deviation, or None if insufficient data
+            Standard deviation, or None if insufficient non-null data (< 2 values)
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if len(filtered) < 2:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if len(non_null) < 2:
             return None
 
-        mean = sum(dp.value for dp in filtered) / len(filtered)
-        variance = sum((dp.value - mean) ** 2 for dp in filtered) / (len(filtered) - 1)
+        mean = sum(dp.value for dp in non_null) / len(non_null)
+        variance = sum((dp.value - mean) ** 2 for dp in non_null) / (len(non_null) - 1)
         return math.sqrt(variance)
 
     @staticmethod
@@ -329,13 +370,15 @@ class TemporalOperators:
             reference_time: End of window
 
         Returns:
-            Percentile value, or None if no data
+            Percentile value, or None if no non-null data
         """
         filtered = TemporalOperators.filter_by_window(data, window_seconds, reference_time)
-        if not filtered:
+        # Filter out null values per spec
+        non_null = TemporalOperators.filter_non_null(filtered)
+        if not non_null:
             return None
 
-        values = sorted(dp.value for dp in filtered)
+        values = sorted(dp.value for dp in non_null)
         n = len(values)
 
         if n == 1:

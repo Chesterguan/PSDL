@@ -253,7 +253,9 @@ class ProcessFunction(ABC):
         self.description = description
 
     @abstractmethod
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """
         Process a single event with state.
 
@@ -298,7 +300,9 @@ class LastProcessFunction(ProcessFunction):
           expr: last(SpO2) < 92
     """
 
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and return the current value."""
         value = event.value
         result = self.evaluate(value)
@@ -362,7 +366,9 @@ class EMAProcessFunction(ProcessFunction):
         window_minutes = window_ms / (60 * 1000)
         self.alpha = 2.0 / (window_minutes + 1)
 
-    def process_element(self, event: ClinicalEvent, state: Dict[str, Any]) -> Tuple[TrendResult, Dict[str, Any]]:
+    def process_element(
+        self, event: ClinicalEvent, state: Dict[str, Any]
+    ) -> Tuple[TrendResult, Dict[str, Any]]:
         """Process event and update EMA."""
         current_value = event.value
 

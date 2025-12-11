@@ -10,18 +10,18 @@ If PSDL results match SQL results, we can be confident that:
 3. The logic engine correctly combines conditions
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
-from typing import List, Dict, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from reference.python.parser import PSDLParser
-from reference.python.execution.batch import PSDLEvaluator, InMemoryBackend
-from reference.python.operators import DataPoint
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator
+from psdl.operators import DataPoint
+from psdl.parser import PSDLParser
 
 
 class SQLEmulator:
@@ -36,7 +36,9 @@ class SQLEmulator:
         """
         self.data = data
 
-    def execute_aki_detection_sql(self, patient_id: str, reference_time: datetime) -> Dict[str, Any]:
+    def execute_aki_detection_sql(
+        self, patient_id: str, reference_time: datetime
+    ) -> Dict[str, Any]:
         """
         Pure SQL-style logic for AKI detection.
 
@@ -128,7 +130,9 @@ class SQLEmulator:
 
         return result
 
-    def execute_icu_deterioration_sql(self, patient_id: str, reference_time: datetime) -> Dict[str, Any]:
+    def execute_icu_deterioration_sql(
+        self, patient_id: str, reference_time: datetime
+    ) -> Dict[str, Any]:
         """
         Pure SQL-style logic for ICU deterioration.
 
@@ -311,7 +315,9 @@ class TestPSDLvsSQLEquivalence:
         if sql_result["triggered"]:
             assert sql_result["stage"] == "stage1"
             # PSDL should have triggered aki_stage1 or aki_present
-            assert any("stage1" in name or "present" in name for name in psdl_result.triggered_logic)
+            assert any(
+                "stage1" in name or "present" in name for name in psdl_result.triggered_logic
+            )
 
     def test_aki_stage3_equivalence(self, aki_scenario):
         """Test that PSDL and SQL agree on AKI Stage 3 detection."""
@@ -332,7 +338,9 @@ class TestPSDLvsSQLEquivalence:
 
         print("\n=== AKI Stage 3 Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}, stage: {sql_result['stage']}")
-        print(f"SQL delta_48h: {sql_result['delta_48h']:.2f}, latest_cr: {sql_result['latest_cr']:.2f}")
+        print(
+            f"SQL delta_48h: {sql_result['delta_48h']:.2f}, latest_cr: {sql_result['latest_cr']:.2f}"
+        )
         print(f"PSDL triggered: {psdl_result.is_triggered}")
         print(f"PSDL rules: {psdl_result.triggered_logic}")
 
@@ -484,7 +492,8 @@ class TestBatchComparison:
             print("\nMismatch details:")
             for m in mismatches[:5]:  # Show first 5
                 print(
-                    f"  {m['patient_id']} ({m['pattern']}): " f"SQL={m['sql']['triggered']}, PSDL={m['psdl_triggered']}"
+                    f"  {m['patient_id']} ({m['pattern']}): "
+                    f"SQL={m['sql']['triggered']}, PSDL={m['psdl_triggered']}"
                 )
 
         # Allow some tolerance due to edge cases in temporal calculations

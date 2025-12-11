@@ -13,19 +13,15 @@ Usage:
     python examples/omop_research_example.py
 
 Requirements:
-    pip install sqlalchemy psycopg2 pyyaml
+    pip install psdl-lang[omop]
 """
 
 import os
-import sys
 from datetime import datetime, timedelta
 
-# Add reference implementation to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
-
-from parser import PSDLParser
-from evaluator import PSDLEvaluator
-from adapters.omop import OMOPBackend, OMOPConfig
+from psdl.parser import PSDLParser
+from psdl.execution import PSDLEvaluator
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 
 def main():

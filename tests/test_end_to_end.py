@@ -5,8 +5,8 @@ Complete workflow tests from scenario parsing through evaluation and result hand
 Tests the full PSDL pipeline as it would be used in production.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -14,12 +14,9 @@ from datetime import datetime, timedelta  # noqa: E402
 
 import pytest  # noqa: E402
 
-from reference.python.parser import PSDLParser  # noqa: E402
-from reference.python.execution.batch import (
-    PSDLEvaluator,
-    InMemoryBackend,
-)  # noqa: E402
-from reference.python.operators import DataPoint  # noqa: E402
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator  # noqa: E402
+from psdl.operators import DataPoint  # noqa: E402
+from psdl.parser import PSDLParser  # noqa: E402
 
 
 class TestFullWorkflow:
@@ -408,7 +405,9 @@ class TestTimeSeriesEvaluation:
         timeline = []
         for hours, _ in creatinine_progression:
             eval_time = base_time + timedelta(hours=hours)
-            result = evaluator.evaluate_patient(patient_id="aki-progression", reference_time=eval_time)
+            result = evaluator.evaluate_patient(
+                patient_id="aki-progression", reference_time=eval_time
+            )
             timeline.append(
                 {
                     "time": eval_time.isoformat(),
@@ -452,7 +451,9 @@ class TestErrorRecovery:
         backend = InMemoryBackend()
 
         evaluator = PSDLEvaluator(scenario, backend)
-        result = evaluator.evaluate_patient(patient_id="non-existent-patient", reference_time=datetime.now())
+        result = evaluator.evaluate_patient(
+            patient_id="non-existent-patient", reference_time=datetime.now()
+        )
 
         # Should return a valid result (not triggered)
         assert not result.is_triggered

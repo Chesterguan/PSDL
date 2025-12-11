@@ -63,10 +63,10 @@ except ImportError:
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from execution.batch import DataBackend
-
-    from operators import DataPoint
     from parser import Signal
+
+    from execution.batch import DataBackend
+    from operators import DataPoint
 
 
 class CDMVersion(Enum):
@@ -188,7 +188,10 @@ class OMOPBackend(DataBackend):
 
                 self._engine = create_engine(self.config.connection_string)
             except ImportError:
-                raise ImportError("SQLAlchemy is required for OMOP backend. " "Install with: pip install sqlalchemy")
+                raise ImportError(
+                    "SQLAlchemy is required for OMOP backend. "
+                    "Install with: pip install sqlalchemy"
+                )
         return self._engine
 
     def _execute_query(self, query: str, params: Dict[str, Any]) -> List[Dict]:
@@ -216,9 +219,15 @@ class OMOPBackend(DataBackend):
         elif domain == "observation":
             return "observation_datetime" if self.config.use_datetime else "observation_date"
         elif domain == "condition":
-            return "condition_start_datetime" if self.config.use_datetime else "condition_start_date"
+            return (
+                "condition_start_datetime" if self.config.use_datetime else "condition_start_date"
+            )
         elif domain == "drug":
-            return "drug_exposure_start_datetime" if self.config.use_datetime else "drug_exposure_start_date"
+            return (
+                "drug_exposure_start_datetime"
+                if self.config.use_datetime
+                else "drug_exposure_start_date"
+            )
         elif domain == "procedure":
             return "procedure_datetime" if self.config.use_datetime else "procedure_date"
         return "measurement_datetime"
@@ -535,14 +544,18 @@ class OMOPBackend(DataBackend):
         # Parse inclusion criteria
         if population_include:
             for criterion in population_include:
-                sql, params, param_idx = self._parse_population_criterion(criterion, params, param_idx)
+                sql, params, param_idx = self._parse_population_criterion(
+                    criterion, params, param_idx
+                )
                 if sql:
                     include_clauses.append(sql)
 
         # Parse exclusion criteria
         if population_exclude:
             for criterion in population_exclude:
-                sql, params, param_idx = self._parse_population_criterion(criterion, params, param_idx)
+                sql, params, param_idx = self._parse_population_criterion(
+                    criterion, params, param_idx
+                )
                 if sql:
                     exclude_clauses.append(sql)
 

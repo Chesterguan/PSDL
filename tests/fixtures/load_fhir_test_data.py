@@ -273,7 +273,9 @@ class FHIRTestDataLoader:
         # Normal creatinine
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(patient_id, LOINC["creatinine"], 0.9 + (i % 2) * 0.1, "mg/dL", ts)
+            self.create_observation(
+                patient_id, LOINC["creatinine"], 0.9 + (i % 2) * 0.1, "mg/dL", ts
+            )
 
         # Normal heart rate
         for i in range(4):
@@ -288,7 +290,9 @@ class FHIRTestDataLoader:
         # Normal temperature
         for i in range(4):
             ts = now - timedelta(hours=i * 2)
-            self.create_observation(patient_id, LOINC["temperature"], 36.8 + (i % 2) * 0.2, "Cel", ts)
+            self.create_observation(
+                patient_id, LOINC["temperature"], 36.8 + (i % 2) * 0.2, "Cel", ts
+            )
 
         print("  Created all normal observations")
 
@@ -335,7 +339,9 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Load FHIR test data")
-    parser.add_argument("--base-url", default="http://localhost:8080/fhir", help="FHIR server base URL")
+    parser.add_argument(
+        "--base-url", default="http://localhost:8080/fhir", help="FHIR server base URL"
+    )
     parser.add_argument("--verify-only", action="store_true", help="Only verify existing data")
     args = parser.parse_args()
 

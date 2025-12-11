@@ -40,10 +40,10 @@ except ImportError:
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from execution.batch import DataBackend
-
-    from operators import DataPoint
     from parser import Signal
+
+    from execution.batch import DataBackend
+    from operators import DataPoint
 
 if TYPE_CHECKING:
     from ..mapping import MappingProvider
@@ -142,7 +142,7 @@ class FHIRBackend(DataBackend):
         result = evaluator.evaluate_patient("patient-uuid")
 
     Example with mapping:
-        from reference.python.mapping import load_mapping
+        from psdl.mapping import load_mapping
 
         mapping = load_mapping("mappings/synthea.yaml")
         backend = FHIRBackend(config, mapping=mapping)
@@ -165,7 +165,8 @@ class FHIRBackend(DataBackend):
         if self._session is None:
             if not REQUESTS_AVAILABLE:
                 raise ImportError(
-                    "requests library is required for FHIR backend. " "Install with: pip install requests"
+                    "requests library is required for FHIR backend. "
+                    "Install with: pip install requests"
                 )
 
             self._session = requests.Session()

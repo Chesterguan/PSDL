@@ -71,7 +71,11 @@ class ClinicalEvent:
             concept_id=data.get("concept_id"),
             fhir_resource_id=data.get("fhir_resource_id"),
             location=data.get("location"),
-            ingestion_time=(datetime.fromisoformat(data["ingestion_time"]) if data.get("ingestion_time") else None),
+            ingestion_time=(
+                datetime.fromisoformat(data["ingestion_time"])
+                if data.get("ingestion_time")
+                else None
+            ),
         )
 
 

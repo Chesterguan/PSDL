@@ -1,0 +1,136 @@
+(* ============================================================== *)
+(* PSDL Expression Grammar v0.1                                   *)
+(* Patient Scenario Definition Language                           *)
+(* Extended Backus-Naur Form (ISO/IEC 14977)                      *)
+(* ============================================================== *)
+
+(* ============================================================== *)
+(* TOP-LEVEL EXPRESSIONS                                          *)
+(* ============================================================== *)
+
+(* A trend expression computes a value and optionally compares it *)
+trend_expression = temporal_expression, [ comparison ] ;
+
+(* A logic expression combines boolean terms *)
+logic_expression = or_expression ;
+
+(* ============================================================== *)
+(* TEMPORAL EXPRESSIONS                                           *)
+(* ============================================================== *)
+
+temporal_expression = windowed_operator | pointwise_operator ;
+
+(* Operators that require a time window *)
+windowed_operator = windowed_op_name, "(", signal_ref, ",", window, ")" ;
+
+windowed_op_name = "delta"    (* change over window *)
+                 | "slope"    (* linear regression slope *)
+                 | "ema"      (* exponential moving average *)
+                 | "sma"      (* simple moving average *)
+                 | "min"      (* minimum in window *)
+                 | "max"      (* maximum in window *)
+                 | "count"    (* observation count in window *)
+                 | "first"    (* first value in window *)
+                 | "stddev"   (* standard deviation in window *)
+                 | "percentile" ; (* percentile in window - requires additional arg *)
+
+(* Operators that work on current/recent values *)
+pointwise_operator = pointwise_op_name, "(", signal_ref, ")" ;
+
+pointwise_op_name = "last"    (* most recent value *)
+                  | "exists"  (* has any value *)
+                  | "missing" ; (* no value available *)
+
+(* ============================================================== *)
+(* SIGNAL REFERENCES                                              *)
+(* ============================================================== *)
+
+signal_ref = identifier ;
+
+identifier = letter, { letter | digit | "_" } ;
+
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
+       | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
+       | "U" | "V" | "W" | "X" | "Y" | "Z"
+       | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+       | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
+       | "u" | "v" | "w" | "x" | "y" | "z" ;
+
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+(* ============================================================== *)
+(* TIME WINDOWS                                                   *)
+(* ============================================================== *)
+
+window = integer, window_unit ;
+
+window_unit = "s"   (* seconds *)
+            | "m"   (* minutes *)
+            | "h"   (* hours *)
+            | "d"   (* days *)
+            | "w" ; (* weeks *)
+
+integer = digit, { digit } ;
+
+(* ============================================================== *)
+(* COMPARISONS                                                    *)
+(* ============================================================== *)
+
+comparison = comparison_op, numeric_literal ;
+
+comparison_op = "=="   (* equal *)
+              | "!="   (* not equal *)
+              | "<"    (* less than *)
+              | "<="   (* less than or equal *)
+              | ">"    (* greater than *)
+              | ">=" ; (* greater than or equal *)
+
+numeric_literal = [ "-" ], integer, [ ".", integer ] ;
+
+(* ============================================================== *)
+(* BOOLEAN LOGIC EXPRESSIONS                                      *)
+(* ============================================================== *)
+
+(* Precedence (lowest to highest): OR, AND, NOT *)
+
+or_expression = and_expression, { "OR", and_expression } ;
+
+and_expression = not_expression, { "AND", not_expression } ;
+
+not_expression = "NOT", not_expression
+               | primary_expression ;
+
+primary_expression = "(", logic_expression, ")"
+                   | term_ref
+                   | trend_expression ;
+
+(* Reference to a defined trend or logic rule *)
+term_ref = identifier ;
+
+(* ============================================================== *)
+(* WHITESPACE (implicit - implementations should skip)            *)
+(* ============================================================== *)
+
+(* Whitespace characters are: space, tab, newline, carriage return *)
+(* Whitespace is allowed between any tokens *)
+
+(* ============================================================== *)
+(* EXAMPLES                                                       *)
+(* ============================================================== *)
+
+(*
+Valid trend expressions:
+  delta(Cr, 6h) > 0.3
+  slope(Lact, 3h) > 0
+  ema(MAP, 30m) < 65
+  last(HR) > 100
+  max(Temp, 24h) >= 38.5
+  count(Cr, 48h) >= 2
+
+Valid logic expressions:
+  cr_rising AND lactate_elevated
+  aki_stage1 OR aki_stage2 OR aki_stage3
+  NOT recovering AND deteriorating
+  (fever OR hypothermia) AND (tachycardia OR hypotension)
+  sirs_criteria AND (lactate_elevated OR organ_dysfunction)
+*)

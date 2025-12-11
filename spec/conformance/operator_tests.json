@@ -1,0 +1,646 @@
+{
+  "$schema": "https://psdl-lang.org/schema/v0.2/conformance-tests",
+  "title": "PSDL Operator Conformance Tests",
+  "description": "Executable test cases that define correct operator behavior. Any conformant PSDL implementation MUST pass all these tests.",
+  "version": "0.2.0",
+
+  "testSuites": {
+    "delta": {
+      "description": "Tests for delta(signal, window) operator",
+      "tests": [
+        {
+          "id": "delta_001",
+          "name": "Normal case - 3 data points",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T03:00:00Z", "value": 1.5},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 2.0}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": 1.0,
+          "explanation": "2.0 (last) - 1.0 (first) = 1.0"
+        },
+        {
+          "id": "delta_002",
+          "name": "Single data point - returns null",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T05:00:00Z", "value": 1.5}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": null,
+          "explanation": "Cannot compute delta with only 1 data point"
+        },
+        {
+          "id": "delta_003",
+          "name": "Empty window - returns null",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": null,
+          "explanation": "Data point is outside 6h window (12 hours ago)"
+        },
+        {
+          "id": "delta_004",
+          "name": "Negative delta (decreasing values)",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 3.0},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 1.5}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": -1.5,
+          "explanation": "1.5 (last) - 3.0 (first) = -1.5"
+        },
+        {
+          "id": "delta_005",
+          "name": "Some null values - uses non-null only",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T02:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T04:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 2.5}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": 1.5,
+          "explanation": "2.5 (last non-null) - 1.0 (first non-null) = 1.5"
+        },
+        {
+          "id": "delta_006",
+          "name": "All null values - returns null",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": null}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": null,
+          "explanation": "No non-null values to compute delta"
+        },
+        {
+          "id": "delta_007",
+          "name": "Window boundary - inclusive end",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 2.0}
+            ],
+            "expression": "delta(Cr, 6h)",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": 1.0,
+          "explanation": "Data point exactly at window start (6h ago) is included"
+        }
+      ]
+    },
+
+    "slope": {
+      "description": "Tests for slope(signal, window) operator",
+      "tests": [
+        {
+          "id": "slope_001",
+          "name": "Positive slope - increasing values",
+          "input": {
+            "signal": "Lact",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 2.0},
+              {"timestamp": "2024-01-01T02:00:00Z", "value": 3.0}
+            ],
+            "expression": "slope(Lact, 3h)",
+            "evaluationTime": "2024-01-01T02:00:00Z"
+          },
+          "expected": {"type": "positive", "approximation": 0.000278},
+          "explanation": "Linear increase of 1.0 per hour = 1/3600 per second ≈ 0.000278"
+        },
+        {
+          "id": "slope_002",
+          "name": "Negative slope - decreasing values",
+          "input": {
+            "signal": "Lact",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 3.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 2.0},
+              {"timestamp": "2024-01-01T02:00:00Z", "value": 1.0}
+            ],
+            "expression": "slope(Lact, 3h)",
+            "evaluationTime": "2024-01-01T02:00:00Z"
+          },
+          "expected": {"type": "negative", "approximation": -0.000278},
+          "explanation": "Linear decrease of 1.0 per hour"
+        },
+        {
+          "id": "slope_003",
+          "name": "Zero slope - constant values",
+          "input": {
+            "signal": "Lact",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 2.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 2.0},
+              {"timestamp": "2024-01-01T02:00:00Z", "value": 2.0}
+            ],
+            "expression": "slope(Lact, 3h)",
+            "evaluationTime": "2024-01-01T02:00:00Z"
+          },
+          "expected": 0.0,
+          "explanation": "No change in values = zero slope"
+        },
+        {
+          "id": "slope_004",
+          "name": "Single data point - returns null",
+          "input": {
+            "signal": "Lact",
+            "data": [
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 2.0}
+            ],
+            "expression": "slope(Lact, 3h)",
+            "evaluationTime": "2024-01-01T02:00:00Z"
+          },
+          "expected": null,
+          "explanation": "Cannot compute slope with only 1 data point"
+        }
+      ]
+    },
+
+    "last": {
+      "description": "Tests for last(signal) pointwise operator",
+      "tests": [
+        {
+          "id": "last_001",
+          "name": "Normal case - returns most recent",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 70.0},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 85.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 92.0}
+            ],
+            "expression": "last(HR)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": 92.0,
+          "explanation": "Most recent value is 92.0"
+        },
+        {
+          "id": "last_002",
+          "name": "No data - returns null",
+          "input": {
+            "signal": "HR",
+            "data": [],
+            "expression": "last(HR)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": null,
+          "explanation": "No data exists for signal"
+        },
+        {
+          "id": "last_003",
+          "name": "Most recent is null",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 70.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": null}
+            ],
+            "expression": "last(HR)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": null,
+          "explanation": "Most recent data point has null value"
+        },
+        {
+          "id": "last_004",
+          "name": "Future data ignored",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 70.0},
+              {"timestamp": "2024-01-01T18:00:00Z", "value": 100.0}
+            ],
+            "expression": "last(HR)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": 70.0,
+          "explanation": "Data at 18:00 is in future, ignored"
+        }
+      ]
+    },
+
+    "count": {
+      "description": "Tests for count(signal, window) operator",
+      "tests": [
+        {
+          "id": "count_001",
+          "name": "Normal case",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 1.2},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 1.5}
+            ],
+            "expression": "count(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 3,
+          "explanation": "3 data points in 48h window"
+        },
+        {
+          "id": "count_002",
+          "name": "Empty window returns 0",
+          "input": {
+            "signal": "Cr",
+            "data": [],
+            "expression": "count(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 0,
+          "explanation": "No data points = 0 count"
+        },
+        {
+          "id": "count_003",
+          "name": "Includes null values",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": null},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 1.5}
+            ],
+            "expression": "count(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 3,
+          "explanation": "count() counts observations, including nulls"
+        }
+      ]
+    },
+
+    "min": {
+      "description": "Tests for min(signal, window) operator",
+      "tests": [
+        {
+          "id": "min_001",
+          "name": "Normal case",
+          "input": {
+            "signal": "SpO2",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 95.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 88.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 92.0}
+            ],
+            "expression": "min(SpO2, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 88.0,
+          "explanation": "Minimum value in window is 88.0"
+        },
+        {
+          "id": "min_002",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "SpO2",
+            "data": [],
+            "expression": "min(SpO2, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "explanation": "No data to find minimum"
+        },
+        {
+          "id": "min_003",
+          "name": "Ignores null values",
+          "input": {
+            "signal": "SpO2",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 88.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 92.0}
+            ],
+            "expression": "min(SpO2, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 88.0,
+          "explanation": "Null values ignored, min of 88 and 92 is 88"
+        }
+      ]
+    },
+
+    "max": {
+      "description": "Tests for max(signal, window) operator",
+      "tests": [
+        {
+          "id": "max_001",
+          "name": "Normal case",
+          "input": {
+            "signal": "Temp",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 37.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 39.5},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 38.0}
+            ],
+            "expression": "max(Temp, 24h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 39.5,
+          "explanation": "Maximum value in window is 39.5"
+        }
+      ]
+    },
+
+    "exists": {
+      "description": "Tests for exists(signal) pointwise operator",
+      "tests": [
+        {
+          "id": "exists_001",
+          "name": "Has data - returns true",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0}
+            ],
+            "expression": "exists(Cr)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": true,
+          "explanation": "Data exists for signal"
+        },
+        {
+          "id": "exists_002",
+          "name": "No data - returns false",
+          "input": {
+            "signal": "Cr",
+            "data": [],
+            "expression": "exists(Cr)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": false,
+          "explanation": "No data exists for signal"
+        },
+        {
+          "id": "exists_003",
+          "name": "Only null values - returns true",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null}
+            ],
+            "expression": "exists(Cr)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": true,
+          "explanation": "Data point exists even though value is null"
+        }
+      ]
+    },
+
+    "missing": {
+      "description": "Tests for missing(signal) pointwise operator",
+      "tests": [
+        {
+          "id": "missing_001",
+          "name": "No data - returns true",
+          "input": {
+            "signal": "Cr",
+            "data": [],
+            "expression": "missing(Cr)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": true,
+          "explanation": "No data = missing"
+        },
+        {
+          "id": "missing_002",
+          "name": "Has data - returns false",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0}
+            ],
+            "expression": "missing(Cr)",
+            "evaluationTime": "2024-01-01T12:00:00Z"
+          },
+          "expected": false,
+          "explanation": "Data exists = not missing"
+        }
+      ]
+    },
+
+    "comparison": {
+      "description": "Tests for comparison operators",
+      "tests": [
+        {
+          "id": "cmp_001",
+          "name": "Greater than - true",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 1.5}
+            ],
+            "expression": "delta(Cr, 6h) > 0.3",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": true,
+          "explanation": "delta = 0.5, 0.5 > 0.3 is true"
+        },
+        {
+          "id": "cmp_002",
+          "name": "Greater than - false",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T06:00:00Z", "value": 1.2}
+            ],
+            "expression": "delta(Cr, 6h) > 0.3",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": false,
+          "explanation": "delta = 0.2, 0.2 > 0.3 is false"
+        },
+        {
+          "id": "cmp_003",
+          "name": "Null comparison - always false",
+          "input": {
+            "signal": "Cr",
+            "data": [],
+            "expression": "delta(Cr, 6h) > 0.3",
+            "evaluationTime": "2024-01-01T06:00:00Z"
+          },
+          "expected": false,
+          "explanation": "delta returns null, null > 0.3 is false"
+        },
+        {
+          "id": "cmp_004",
+          "name": "Less than",
+          "input": {
+            "signal": "SpO2",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 88.0}
+            ],
+            "expression": "last(SpO2) < 90",
+            "evaluationTime": "2024-01-01T00:00:00Z"
+          },
+          "expected": true,
+          "explanation": "88 < 90 is true"
+        },
+        {
+          "id": "cmp_005",
+          "name": "Greater than or equal",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 1.5}
+            ],
+            "expression": "count(Cr, 48h) >= 2",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": true,
+          "explanation": "count = 2, 2 >= 2 is true"
+        }
+      ]
+    },
+
+    "booleanLogic": {
+      "description": "Tests for AND, OR, NOT operators",
+      "tests": [
+        {
+          "id": "bool_001",
+          "name": "AND - both true",
+          "input": {
+            "trends": {
+              "cr_high": true,
+              "hr_high": true
+            },
+            "expression": "cr_high AND hr_high"
+          },
+          "expected": true
+        },
+        {
+          "id": "bool_002",
+          "name": "AND - one false",
+          "input": {
+            "trends": {
+              "cr_high": true,
+              "hr_high": false
+            },
+            "expression": "cr_high AND hr_high"
+          },
+          "expected": false
+        },
+        {
+          "id": "bool_003",
+          "name": "OR - one true",
+          "input": {
+            "trends": {
+              "cr_high": true,
+              "hr_high": false
+            },
+            "expression": "cr_high OR hr_high"
+          },
+          "expected": true
+        },
+        {
+          "id": "bool_004",
+          "name": "OR - both false",
+          "input": {
+            "trends": {
+              "cr_high": false,
+              "hr_high": false
+            },
+            "expression": "cr_high OR hr_high"
+          },
+          "expected": false
+        },
+        {
+          "id": "bool_005",
+          "name": "NOT - negation",
+          "input": {
+            "trends": {
+              "stable": true
+            },
+            "expression": "NOT stable"
+          },
+          "expected": false
+        },
+        {
+          "id": "bool_006",
+          "name": "Precedence - NOT before AND",
+          "input": {
+            "trends": {
+              "a": true,
+              "b": false
+            },
+            "expression": "NOT a AND b"
+          },
+          "expected": false,
+          "explanation": "Parsed as (NOT a) AND b = false AND false = false"
+        },
+        {
+          "id": "bool_007",
+          "name": "Precedence - AND before OR",
+          "input": {
+            "trends": {
+              "a": true,
+              "b": false,
+              "c": true
+            },
+            "expression": "a OR b AND c"
+          },
+          "expected": true,
+          "explanation": "Parsed as a OR (b AND c) = true OR false = true"
+        },
+        {
+          "id": "bool_008",
+          "name": "Parentheses override precedence",
+          "input": {
+            "trends": {
+              "a": false,
+              "b": true,
+              "c": true
+            },
+            "expression": "(a OR b) AND c"
+          },
+          "expected": true,
+          "explanation": "(false OR true) AND true = true AND true = true"
+        }
+      ]
+    }
+  },
+
+  "metadata": {
+    "totalTests": 42,
+    "categories": ["delta", "slope", "last", "count", "min", "max", "exists", "missing", "comparison", "booleanLogic"],
+    "conformanceLevels": {
+      "level1": "Document validation (JSON Schema)",
+      "level2": "Expression parsing (grammar)",
+      "level3": "Semantic validation (signal references)",
+      "level4": "Operator evaluation (this test suite)"
+    }
+  }
+}

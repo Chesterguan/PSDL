@@ -1,0 +1,89 @@
+// PSDL Expression Grammar for Lark Parser Generator
+// Patient Scenario Definition Language v0.1
+//
+// Usage: from lark import Lark; parser = Lark(open('psdl-expression.lark').read())
+
+// ============================================================
+// TOP-LEVEL EXPRESSIONS
+// ============================================================
+
+// Entry point for trend expressions (e.g., "delta(Cr, 6h) > 0.3")
+?trend_expr: temporal_expr comparison?
+
+// Entry point for logic expressions (e.g., "aki_stage1 AND NOT recovering")
+?logic_expr: or_expr
+
+// ============================================================
+// TEMPORAL EXPRESSIONS
+// ============================================================
+
+?temporal_expr: windowed_call
+              | pointwise_call
+
+// Operators requiring a time window
+windowed_call: WINDOWED_OP "(" IDENTIFIER "," window ")"
+
+WINDOWED_OP: "delta" | "slope" | "ema" | "sma" | "min" | "max" | "count" | "first" | "stddev"
+
+// Operators on current/recent values
+pointwise_call: POINTWISE_OP "(" IDENTIFIER ")"
+
+POINTWISE_OP: "last" | "exists" | "missing"
+
+// ============================================================
+// TIME WINDOWS
+// ============================================================
+
+window: INTEGER WINDOW_UNIT
+
+WINDOW_UNIT: "s" | "m" | "h" | "d" | "w"
+
+// ============================================================
+// COMPARISONS
+// ============================================================
+
+comparison: COMP_OP number
+
+COMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
+
+// ============================================================
+// BOOLEAN LOGIC EXPRESSIONS
+// ============================================================
+
+// Precedence: OR (lowest) -> AND -> NOT (highest)
+?or_expr: and_expr (OR and_expr)*
+
+?and_expr: not_expr (AND not_expr)*
+
+?not_expr: NOT not_expr -> not_term
+         | primary_expr
+
+?primary_expr: "(" logic_expr ")"
+             | trend_expr
+             | IDENTIFIER -> term_ref
+
+// ============================================================
+// LITERALS AND IDENTIFIERS
+// ============================================================
+
+number: SIGNED_NUMBER
+
+IDENTIFIER: /[A-Za-z][A-Za-z0-9_]*/
+
+INTEGER: /[0-9]+/
+
+// ============================================================
+// KEYWORDS (case-insensitive for boolean operators)
+// ============================================================
+
+AND: /AND/i
+OR: /OR/i
+NOT: /NOT/i
+
+// ============================================================
+// WHITESPACE AND COMMENTS
+// ============================================================
+
+%import common.SIGNED_NUMBER
+%import common.WS
+%ignore WS

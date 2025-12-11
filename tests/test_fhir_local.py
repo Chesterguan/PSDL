@@ -22,29 +22,47 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from reference.python.adapters.fhir import FHIRBackend, FHIRConfig
-from reference.python.execution.batch import PSDLEvaluator
-from reference.python.parser import PSDLParser
-
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
+from psdl.execution.batch import PSDLEvaluator
+from psdl.parser import PSDLParser
 
 # Check if local FHIR server is available
 LOCAL_FHIR_URL = os.environ.get("FHIR_LOCAL_URL", "http://localhost:8080/fhir")
 
 
 def fhir_available():
-    """Check if local FHIR server is available."""
+    """Check if local FHIR server is available AND has test data loaded."""
     try:
         import requests
 
+        # Check server is responding
         response = requests.get(f"{LOCAL_FHIR_URL}/metadata", timeout=5)
-        return response.status_code == 200
+        if response.status_code != 200:
+            return False
+
+        # Check if test patients are loaded (not just server availability)
+        # Look for our specific test patient IDs
+        test_patient_response = requests.get(f"{LOCAL_FHIR_URL}/Patient/aki-triggered", timeout=5)
+        if test_patient_response.status_code != 200:
+            return False
+
+        # Also verify observations exist for test patient
+        obs_response = requests.get(
+            f"{LOCAL_FHIR_URL}/Observation?subject=Patient/aki-triggered&code=2160-0",
+            timeout=5,
+        )
+        if obs_response.status_code != 200:
+            return False
+        obs_data = obs_response.json()
+        return obs_data.get("total", 0) >= 4  # Expect at least 4 creatinine observations
     except Exception:
         return False
 
 
-# Skip all tests if FHIR not available (unless FHIR_LOCAL=1 is set)
+# Skip all tests unless FHIR_LOCAL=1 is explicitly set
+# These tests require a properly configured local FHIR server with test data
 FHIR_LOCAL_REQUIRED = os.environ.get("FHIR_LOCAL", "0") == "1"
-FHIR_AVAILABLE = fhir_available()
+FHIR_AVAILABLE = FHIR_LOCAL_REQUIRED and fhir_available()
 
 if FHIR_LOCAL_REQUIRED and not FHIR_AVAILABLE:
     pytest.fail("FHIR_LOCAL=1 but local FHIR server not available")
@@ -136,7 +154,9 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="aki-triggered", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="aki-triggered", reference_time=datetime.utcnow()
+        )
 
         # This patient has creatinine: 1.0 -> 1.2 -> 1.5 -> 1.8
         # last(Cr) = 1.8 > 1.5 (True)
@@ -151,7 +171,9 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="aki-stable", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="aki-stable", reference_time=datetime.utcnow()
+        )
 
         # This patient has creatinine: 1.0 -> 0.95 -> 1.05 -> 1.0
         # last(Cr) = 1.0 NOT > 1.5 (False)
@@ -165,7 +187,9 @@ logic:
         scenario = parser.parse_string(self.AKI_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="normal-patient", reference_time=datetime.utcnow()
+        )
 
         assert result.trend_results["cr_high"] is False
         assert "aki_risk" not in result.triggered_logic
@@ -217,7 +241,9 @@ logic:
         scenario = parser.parse_string(self.ICU_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="icu-deteriorating", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="icu-deteriorating", reference_time=datetime.utcnow()
+        )
 
         # This patient has:
         # HR: 75 -> 82 -> 95 -> 108 -> 120 (rising, last=120 > 100)
@@ -230,7 +256,9 @@ logic:
         scenario = parser.parse_string(self.ICU_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="normal-patient", reference_time=datetime.utcnow()
+        )
 
         # Normal patient has stable vitals
         assert "deterioration" not in result.triggered_logic
@@ -282,7 +310,9 @@ logic:
         scenario = parser.parse_string(self.SEPSIS_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="sepsis-positive", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="sepsis-positive", reference_time=datetime.utcnow()
+        )
 
         # This patient has:
         # Temp: last = 39.2 > 38.3 (True)
@@ -299,7 +329,9 @@ logic:
         scenario = parser.parse_string(self.SEPSIS_SCENARIO)
         evaluator = PSDLEvaluator(scenario, backend)
 
-        result = evaluator.evaluate_patient(patient_id="normal-patient", reference_time=datetime.utcnow())
+        result = evaluator.evaluate_patient(
+            patient_id="normal-patient", reference_time=datetime.utcnow()
+        )
 
         assert result.trend_results["fever"] is False
         assert "sepsis_risk" not in result.triggered_logic
@@ -334,7 +366,9 @@ logic:
         patient_ids = backend.get_patient_ids()
 
         # Evaluate cohort
-        results = evaluator.evaluate_cohort(reference_time=datetime.utcnow(), patient_ids=patient_ids)
+        results = evaluator.evaluate_cohort(
+            reference_time=datetime.utcnow(), patient_ids=patient_ids
+        )
 
         assert len(results) == len(patient_ids)
 
@@ -355,7 +389,7 @@ class TestDataFetching:
 
     def test_fetch_creatinine_data(self, backend):
         """Test fetching creatinine observations."""
-        from reference.python.parser import Signal, Domain
+        from psdl.parser import Domain, Signal
 
         signal = Signal(
             name="Cr",
@@ -382,7 +416,7 @@ class TestDataFetching:
 
     def test_fetch_heart_rate_data(self, backend):
         """Test fetching heart rate observations."""
-        from reference.python.parser import Signal, Domain
+        from psdl.parser import Domain, Signal
 
         signal = Signal(
             name="HR",

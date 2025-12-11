@@ -4,8 +4,8 @@ Tests for FHIR R4 Backend
 Tests the FHIR backend connector for PSDL using mocks.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch  # noqa: E402
 
 import pytest  # noqa: E402
 
-from reference.python.adapters.fhir import (  # noqa: E402
+from psdl.adapters.fhir import (  # noqa: E402
     DOMAIN_RESOURCE_MAP,
     LOINC_CODES,
     FHIRBackend,
@@ -22,7 +22,7 @@ from reference.python.adapters.fhir import (  # noqa: E402
     FHIRResourceType,
     create_fhir_backend,
 )
-from reference.python.parser import Domain, Signal  # noqa: E402
+from psdl.parser import Domain, Signal  # noqa: E402
 
 
 class TestFHIRConfig:
@@ -100,7 +100,7 @@ class TestFHIRBackend:
         assert backend.config == config
         assert backend._session is None
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_session_creation(self, mock_requests, backend):
         """Test HTTP session creation with authentication."""
         mock_session = MagicMock()
@@ -111,7 +111,7 @@ class TestFHIRBackend:
         assert session == mock_session
         mock_session.headers.update.assert_called()
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_session_bearer_auth(self, mock_requests, config):
         """Test bearer token authentication."""
         mock_session = MagicMock()
@@ -256,7 +256,7 @@ class TestFHIRBackend:
         assert dt is not None
         assert dt.hour == 10
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data(self, mock_requests, backend):
         """Test fetching signal data from FHIR server."""
         # Mock session and response
@@ -303,7 +303,7 @@ class TestFHIRBackend:
         assert data_points[0].value == 1.2
         assert data_points[1].value == 1.5
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data_empty_bundle(self, mock_requests, backend):
         """Test handling empty bundle response."""
         mock_session = MagicMock()
@@ -331,7 +331,7 @@ class TestFHIRBackend:
 
         assert len(data_points) == 0
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data_request_error(self, mock_requests, backend):
         """Test handling request errors gracefully."""
         mock_session = MagicMock()
@@ -354,7 +354,7 @@ class TestFHIRBackend:
         # Should return empty list on error
         assert len(data_points) == 0
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_get_patient_ids(self, mock_requests, backend):
         """Test fetching patient IDs."""
         mock_session = MagicMock()
@@ -378,7 +378,7 @@ class TestFHIRBackend:
         assert "patient-1" in patient_ids
         assert "patient-2" in patient_ids
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_get_patient(self, mock_requests, backend):
         """Test fetching single patient."""
         mock_session = MagicMock()
@@ -433,7 +433,7 @@ class TestMappingProviderIntegration:
 
     def test_get_loinc_code_from_mapping_provider(self):
         """Test LOINC code lookup from MappingProvider."""
-        from reference.python.mapping import MappingProvider, SignalMapping
+        from psdl.mapping import MappingProvider, SignalMapping
 
         mapping = MappingProvider(
             institution="Test Hospital",
@@ -466,7 +466,7 @@ class TestMappingProviderIntegration:
 
     def test_mapping_provider_priority_over_config(self):
         """Test that MappingProvider takes priority over config.loinc_mappings."""
-        from reference.python.mapping import MappingProvider, SignalMapping
+        from psdl.mapping import MappingProvider, SignalMapping
 
         mapping = MappingProvider(
             institution="Test Hospital",
@@ -493,7 +493,7 @@ class TestMappingProviderIntegration:
 
     def test_fallback_to_config_when_not_in_mapping(self):
         """Test fallback to config when signal not in MappingProvider."""
-        from reference.python.mapping import MappingProvider, SignalMapping
+        from psdl.mapping import MappingProvider, SignalMapping
 
         mapping = MappingProvider(
             institution="Test Hospital",
@@ -528,7 +528,7 @@ class TestConditionHandling:
         config = FHIRConfig(base_url="https://fhir.test.org/r4")
         return FHIRBackend(config)
 
-    @patch("reference.python.adapters.fhir.requests")
+    @patch("psdl.adapters.fhir.requests")
     def test_fetch_condition_data(self, mock_requests, backend):
         """Test fetching condition data."""
         mock_session = MagicMock()
@@ -542,7 +542,9 @@ class TestConditionHandling:
                     "resource": {
                         "resourceType": "Condition",
                         "onsetDateTime": "2024-01-10T08:00:00Z",
-                        "code": {"coding": [{"system": "http://snomed.info/sct", "code": "123456"}]},
+                        "code": {
+                            "coding": [{"system": "http://snomed.info/sct", "code": "123456"}]
+                        },
                     }
                 },
             ],

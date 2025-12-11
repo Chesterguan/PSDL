@@ -17,12 +17,8 @@ import pytest
 # Add runtime to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from reference.python.adapters.omop import (
-    OMOPBackend,
-    OMOPConfig,
-    create_omop_backend,
-)  # noqa: E402
-from reference.python.parser import Domain, Signal  # noqa: E402
+from psdl.adapters.omop import OMOPBackend, OMOPConfig, create_omop_backend  # noqa: E402
+from psdl.parser import Domain, Signal  # noqa: E402
 
 
 class TestOMOPConfig:
@@ -232,7 +228,9 @@ class TestPopulationFiltering:
         """Test parsing condition filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion("has_condition(201826)", params, 0)  # Type 2 Diabetes
+        sql, params, idx = backend._parse_population_criterion(
+            "has_condition(201826)", params, 0
+        )  # Type 2 Diabetes
         assert sql is not None
         assert "condition_occurrence" in sql
         assert "EXISTS" in sql
@@ -242,7 +240,9 @@ class TestPopulationFiltering:
         """Test parsing measurement filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion("has_measurement(3016723)", params, 0)  # Creatinine
+        sql, params, idx = backend._parse_population_criterion(
+            "has_measurement(3016723)", params, 0
+        )  # Creatinine
         assert sql is not None
         assert "measurement" in sql.lower()
         assert "EXISTS" in sql
@@ -252,7 +252,9 @@ class TestPopulationFiltering:
         """Test parsing drug filter criteria."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion("has_drug(1332419)", params, 0)  # Metformin
+        sql, params, idx = backend._parse_population_criterion(
+            "has_drug(1332419)", params, 0
+        )  # Metformin
         assert sql is not None
         assert "drug_exposure" in sql
         assert "EXISTS" in sql
@@ -278,7 +280,9 @@ class TestPopulationFiltering:
         """Test that unknown criteria return None (skip gracefully)."""
         params = {}
 
-        sql, params, idx = backend._parse_population_criterion("unknown_filter == 'value'", params, 0)
+        sql, params, idx = backend._parse_population_criterion(
+            "unknown_filter == 'value'", params, 0
+        )
         assert sql is None
         assert idx == 0
 
@@ -301,7 +305,9 @@ class TestPopulationFiltering:
         """Test get_patient_ids with exclusion criteria."""
         mock_query.return_value = [{"person_id": 1}]
 
-        patient_ids = backend.get_patient_ids(population_exclude=["has_condition(201826)"])  # Exclude diabetics
+        patient_ids = backend.get_patient_ids(
+            population_exclude=["has_condition(201826)"]
+        )  # Exclude diabetics
 
         assert patient_ids == [1]
         call_args = mock_query.call_args

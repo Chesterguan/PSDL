@@ -88,9 +88,9 @@ def create_watermark_strategy(max_lateness_ms: int = 300000) -> "WatermarkStrate
     if not PYFLINK_AVAILABLE:
         raise RuntimeError("PyFlink not installed")
 
-    return WatermarkStrategy.for_bounded_out_of_orderness(Time.milliseconds(max_lateness_ms)).with_timestamp_assigner(
-        ClinicalEventTimestampAssigner()
-    )
+    return WatermarkStrategy.for_bounded_out_of_orderness(
+        Time.milliseconds(max_lateness_ms)
+    ).with_timestamp_assigner(ClinicalEventTimestampAssigner())
 
 
 class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else object):
@@ -116,7 +116,9 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
     def open(self, runtime_context: RuntimeContext):
         """Initialize Flink state."""
         # State for windowed events (list of events within window)
-        self.events_state = runtime_context.get_list_state(ValueStateDescriptor("events", Types.STRING()))
+        self.events_state = runtime_context.get_list_state(
+            ValueStateDescriptor("events", Types.STRING())
+        )
         # State for EMA value
         self.ema_state = runtime_context.get_state(ValueStateDescriptor("ema", Types.FLOAT()))
         # State for last value
@@ -209,7 +211,9 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
         if events and self.compiled_trend.window_function:
             window_start = min(e.timestamp for e in events)
             window_end = max(e.timestamp for e in events)
-            result = self.compiled_trend.window_function.process(patient_id, events, window_start, window_end)
+            result = self.compiled_trend.window_function.process(
+                patient_id, events, window_start, window_end
+            )
             yield result
 
     def on_timer(self, timestamp: int, ctx: Any):
@@ -357,7 +361,9 @@ class FlinkRuntime:
             config: Additional Flink configuration
         """
         if not PYFLINK_AVAILABLE:
-            raise RuntimeError("PyFlink not installed. Install with: pip install apache-flink>=1.18")
+            raise RuntimeError(
+                "PyFlink not installed. Install with: pip install apache-flink>=1.18"
+            )
 
         self.parallelism = parallelism
         self.config = config or {}
@@ -419,7 +425,9 @@ class FlinkRuntime:
                 env.get_checkpoint_config().set_checkpoint_timeout(cp_config.timeout_ms)
 
             if cp_config.min_pause_ms:
-                env.get_checkpoint_config().set_min_pause_between_checkpoints(cp_config.min_pause_ms)
+                env.get_checkpoint_config().set_min_pause_between_checkpoints(
+                    cp_config.min_pause_ms
+                )
 
     def _build_pipeline(
         self,
@@ -480,7 +488,9 @@ class FlinkRuntime:
                 # Add sink for logic results
                 logic_stream.print()  # For debugging; replace with Kafka sink in production
 
-    def _create_kafka_source(self, kafka_config: Dict[str, str], compiled: CompiledScenario) -> DataStream:
+    def _create_kafka_source(
+        self, kafka_config: Dict[str, str], compiled: CompiledScenario
+    ) -> DataStream:
         """Create Kafka source for clinical events."""
         bootstrap_servers = kafka_config.get("bootstrap_servers", "localhost:9092")
         topic = kafka_config.get("topic", "clinical-events")

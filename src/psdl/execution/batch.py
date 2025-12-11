@@ -51,8 +51,9 @@ except ImportError:
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from operators import DataPoint, TemporalOperators, apply_operator
     from parser import LogicExpr, PSDLScenario, Signal, TrendExpr
+
+    from operators import DataPoint, TemporalOperators, apply_operator
 
 
 @dataclass
@@ -271,7 +272,9 @@ class PSDLEvaluator:
 
         return max_window
 
-    def _fetch_all_signals(self, patient_id: Any, reference_time: datetime) -> Dict[str, List[DataPoint]]:
+    def _fetch_all_signals(
+        self, patient_id: Any, reference_time: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """Fetch all signal data for a patient."""
         signal_data = {}
 
@@ -374,7 +377,9 @@ class PSDLEvaluator:
         except Exception:
             return False
 
-    def evaluate_patient(self, patient_id: Any, reference_time: Optional[datetime] = None) -> EvaluationResult:
+    def evaluate_patient(
+        self, patient_id: Any, reference_time: Optional[datetime] = None
+    ) -> EvaluationResult:
         """
         Evaluate the scenario for a single patient.
 
@@ -413,7 +418,9 @@ class PSDLEvaluator:
                 logic = self.scenario.logic[name]
 
                 # Check if all dependencies are resolved
-                deps_resolved = all(term in trend_results or term in logic_results for term in logic.terms)
+                deps_resolved = all(
+                    term in trend_results or term in logic_results for term in logic.terms
+                )
 
                 if deps_resolved:
                     result = self._evaluate_logic(logic, trend_results, logic_results)
@@ -506,7 +513,8 @@ class PSDLEvaluator:
         with ThreadPoolExecutor(max_workers=workers) as executor:
             # Submit all patient evaluations
             future_to_patient = {
-                executor.submit(self.evaluate_patient, patient_id, ref_time): patient_id for patient_id in patient_ids
+                executor.submit(self.evaluate_patient, patient_id, ref_time): patient_id
+                for patient_id in patient_ids
             }
 
             # Collect results as they complete
@@ -838,7 +846,9 @@ class SQLCompiler:
         joins = []
 
         for trend_name in trend_names:
-            select_cols.append(f"COALESCE({trend_name}.{trend_name}_value, NULL) as {trend_name}_value")
+            select_cols.append(
+                f"COALESCE({trend_name}.{trend_name}_value, NULL) as {trend_name}_value"
+            )
             joins.append(f"LEFT JOIN {trend_name} ON p.person_id = {trend_name}.person_id")
 
         # Add trend result columns (threshold comparisons)

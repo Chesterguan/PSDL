@@ -11,8 +11,8 @@ This test module validates ALL PSDL example scenarios through complete workflows
 These tests prove that PSDL works as a complete system, not just individual components.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 from typing import Dict, List
 
@@ -20,10 +20,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
 
-from reference.python.parser import PSDLParser
-from reference.python.execution.batch import PSDLEvaluator, InMemoryBackend
-from reference.python.operators import DataPoint
-
+from psdl.execution.batch import InMemoryBackend, PSDLEvaluator
+from psdl.operators import DataPoint
+from psdl.parser import PSDLParser
 
 # ============================================================================
 # Test Data Generators
@@ -104,7 +103,9 @@ class PatientDataGenerator:
         }
 
     @staticmethod
-    def create_icu_deteriorating_patient(patient_id: str, now: datetime) -> Dict[str, List[DataPoint]]:
+    def create_icu_deteriorating_patient(
+        patient_id: str, now: datetime
+    ) -> Dict[str, List[DataPoint]]:
         """ICU patient showing signs of deterioration."""
         return {
             "MAP": [

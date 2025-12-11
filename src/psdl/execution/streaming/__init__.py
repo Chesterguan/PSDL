@@ -10,13 +10,13 @@ https://github.com/Chesterguan/PSDL/blob/main/rfcs/0002-streaming-execution.md
 
 Usage:
     # Basic compilation (no PyFlink required)
-    from reference.python.execution.streaming import StreamingCompiler, StreamingEvaluator
+    from psdl.execution.streaming import StreamingCompiler, StreamingEvaluator
 
     compiler = StreamingCompiler()
     compiled = compiler.compile(scenario_dict)
 
     # Full Flink deployment (requires PyFlink)
-    from reference.python.execution.streaming import FlinkRuntime, FlinkJob
+    from psdl.execution.streaming import FlinkRuntime, FlinkJob
 
     runtime = FlinkRuntime()
     job = runtime.create_job(scenario_dict, kafka_config={...})

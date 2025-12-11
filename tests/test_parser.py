@@ -4,19 +4,11 @@ Tests for PSDL Parser
 Run with: pytest tests/test_parser.py -v
 """
 
-import os
-import sys
+from pathlib import Path
 
 import pytest
 
-# Add runtime to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "reference", "python"))
-
-from parser import Domain  # noqa: E402
-from parser import PSDLParseError  # noqa: E402
-from parser import PSDLParser  # noqa: E402
-from parser import Severity  # noqa: E402
-from parser import WindowSpec  # noqa: E402
+from psdl.parser import Domain, PSDLParseError, PSDLParser, Severity, WindowSpec
 
 
 class TestWindowSpec:
@@ -438,13 +430,13 @@ class TestExampleScenarios:
 
     @pytest.fixture
     def examples_dir(self):
-        return os.path.join(os.path.dirname(__file__), "..", "examples")
+        return Path(__file__).parent.parent / "examples"
 
     def test_parse_icu_deterioration(self, examples_dir):
-        filepath = os.path.join(examples_dir, "icu_deterioration.yaml")
-        if os.path.exists(filepath):
+        filepath = examples_dir / "icu_deterioration.yaml"
+        if filepath.exists():
             parser = PSDLParser()
-            scenario = parser.parse_file(filepath)
+            scenario = parser.parse_file(str(filepath))
 
             assert scenario.name == "ICU_Deterioration_v1"
             assert len(scenario.signals) >= 5
@@ -452,20 +444,20 @@ class TestExampleScenarios:
             assert len(scenario.logic) >= 3
 
     def test_parse_aki_detection(self, examples_dir):
-        filepath = os.path.join(examples_dir, "aki_detection.yaml")
-        if os.path.exists(filepath):
+        filepath = examples_dir / "aki_detection.yaml"
+        if filepath.exists():
             parser = PSDLParser()
-            scenario = parser.parse_file(filepath)
+            scenario = parser.parse_file(str(filepath))
 
             assert scenario.name == "AKI_KDIGO_Detection"
             assert "Cr" in scenario.signals
             assert "aki_stage1" in scenario.logic
 
     def test_parse_sepsis_screening(self, examples_dir):
-        filepath = os.path.join(examples_dir, "sepsis_screening.yaml")
-        if os.path.exists(filepath):
+        filepath = examples_dir / "sepsis_screening.yaml"
+        if filepath.exists():
             parser = PSDLParser()
-            scenario = parser.parse_file(filepath)
+            scenario = parser.parse_file(str(filepath))
 
             assert scenario.name == "Sepsis_Screening_v1"
             assert "qsofa_2" in scenario.logic
