@@ -1,11 +1,11 @@
 """
 Auto-generated SQL templates from spec/operators.yaml
-Generated: 2025-12-11T16:30:38.347572
+Generated: 2025-12-11T18:18:15.807671
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --sql
 """
 
-from typing import Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
 
 
 class SQLTemplate(TypedDict, total=False):
@@ -14,11 +14,11 @@ class SQLTemplate(TypedDict, total=False):
     name: str
     cte_template: str
     description: str
-    placeholders: list[str]
+    placeholders: List[str]
 
 
 # PostgreSQL CTE templates for windowed operators
-POSTGRESQL_TEMPLATES: dict[str, SQLTemplate] = {
+POSTGRESQL_TEMPLATES: Dict[str, SQLTemplate] = {
     "delta": {
         "name": "delta",
         "description": "Compute absolute change: last_value - first_value in window",
@@ -248,11 +248,17 @@ POSTGRESQL_TEMPLATES: dict[str, SQLTemplate] = {
 }
 
 # PostgreSQL templates for pointwise operators
-POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
+POSTGRESQL_POINTWISE_TEMPLATES: Dict[str, SQLTemplate] = {
     "last": {
         "name": "last",
         "description": "Get the most recent value for signal",
-        "placeholders": ["trend_name", "table", "filter_cond", "value_col", "datetime_col"],
+        "placeholders": [
+            "trend_name",
+            "table",
+            "filter_cond",
+            "value_col",
+            "datetime_col",
+        ],
         "cte_template": """{trend_name}_data AS (
     SELECT person_id,
            {value_col} as value,
@@ -269,7 +275,12 @@ POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
     "exists": {
         "name": "exists",
         "description": "Check if any data exists for signal",
-        "placeholders": ["trend_name", "table", "filter_cond", "datetime_col"],
+        "placeholders": [
+            "trend_name",
+            "table",
+            "filter_cond",
+            "datetime_col",
+        ],
         "cte_template": """{trend_name} AS (
     SELECT person_id,
            CASE WHEN COUNT(*) > 0 THEN true ELSE false END as {trend_name}_value
@@ -282,7 +293,12 @@ POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
     "missing": {
         "name": "missing",
         "description": "Check if no data exists for signal (inverse of exists)",
-        "placeholders": ["trend_name", "table", "filter_cond", "datetime_col"],
+        "placeholders": [
+            "trend_name",
+            "table",
+            "filter_cond",
+            "datetime_col",
+        ],
         "cte_template": """-- missing is computed as NOT EXISTS in the final query
 -- For patients with no data, use LEFT JOIN and check for NULL
 {trend_name} AS (
@@ -300,7 +316,7 @@ POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
 }
 
 # Alias mapping
-TEMPLATE_ALIASES: dict[str, str] = {
+TEMPLATE_ALIASES: Dict[str, str] = {
     "stddev": "std",
 }
 

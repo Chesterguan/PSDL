@@ -5,25 +5,30 @@ Generated: {{ timestamp }}
 DO NOT EDIT - Regenerate with: python tools/codegen.py --sql
 """
 
-from typing import Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
 
 
 class SQLTemplate(TypedDict, total=False):
     """SQL template for an operator."""
+
     name: str
     cte_template: str
     description: str
-    placeholders: list[str]
+    placeholders: List[str]
 
 
 # PostgreSQL CTE templates for windowed operators
-POSTGRESQL_TEMPLATES: dict[str, SQLTemplate] = {
+POSTGRESQL_TEMPLATES: Dict[str, SQLTemplate] = {
 {% for name, meta in windowed_operators.items() %}
 {% if meta.implementations.postgresql and meta.implementations.postgresql != 'null' %}
     "{{ name }}": {
         "name": "{{ name }}",
         "description": "{{ meta.description }}",
-        "placeholders": ["trend_name", "table", "filter_cond", "value_col", "datetime_col", "window_seconds"{% if name == 'percentile' %}, "percentile_value"{% endif %}],
+        "placeholders": [
+            "trend_name", "table", "filter_cond",
+            "value_col", "datetime_col", "window_seconds"{% if name == 'percentile' %},
+            "percentile_value"{% endif %},
+        ],
         "cte_template": """{{ meta.implementations.postgresql | trim }}""",
     },
 {% endif %}
@@ -31,13 +36,22 @@ POSTGRESQL_TEMPLATES: dict[str, SQLTemplate] = {
 }
 
 # PostgreSQL templates for pointwise operators
-POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
+POSTGRESQL_POINTWISE_TEMPLATES: Dict[str, SQLTemplate] = {
 {% for name, meta in pointwise_operators.items() %}
 {% if meta.implementations.postgresql and meta.implementations.postgresql != 'null' %}
     "{{ name }}": {
         "name": "{{ name }}",
         "description": "{{ meta.description }}",
-        "placeholders": ["trend_name", "table", "filter_cond"{% if name == 'last' %}, "value_col"{% endif %}, "datetime_col"],
+{% if name == 'last' %}
+        "placeholders": [
+            "trend_name", "table", "filter_cond",
+            "value_col", "datetime_col",
+        ],
+{% else %}
+        "placeholders": [
+            "trend_name", "table", "filter_cond", "datetime_col",
+        ],
+{% endif %}
         "cte_template": """{{ meta.implementations.postgresql | trim }}""",
     },
 {% endif %}
@@ -45,7 +59,7 @@ POSTGRESQL_POINTWISE_TEMPLATES: dict[str, SQLTemplate] = {
 }
 
 # Alias mapping
-TEMPLATE_ALIASES: dict[str, str] = {
+TEMPLATE_ALIASES: Dict[str, str] = {
 {% for name, meta in windowed_operators.items() %}
 {% for alias in meta.aliases | default([]) %}
     "{{ alias }}": "{{ name }}",

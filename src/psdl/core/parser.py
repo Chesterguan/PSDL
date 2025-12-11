@@ -188,10 +188,8 @@ class PSDLParser:
         match = self.TREND_PATTERN.match(expr)
         if not match:
             # Try simpler pattern without comparison (for boolean trends)
-            simple_pattern = re.compile(
-                r"^(delta|slope|ema|sma|min|max|count|last|first|std|stddev|percentile)\s*\(\s*(\w+)"
-                r"(?:\s*,\s*(\d+[smhd]))?\s*\)$"
-            )
+            ops = r"delta|slope|ema|sma|min|max|count|last|first|std|stddev|percentile"
+            simple_pattern = re.compile(rf"^({ops})\s*\(\s*(\w+)(?:\s*,\s*(\d+[smhd]))?\s*\)$")
             simple_match = simple_pattern.match(expr)
             if simple_match:
                 operator, signal, window_str = simple_match.groups()

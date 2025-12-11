@@ -25,7 +25,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import yaml
 
@@ -73,14 +73,14 @@ def compute_checksum(file_path: Path) -> str:
     return hashlib.md5(file_path.read_bytes()).hexdigest()
 
 
-def load_checksums() -> dict[str, str]:
+def load_checksums() -> Dict[str, str]:
     """Load existing checksums."""
     if CHECKSUM_FILE.exists():
         return json.loads(CHECKSUM_FILE.read_text())
     return {}
 
 
-def save_checksums(checksums: dict[str, str]) -> None:
+def save_checksums(checksums: Dict[str, str]) -> None:
     """Save checksums to file."""
     CHECKSUM_FILE.write_text(json.dumps(checksums, indent=2))
 
@@ -131,6 +131,9 @@ def generate_types() -> bool:
         return False
 
     # Generate types using module invocation
+    # Use Python 3.9 compatible syntax (min supported by datamodel-codegen)
+    # Note: We don't use --use-standard-collections or --use-union-operator
+    # to maintain Python 3.8 compatibility in the generated code
     result = subprocess.run(
         [
             sys.executable, "-m", "datamodel_code_generator",
@@ -138,9 +141,7 @@ def generate_types() -> bool:
             "--output", str(TYPES_FILE),
             "--input-file-type", "jsonschema",
             "--output-model-type", "dataclasses.dataclass",
-            "--use-standard-collections",
-            "--use-union-operator",
-            "--target-python-version", "3.10",
+            "--target-python-version", "3.9",
         ],
         capture_output=True,
         text=True
@@ -166,7 +167,7 @@ DO NOT EDIT - Regenerate with: python tools/codegen.py --types
     return True
 
 
-def load_operators_spec() -> dict[str, Any]:
+def load_operators_spec() -> Dict[str, Any]:
     """Load and parse operators.yaml."""
     if not OPERATORS_FILE.exists():
         raise FileNotFoundError(f"Operators spec not found: {OPERATORS_FILE}")

@@ -106,7 +106,10 @@ def parse_trend_expression(expr: str) -> Tuple[str, str, Optional[str], Optional
         return (op, signal, window, None, None)
 
     # Pattern for percentile: percentile(signal, window, p) cmp value
-    percentile_pattern = r"percentile\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*,\s*([\d.]+)\s*\)\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
+    percentile_pattern = (
+        r"percentile\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*,\s*([\d.]+)\s*\)"
+        r"\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
+    )
     match = re.match(percentile_pattern, expr.strip())
     if match:
         signal, window, p_value, cmp_op, threshold = match.groups()

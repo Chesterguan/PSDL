@@ -1,11 +1,11 @@
 """
 Auto-generated operator metadata from spec/operators.yaml
-Generated: 2025-12-11T16:30:38.320144
+Generated: 2025-12-11T18:16:29.769937
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --operators
 """
 
-from typing import Literal, Optional, TypedDict
+from typing import Dict, List, Literal, Optional, TypedDict
 
 SPEC_VERSION = "0.2.0"
 
@@ -19,12 +19,12 @@ class OperatorMeta(TypedDict, total=False):
     description: str
     null_handling: Literal["filter", "include", "passthrough"]
     min_points: int
-    aliases: list[str]
-    runtimes: list[str]
+    aliases: List[str]
+    runtimes: List[str]
 
 
 # Windowed operators (require time window)
-WINDOWED_OPERATORS: dict[str, OperatorMeta] = {
+WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
     "delta": {
         "name": "delta",
         "category": "windowed",
@@ -129,7 +129,7 @@ WINDOWED_OPERATORS: dict[str, OperatorMeta] = {
 
 
 # Pointwise operators (no time window)
-POINTWISE_OPERATORS: dict[str, OperatorMeta] = {
+POINTWISE_OPERATORS: Dict[str, OperatorMeta] = {
     "last": {
         "name": "last",
         "category": "pointwise",
@@ -164,14 +164,14 @@ POINTWISE_OPERATORS: dict[str, OperatorMeta] = {
 
 
 # All operators combined
-ALL_OPERATORS: dict[str, OperatorMeta] = {
+ALL_OPERATORS: Dict[str, OperatorMeta] = {
     **WINDOWED_OPERATORS,
     **POINTWISE_OPERATORS,
 }
 
 
 # Operator name to canonical name (handles aliases)
-OPERATOR_ALIASES: dict[str, str] = {
+OPERATOR_ALIASES: Dict[str, str] = {
     "delta": "delta",
     "slope": "slope",
     "sma": "sma",

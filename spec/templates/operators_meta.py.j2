@@ -5,7 +5,7 @@ Generated: {{ timestamp }}
 DO NOT EDIT - Regenerate with: python tools/codegen.py --operators
 """
 
-from typing import TypedDict, Literal, Optional
+from typing import Dict, List, Literal, Optional, TypedDict
 
 
 SPEC_VERSION = "{{ version }}"
@@ -13,18 +13,19 @@ SPEC_VERSION = "{{ version }}"
 
 class OperatorMeta(TypedDict, total=False):
     """Metadata for a PSDL operator."""
+
     name: str
     category: Literal["windowed", "pointwise"]
     signature: str
     description: str
     null_handling: Literal["filter", "include", "passthrough"]
     min_points: int
-    aliases: list[str]
-    runtimes: list[str]
+    aliases: List[str]
+    runtimes: List[str]
 
 
 # Windowed operators (require time window)
-WINDOWED_OPERATORS: dict[str, OperatorMeta] = {
+WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
 {% for name, meta in windowed_operators.items() %}
     "{{ name }}": {
         "name": "{{ name }}",
@@ -41,7 +42,7 @@ WINDOWED_OPERATORS: dict[str, OperatorMeta] = {
 
 
 # Pointwise operators (no time window)
-POINTWISE_OPERATORS: dict[str, OperatorMeta] = {
+POINTWISE_OPERATORS: Dict[str, OperatorMeta] = {
 {% for name, meta in pointwise_operators.items() %}
     "{{ name }}": {
         "name": "{{ name }}",
@@ -58,14 +59,14 @@ POINTWISE_OPERATORS: dict[str, OperatorMeta] = {
 
 
 # All operators combined
-ALL_OPERATORS: dict[str, OperatorMeta] = {
+ALL_OPERATORS: Dict[str, OperatorMeta] = {
     **WINDOWED_OPERATORS,
     **POINTWISE_OPERATORS,
 }
 
 
 # Operator name to canonical name (handles aliases)
-OPERATOR_ALIASES: dict[str, str] = {
+OPERATOR_ALIASES: Dict[str, str] = {
 {% for name, meta in windowed_operators.items() %}
     "{{ name }}": "{{ name }}",
 {% for alias in meta.aliases | default([]) %}
