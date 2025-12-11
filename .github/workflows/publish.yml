@@ -64,9 +64,9 @@ jobs:
 
       - name: Check formatting
         run: |
-          black --check src tests
-          isort --check-only src tests
-          flake8 src tests
+          black --check --line-length 100 src tests
+          isort --check-only --profile black src tests
+          flake8 --max-line-length 100 src tests
 
   build:
     name: Build Package
