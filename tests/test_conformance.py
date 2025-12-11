@@ -56,7 +56,7 @@ def parse_timestamp(ts_str: str) -> datetime:
 
 
 def create_datapoints(data: List[Dict]) -> List[DataPoint]:
-    """Convert test data to DataPoint objects, including nulls (DataPoint now supports Optional[float])."""
+    """Convert test data to DataPoint objects, including nulls."""
     result = []
     for item in data:
         ts = parse_timestamp(item["timestamp"])
@@ -445,13 +445,13 @@ class TestBooleanLogicConformance:
     def test_precedence(self):
         """Test operator precedence: NOT > AND > OR."""
         # NOT has highest precedence
-        assert (not False and True) == True  # (not False) and True = True and True = True
-        assert (not True or True) == True  # (not True) or True = False or True = True
+        assert (not False and True) is True  # (not False) and True = True
+        assert (not True or True) is True  # (not True) or True = True
 
         # AND has higher precedence than OR
-        assert (True or False and False) == True  # True or (False and False) = True or False = True
-        assert (False or True and True) == True  # False or (True and True) = False or True = True
-        assert (False and True or True) == True  # (False and True) or True = False or True = True
+        assert (True or False and False) is True  # True or (False and False)
+        assert (False or True and True) is True  # False or (True and True)
+        assert (False and True or True) is True  # (False and True) or True
 
 
 class TestConformanceSummary:
@@ -490,7 +490,7 @@ class TestConformanceSummary:
         print(f"Pass rate: {results['passed']/total*100:.1f}%")
 
         if results["errors"]:
-            print(f"\nFailed tests:")
+            print("\nFailed tests:")
             for err in results["errors"]:
                 print(f"  - {err['id']}: {err['name']}")
                 print(f"    Expected: {err['expected']}, Got: {err['actual']}")

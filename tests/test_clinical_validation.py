@@ -515,7 +515,8 @@ class TestCohortValidation:
                 incorrect += 1
                 status = "✗"
                 print(
-                    f"  {status} {patient.patient_id}: expected={patient.expected_aki}, got={result.is_triggered}"
+                    f"  {status} {patient.patient_id}: "
+                    f"expected={patient.expected_aki}, got={result.is_triggered}"
                 )
                 print(f"      Notes: {patient.clinical_notes}")
                 print(f"      Trends: {result.trend_results}")

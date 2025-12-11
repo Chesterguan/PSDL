@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Chesterguan/PSDL/actions/workflows/tests.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
   <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.1.0-blue?style=flat-square" alt="Spec Version"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" alt="License"></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
@@ -39,9 +39,9 @@ Run PSDL in your browser with Google Colab - zero installation, real clinical da
 
 | Notebook | Data | Description |
 |----------|------|-------------|
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psdl-project/psdl/blob/main/notebooks/PSDL_Colab_Sepsis_Challenge.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_Sepsis_Challenge.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
 
 ---
 
@@ -128,7 +128,7 @@ pip install -r requirements.txt
 ### Parse a Scenario
 
 ```python
-from reference.python import PSDLParser
+from psdl import PSDLParser
 
 parser = PSDLParser()
 scenario = parser.parse_file("examples/aki_detection.yaml")
@@ -141,8 +141,8 @@ print(f"Logic rules: {list(scenario.logic.keys())}")
 ### Evaluate Against Patient Data
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator, InMemoryBackend
-from reference.python.operators import DataPoint
+from psdl import PSDLParser, PSDLEvaluator, InMemoryBackend
+from psdl.operators import DataPoint
 from datetime import datetime, timedelta
 
 # Parse scenario
@@ -205,17 +205,17 @@ psdl/
 ├── README.md              # This file
 ├── spec/                  # SPECIFICATION
 │   └── schema-v0.1.yaml   # YAML schema + operator semantics
-├── reference/             # REFERENCE IMPLEMENTATION (Python)
-│   └── python/
-│       ├── __init__.py
-│       ├── parser.py      # YAML parser
-│       ├── operators.py   # Temporal operators
-│       ├── execution/     # Execution Modes
-│       │   ├── batch.py       # Batch mode + SQL compiler
-│       │   └── streaming/     # Streaming mode (Flink)
-│       └── adapters/      # Data Adapters
-│           ├── omop.py    # OMOP CDM adapter (SQL)
-│           └── fhir.py    # FHIR R4 adapter (REST)
+├── src/psdl/              # REFERENCE IMPLEMENTATION (Python)
+│   ├── __init__.py
+│   ├── parser.py          # YAML parser
+│   ├── evaluator.py       # Batch execution mode
+│   ├── operators.py       # Temporal operators
+│   ├── execution/         # Execution Modes
+│   │   ├── batch.py       # Batch mode + SQL compiler
+│   │   └── streaming/     # Streaming mode (Flink)
+│   └── adapters/          # Data Adapters
+│       ├── omop.py        # OMOP CDM adapter (SQL)
+│       └── fhir.py        # FHIR R4 adapter (REST)
 ├── examples/              # Example scenarios
 │   ├── icu_deterioration.yaml
 │   ├── aki_detection.yaml

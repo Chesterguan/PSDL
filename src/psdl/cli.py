@@ -68,7 +68,7 @@ def show_version():
 
     print(f"PSDL v{__version__}")
     print("Patient Scenario Definition Language - Reference Implementation")
-    print("https://github.com/psdl-project/psdl")
+    print("https://github.com/Chesterguan/PSDL")
 
 
 def validate_scenario(file_path: Path, strict: bool = False) -> int:

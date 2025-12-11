@@ -36,8 +36,8 @@ pip install cx_Oracle       # Oracle
 ## Quick Start
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters import OMOPBackend, OMOPConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.adapters import OMOPBackend, OMOPConfig
 
 # 1. Configure connection
 config = OMOPConfig(
@@ -247,7 +247,7 @@ Reference table for frequently used clinical signals:
 
 ```python
 # Check if concept_id is correct
-from reference.python.parser import Signal, Domain
+from psdl.parser import Signal, Domain
 
 signal = Signal(
     name="Cr",

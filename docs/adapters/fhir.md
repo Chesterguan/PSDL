@@ -22,8 +22,8 @@ pip install requests
 ## Quick Start
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters import FHIRBackend, FHIRConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.adapters import FHIRBackend, FHIRConfig
 
 # Configure FHIR connection
 config = FHIRConfig(
@@ -155,8 +155,8 @@ signals:
 ### Real-Time ICU Monitoring
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters import FHIRBackend, FHIRConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.adapters import FHIRBackend, FHIRConfig
 from datetime import datetime
 
 # FHIR connection

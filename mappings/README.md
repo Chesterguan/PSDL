@@ -27,8 +27,8 @@ signals:                           signals:
 ### Using Pre-built Mappings
 
 ```python
-from reference.python.mapping import load_mapping
-from reference.python.adapters.omop import OMOPBackend, OMOPConfig
+from psdl.mapping import load_mapping
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 # Load MIMIC-IV mapping
 mapping = load_mapping("mappings/mimic_iv.yaml")
@@ -112,7 +112,7 @@ signals:
 For convenience, PSDL provides programmatic access to common mappings:
 
 ```python
-from reference.python.mapping import get_mimic_iv_mapping, get_synthea_mapping
+from psdl.mapping import get_mimic_iv_mapping, get_synthea_mapping
 
 # Get MIMIC-IV mapping without loading a file
 mapping = get_mimic_iv_mapping()

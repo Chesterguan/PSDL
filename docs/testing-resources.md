@@ -49,7 +49,7 @@ docker-compose up -d
 
 **Connection:**
 ```python
-from reference.python.adapters import OMOPBackend, OMOPConfig
+from psdl.adapters import OMOPBackend, OMOPConfig
 
 config = OMOPConfig(
     connection_string="postgresql://postgres:password@localhost:5432/omop",
@@ -114,7 +114,7 @@ The most widely used public FHIR test server.
 
 **Usage:**
 ```python
-from reference.python.adapters import FHIRBackend, FHIRConfig
+from psdl.adapters import FHIRBackend, FHIRConfig
 
 config = FHIRConfig(
     base_url="https://hapi.fhir.org/baseR4"
@@ -180,8 +180,8 @@ FHIR conformance testing and synthetic data generation.
 ### Quick Test: HAPI FHIR
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters import FHIRBackend, FHIRConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.adapters import FHIRBackend, FHIRConfig
 from datetime import datetime
 
 # Connect to public HAPI server
@@ -226,7 +226,7 @@ services:
 ```
 
 ```python
-from reference.python.adapters import OMOPBackend, OMOPConfig
+from psdl.adapters import OMOPBackend, OMOPConfig
 
 config = OMOPConfig(
     connection_string="postgresql://postgres:postgres@localhost:5432/omop",

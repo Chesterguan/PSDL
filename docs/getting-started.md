@@ -54,7 +54,7 @@ logic:
 ## Parse and Validate
 
 ```python
-from reference.python import PSDLParser
+from psdl import PSDLParser
 
 # Parse the scenario
 parser = PSDLParser()
@@ -70,9 +70,9 @@ print(f"Logic: {list(scenario.logic.keys())}")
 ## Evaluate Against Data
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.execution.batch import InMemoryBackend
-from reference.python.operators import DataPoint
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.execution.batch import InMemoryBackend
+from psdl.operators import DataPoint
 from datetime import datetime, timedelta
 
 # Parse scenario
@@ -203,9 +203,9 @@ mappings/
 ### Step 2: Connect with Mapping (Recommended)
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.mapping import load_mapping
-from reference.python.adapters.omop import OMOPBackend, OMOPConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.mapping import load_mapping
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 # Load your institution's mapping
 mapping = load_mapping("mappings/mimic_iv.yaml")
@@ -280,7 +280,7 @@ ORDER BY count DESC;
 
 **MIMIC-IV** (PhysioNet):
 ```python
-from reference.python.mapping import get_mimic_iv_mapping
+from psdl.mapping import get_mimic_iv_mapping
 
 mapping = get_mimic_iv_mapping()  # Built-in mapping
 backend = OMOPBackend(config, mapping=mapping)
@@ -288,7 +288,7 @@ backend = OMOPBackend(config, mapping=mapping)
 
 **Synthea** (Synthetic):
 ```python
-from reference.python.mapping import get_synthea_mapping
+from psdl.mapping import get_synthea_mapping
 
 mapping = get_synthea_mapping()  # Built-in mapping
 backend = OMOPBackend(config, mapping=mapping)
@@ -301,8 +301,8 @@ See [OMOP Adapter Documentation](./adapters/omop.md) for detailed setup instruct
 For EHR integration using FHIR:
 
 ```python
-from reference.python import PSDLParser, PSDLEvaluator
-from reference.python.adapters import FHIRBackend, FHIRConfig
+from psdl import PSDLParser, PSDLEvaluator
+from psdl.adapters import FHIRBackend, FHIRConfig
 
 # Configure FHIR connection
 config = FHIRConfig(

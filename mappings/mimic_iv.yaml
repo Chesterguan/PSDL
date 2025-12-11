@@ -10,8 +10,8 @@
 # The mapping translates: "creatinine" (logical) → "Creatinine" (MIMIC source_value)
 #
 # Usage:
-#   from reference.python.mapping import load_mapping
-#   from reference.python.adapters.omop import OMOPBackend, OMOPConfig
+#   from psdl.mapping import load_mapping
+#   from psdl.adapters.omop import OMOPBackend, OMOPConfig
 #
 #   mapping = load_mapping("mappings/mimic_iv.yaml")
 #   config = OMOPConfig(

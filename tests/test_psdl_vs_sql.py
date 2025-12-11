@@ -339,7 +339,8 @@ class TestPSDLvsSQLEquivalence:
         print("\n=== AKI Stage 3 Comparison ===")
         print(f"SQL triggered: {sql_result['triggered']}, stage: {sql_result['stage']}")
         print(
-            f"SQL delta_48h: {sql_result['delta_48h']:.2f}, latest_cr: {sql_result['latest_cr']:.2f}"
+            f"SQL delta_48h: {sql_result['delta_48h']:.2f}, "
+            f"latest_cr: {sql_result['latest_cr']:.2f}"
         )
         print(f"PSDL triggered: {psdl_result.is_triggered}")
         print(f"PSDL rules: {psdl_result.triggered_logic}")

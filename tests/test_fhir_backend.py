@@ -17,12 +17,19 @@ import pytest  # noqa: E402
 from psdl.adapters.fhir import (  # noqa: E402
     DOMAIN_RESOURCE_MAP,
     LOINC_CODES,
+    REQUESTS_AVAILABLE,
     FHIRBackend,
     FHIRConfig,
     FHIRResourceType,
     create_fhir_backend,
 )
 from psdl.parser import Domain, Signal  # noqa: E402
+
+# Skip tests that require requests if not available
+requires_requests = pytest.mark.skipif(
+    not REQUESTS_AVAILABLE,
+    reason="requests library not installed"
+)
 
 
 class TestFHIRConfig:
@@ -100,6 +107,7 @@ class TestFHIRBackend:
         assert backend.config == config
         assert backend._session is None
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_session_creation(self, mock_requests, backend):
         """Test HTTP session creation with authentication."""
@@ -111,6 +119,7 @@ class TestFHIRBackend:
         assert session == mock_session
         mock_session.headers.update.assert_called()
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_session_bearer_auth(self, mock_requests, config):
         """Test bearer token authentication."""
@@ -256,6 +265,7 @@ class TestFHIRBackend:
         assert dt is not None
         assert dt.hour == 10
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data(self, mock_requests, backend):
         """Test fetching signal data from FHIR server."""
@@ -303,6 +313,7 @@ class TestFHIRBackend:
         assert data_points[0].value == 1.2
         assert data_points[1].value == 1.5
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data_empty_bundle(self, mock_requests, backend):
         """Test handling empty bundle response."""
@@ -331,6 +342,7 @@ class TestFHIRBackend:
 
         assert len(data_points) == 0
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_fetch_signal_data_request_error(self, mock_requests, backend):
         """Test handling request errors gracefully."""
@@ -354,6 +366,7 @@ class TestFHIRBackend:
         # Should return empty list on error
         assert len(data_points) == 0
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_get_patient_ids(self, mock_requests, backend):
         """Test fetching patient IDs."""
@@ -378,6 +391,7 @@ class TestFHIRBackend:
         assert "patient-1" in patient_ids
         assert "patient-2" in patient_ids
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_get_patient(self, mock_requests, backend):
         """Test fetching single patient."""
@@ -528,6 +542,7 @@ class TestConditionHandling:
         config = FHIRConfig(base_url="https://fhir.test.org/r4")
         return FHIRBackend(config)
 
+    @requires_requests
     @patch("psdl.adapters.fhir.requests")
     def test_fetch_condition_data(self, mock_requests, backend):
         """Test fetching condition data."""
