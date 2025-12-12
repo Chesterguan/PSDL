@@ -20,6 +20,12 @@ scenario: Lactic_Acidosis_Detection
 version: "0.1.0"
 description: "Detect lactic acidosis through lactate and pH patterns"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Detect lactic acidosis indicating tissue hypoxia or metabolic dysfunction"
+  rationale: "Lactic acidosis is a critical metabolic emergency with high mortality if untreated"
+  provenance: "Rhodes et al. Surviving Sepsis Campaign Guidelines"
+
 # ── Population ───────────────────────────────────
 population:
   include:

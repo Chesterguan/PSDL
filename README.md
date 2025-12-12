@@ -267,6 +267,10 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 ## Design Principles
 
+> **The Core Law**: PSDL defines WHAT to detect, not HOW to collect or execute.
+>
+> For the full set of laws governing PSDL's scope, see [PRINCIPLES.md](PRINCIPLES.md)
+
 | Principle | Description |
 |-----------|-------------|
 | **Declarative** | Define *what* to detect, not *how* to compute it |
@@ -299,6 +303,7 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 | Document | Description |
 |----------|-------------|
+| [Principles](PRINCIPLES.md) | The laws defining PSDL's scope and boundaries |
 | [Whitepaper](docs/WHITEPAPER.md) | Full project vision and specification (5 languages) |
 | [Getting Started](docs/getting-started.md) | Quick start guide |
 | [Roadmap](docs/ROADMAP.md) | Development phases and timeline |

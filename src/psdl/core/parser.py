@@ -13,12 +13,15 @@ from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 from .ir import (
+    AuditBlock,
     Domain,
     LogicExpr,
     PopulationFilter,
     PSDLScenario,
     Severity,
     Signal,
+    StateMachine,
+    StateTransition,
     TrendExpr,
     WindowSpec,
 )
@@ -98,6 +101,12 @@ class PSDLParser:
         logic_data = self._require_field(data, "logic", dict)
         logic = self._parse_logic(logic_data)
 
+        # Parse audit (optional - for backwards compatibility)
+        audit = self._parse_audit(data.get("audit"))
+
+        # Parse state machine (optional)
+        state = self._parse_state(data.get("state"))
+
         # Parse mapping (optional)
         mapping = data.get("mapping")
 
@@ -109,6 +118,8 @@ class PSDLParser:
             signals=signals,
             trends=trends,
             logic=logic,
+            audit=audit,
+            state=state,
             mapping=mapping,
         )
 
@@ -139,6 +150,39 @@ class PSDLParser:
             return None
 
         return PopulationFilter(include=data.get("include", []), exclude=data.get("exclude", []))
+
+    def _parse_audit(self, data: Optional[dict]) -> Optional[AuditBlock]:
+        """Parse audit block."""
+        if data is None:
+            return None
+
+        intent = data.get("intent")
+        rationale = data.get("rationale")
+        provenance = data.get("provenance")
+
+        if not all([intent, rationale, provenance]):
+            raise PSDLParseError("Audit block requires 'intent', 'rationale', and 'provenance'")
+
+        return AuditBlock(intent=intent, rationale=rationale, provenance=provenance)
+
+    def _parse_state(self, data: Optional[dict]) -> Optional[StateMachine]:
+        """Parse state machine definition."""
+        if data is None:
+            return None
+
+        initial = data.get("initial")
+        states = data.get("states", [])
+        transitions_data = data.get("transitions", [])
+
+        transitions = []
+        for t in transitions_data:
+            if not all(k in t for k in ["from", "to", "when"]):
+                raise PSDLParseError("State transition requires 'from', 'to', and 'when'")
+            transitions.append(
+                StateTransition(from_state=t["from"], to_state=t["to"], when=t["when"])
+            )
+
+        return StateMachine(initial=initial, states=states, transitions=transitions)
 
     def _parse_signals(self, data: dict) -> Dict[str, Signal]:
         """Parse signal bindings."""

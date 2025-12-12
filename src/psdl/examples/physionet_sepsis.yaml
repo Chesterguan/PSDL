@@ -1,0 +1,176 @@
+# PhysioNet Sepsis Challenge 2019 - PSDL Scenario
+# Based on Sepsis-3 clinical criteria
+#
+# This scenario implements early sepsis detection using:
+# - SIRS criteria (HR, Temp, WBC, Resp)
+# - SOFA score components (MAP, Lactate, Creatinine)
+# - Trend analysis over 6-hour windows
+
+scenario: physionet_sepsis_detection
+version: "0.2.0"
+name: PhysioNet Sepsis Early Detection
+description: |
+  Early sepsis detection scenario for PhysioNet Challenge 2019 data.
+  Implements SIRS criteria plus organ dysfunction markers.
+  Based on Sepsis-3 consensus definitions.
+author: PSDL Team
+tags:
+  - sepsis
+  - critical_care
+  - physionet
+  - challenge_2019
+
+audit:
+  intent: "Early sepsis detection using SIRS criteria and organ dysfunction markers"
+  rationale: "Early sepsis identification reduces mortality through timely intervention"
+  provenance: "Sepsis-3 Consensus Definitions (Singer et al. JAMA 2016), PhysioNet Challenge 2019"
+
+signals:
+  # Vital signs
+  HR:
+    source: HeartRate
+    type: numeric
+    unit: bpm
+    description: Heart rate
+
+  Temp:
+    source: Temperature
+    type: numeric
+    unit: celsius
+    description: Body temperature
+
+  Resp:
+    source: RespiratoryRate
+    type: numeric
+    unit: breaths/min
+    description: Respiratory rate
+
+  SBP:
+    source: SystolicBP
+    type: numeric
+    unit: mmHg
+    description: Systolic blood pressure
+
+  MAP:
+    source: MeanArterialPressure
+    type: numeric
+    unit: mmHg
+    description: Mean arterial pressure
+
+  SpO2:
+    source: SpO2
+    type: numeric
+    unit: "%"
+    description: Oxygen saturation
+
+  # Lab values
+  WBC:
+    source: WBC
+    type: numeric
+    unit: "10^9/L"
+    description: White blood cell count
+
+  Lactate:
+    source: Lactate
+    type: numeric
+    unit: mmol/L
+    description: Serum lactate
+
+  Creatinine:
+    source: Creatinine
+    type: numeric
+    unit: mg/dL
+    description: Serum creatinine
+
+trends:
+  # SIRS criteria detection
+  hr_elevated:
+    expr: last(HR) > 90
+    description: Tachycardia (HR > 90)
+
+  temp_abnormal:
+    expr: last(Temp) > 38.3
+    description: Fever (Temp > 38.3C)
+
+  temp_low:
+    expr: last(Temp) < 36
+    description: Hypothermia (Temp < 36C)
+
+  resp_elevated:
+    expr: last(Resp) > 22
+    description: Tachypnea (RR > 22)
+
+  wbc_abnormal_high:
+    expr: last(WBC) > 12
+    description: Leukocytosis (WBC > 12)
+
+  wbc_abnormal_low:
+    expr: last(WBC) < 4
+    description: Leukopenia (WBC < 4)
+
+  # Sepsis markers
+  lactate_elevated:
+    expr: last(Lactate) > 2.0
+    description: Elevated lactate (> 2 mmol/L)
+
+  map_low:
+    expr: last(MAP) < 65
+    description: Hypotension (MAP < 65)
+
+  # Trending indicators (6-hour window)
+  hr_rising:
+    expr: delta(HR, 6h) > 20
+    description: Heart rate increasing trend
+
+  lactate_rising:
+    expr: delta(Lactate, 6h) > 1.0
+    description: Lactate increasing trend
+
+  creatinine_rising:
+    expr: delta(Creatinine, 6h) >= 0.3
+    description: Acute kidney injury (Cr delta >= 0.3)
+
+  sbp_falling:
+    expr: delta(SBP, 6h) < -20
+    description: Blood pressure falling trend
+
+logic:
+  # SIRS criteria (2+ of 4)
+  sirs_temp:
+    expr: temp_abnormal OR temp_low
+    description: Temperature criterion for SIRS
+
+  sirs_wbc:
+    expr: wbc_abnormal_high OR wbc_abnormal_low
+    description: WBC criterion for SIRS
+
+  sirs_positive:
+    expr: (hr_elevated AND resp_elevated) OR (hr_elevated AND sirs_temp) OR (hr_elevated AND sirs_wbc) OR (resp_elevated AND sirs_temp) OR (resp_elevated AND sirs_wbc) OR (sirs_temp AND sirs_wbc)
+    severity: medium
+    description: SIRS criteria met (2+ positive)
+
+  # Organ dysfunction
+  organ_dysfunction:
+    expr: map_low OR creatinine_rising
+    severity: high
+    description: Evidence of organ dysfunction
+
+  # Sepsis alert
+  sepsis_suspected:
+    expr: sirs_positive AND (lactate_elevated OR organ_dysfunction)
+    severity: high
+    description: Suspected sepsis - SIRS + organ dysfunction or lactate elevation
+    recommendation: Initiate sepsis bundle, obtain blood cultures, start empiric antibiotics
+
+  # Early warning (trending)
+  early_warning:
+    expr: (hr_rising OR lactate_rising) AND sirs_positive
+    severity: medium
+    description: Early warning - deteriorating trends with SIRS
+    recommendation: Increase monitoring frequency, consider sepsis workup
+
+metadata:
+  validation_status: draft
+  references:
+    - "Singer M, et al. JAMA 2016 - Sepsis-3 Definitions"
+    - "PhysioNet Challenge 2019 - Early Prediction of Sepsis from Clinical Data"

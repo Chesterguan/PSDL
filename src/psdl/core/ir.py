@@ -92,6 +92,33 @@ class PopulationFilter:
 
 
 @dataclass
+class AuditBlock:
+    """Required audit information for regulatory compliance."""
+
+    intent: str  # What this scenario detects
+    rationale: str  # Why this detection matters
+    provenance: str  # Source (guidelines, literature)
+
+
+@dataclass
+class StateTransition:
+    """A state transition rule triggered by logic conditions."""
+
+    from_state: str
+    to_state: str
+    when: str  # Logic condition name
+
+
+@dataclass
+class StateMachine:
+    """Simple state machine for tracking clinical state transitions."""
+
+    initial: str
+    states: List[str]
+    transitions: List[StateTransition] = field(default_factory=list)
+
+
+@dataclass
 class PSDLScenario:
     """A complete parsed PSDL scenario."""
 
@@ -102,6 +129,8 @@ class PSDLScenario:
     signals: Dict[str, Signal]
     trends: Dict[str, TrendExpr]
     logic: Dict[str, LogicExpr]
+    audit: Optional[AuditBlock] = None
+    state: Optional[StateMachine] = None
     mapping: Optional[Dict[str, Any]] = None
 
     def get_signal(self, name: str) -> Optional[Signal]:

@@ -6,8 +6,8 @@
 | Title | Architecture Refactor - Spec-Driven Code Generation |
 | Author | PSDL Team |
 | Status | Draft |
-| Created | 2024-12-11 |
-| Updated | 2024-12-11 |
+| Created | 2025-12-11 |
+| Updated | 2025-12-12 |
 
 ## Summary
 

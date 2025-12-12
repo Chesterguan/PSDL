@@ -37,6 +37,37 @@ Healthcare AI has a deployment problem. Despite remarkable advances in predictiv
 
 ---
 
+## PSDL Principles
+
+> For the complete authoritative reference, see [PRINCIPLES.md](../PRINCIPLES.md)
+
+### The Core Law
+
+**PSDL defines WHAT to detect, not HOW to collect or execute.**
+
+### First Principles
+
+| # | Principle | Statement |
+|---|-----------|-----------|
+| **P1** | Specification First | PSDL is a specification, not software. Reference implementations demonstrate it. |
+| **P2** | Data Exists | PSDL operates on data that exists. It does not create or collect data. |
+| **P3** | Intent vs Implementation | Scenarios express clinical intent (WHAT). Runtimes handle execution (HOW). |
+| **P4** | Deterministic | Same scenario + same data = same result. Always. |
+| **P5** | Vendor Neutral | No proprietary dependencies. Community governed. |
+
+### Scope Laws
+
+| PSDL DOES | PSDL Does NOT |
+|-----------|---------------|
+| **S1** Define signals (data bindings) | **N1** Collect data from patients |
+| **S2** Define trends (temporal computations) | **N2** Execute ML/AI models |
+| **S3** Define logic (boolean combinations) | **N3** Orchestrate clinical workflows |
+| **S4** Define triggers (what actions) | **N4** Define data storage |
+| **S5** Define populations (patient criteria) | **N5** Replace OMOP or FHIR |
+| **S6** Define operator semantics | **N6** Define how triggers execute |
+
+---
+
 ## The Problem: Why Clinical AI Fails to Deploy
 
 ```mermaid
@@ -335,6 +366,8 @@ PSDL fills a specific gap in the healthcare technology stack. Understanding wher
 ---
 
 ## Scope and Limitations
+
+> For the concise, law-like version of these principles, see [PRINCIPLES.md](../PRINCIPLES.md)
 
 **Intellectual honesty requires clarity about what PSDL can and cannot do.** PSDL is a specification for expressing clinical detection logic — understanding its boundaries is essential.
 

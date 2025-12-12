@@ -37,6 +37,37 @@ L'IA de santé a un problème de déploiement. Malgré des avancées remarquable
 
 ---
 
+## Principes PSDL
+
+> Pour la référence autoritaire complète, voir [PRINCIPLES.md](../PRINCIPLES.md)
+
+### La Loi Fondamentale
+
+**PSDL définit CE QU'IL FAUT détecter, pas COMMENT collecter ou exécuter.**
+
+### Premiers Principes
+
+| # | Principe | Déclaration |
+|---|----------|-------------|
+| **P1** | Spécification d'Abord | PSDL est une spécification, pas un logiciel. Les implémentations de référence la démontrent. |
+| **P2** | Les Données Existent | PSDL opère sur des données existantes. Il ne crée ni ne collecte de données. |
+| **P3** | Intention vs Implémentation | Les scénarios expriment l'intention clinique (QUOI). Les runtimes gèrent l'exécution (COMMENT). |
+| **P4** | Déterministe | Même scénario + mêmes données = même résultat. Toujours. |
+| **P5** | Neutre au Fournisseur | Aucune dépendance propriétaire. Gouverné par la communauté. |
+
+### Lois de Portée
+
+| PSDL FAIT | PSDL NE FAIT PAS |
+|-----------|------------------|
+| **S1** Définir les signaux (liaisons de données) | **N1** Collecter des données des patients |
+| **S2** Définir les tendances (calculs temporels) | **N2** Exécuter des modèles ML/IA |
+| **S3** Définir la logique (combinaisons booléennes) | **N3** Orchestrer les workflows cliniques |
+| **S4** Définir les déclencheurs (quelles actions) | **N4** Définir le stockage des données |
+| **S5** Définir les populations (critères patients) | **N5** Remplacer OMOP ou FHIR |
+| **S6** Définir la sémantique des opérateurs | **N6** Définir comment les déclencheurs s'exécutent |
+
+---
+
 ## Le Problème : Pourquoi l'IA Clinique Échoue à se Déployer
 
 ```mermaid
@@ -336,6 +367,8 @@ PSDL comble un vide spécifique dans la pile technologique de la santé. Compren
 ---
 
 ## Portée et Limitations
+
+> Pour la version concise de ces principes, voir [PRINCIPLES.md](../PRINCIPLES.md)
 
 **L'honnêteté intellectuelle exige de la clarté sur ce que PSDL peut et ne peut pas faire.** PSDL est une spécification pour exprimer la logique de détection clinique — comprendre ses limites est essentiel.
 

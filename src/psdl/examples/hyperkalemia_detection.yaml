@@ -18,6 +18,12 @@ scenario: Hyperkalemia_Detection
 version: "0.1.0"
 description: "Detect and stage hyperkalemia with trajectory analysis"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Detect dangerous potassium elevations that can cause cardiac arrhythmias"
+  rationale: "Hyperkalemia can cause life-threatening cardiac arrest; early detection enables timely treatment"
+  provenance: "AHA/ACC Guidelines for Hyperkalemia Management"
+
 # ── Population ───────────────────────────────────
 population:
   include:

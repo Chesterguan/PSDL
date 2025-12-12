@@ -20,6 +20,11 @@ tags:
   - physionet
   - challenge_2019
 
+audit:
+  intent: "Early sepsis detection using SIRS criteria and organ dysfunction markers"
+  rationale: "Early sepsis identification reduces mortality through timely intervention"
+  provenance: "Sepsis-3 Consensus Definitions (Singer et al. JAMA 2016), PhysioNet Challenge 2019"
+
 signals:
   # Vital signs
   HR:

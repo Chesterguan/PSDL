@@ -11,12 +11,15 @@ Public API:
 """
 
 from .ir import (
+    AuditBlock,
     Domain,
     LogicExpr,
     PopulationFilter,
     PSDLScenario,
     Severity,
     Signal,
+    StateMachine,
+    StateTransition,
     TrendExpr,
     WindowSpec,
 )
@@ -25,14 +28,17 @@ from .parser import PSDLParseError, PSDLParser, parse_scenario
 
 __all__ = [
     # IR Types
+    "AuditBlock",
     "Domain",
-    "Severity",
-    "Signal",
-    "WindowSpec",
-    "TrendExpr",
     "LogicExpr",
     "PopulationFilter",
     "PSDLScenario",
+    "Severity",
+    "Signal",
+    "StateMachine",
+    "StateTransition",
+    "TrendExpr",
+    "WindowSpec",
     # Parser
     "PSDLParser",
     "PSDLParseError",

@@ -1,5 +1,8 @@
 # PSDL Specification v0.2
 
+> **PSDL is not a query language.** It defines clinical detection intent, not execution.
+> PSDL outputs IR (Intermediate Representation). Backends (SQL/Flink) handle execution.
+
 This directory contains the **source of truth** for the Patient Scenario Definition Language (PSDL).
 
 ## Directory Structure
@@ -101,8 +104,8 @@ make codegen
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 0.2.0 | 2024-12 | Added operators.yaml, percentile operator, std/stddev aliases |
-| 0.1.0 | 2024-12 | Initial specification |
+| 0.2.0 | 2025-12 | Added operators.yaml, percentile operator, std/stddev aliases, audit block, state machine |
+| 0.1.0 | 2025-12 | Initial specification |
 
 ## Related Files
 

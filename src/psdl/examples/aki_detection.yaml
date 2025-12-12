@@ -16,6 +16,12 @@ scenario: AKI_KDIGO_Detection
 version: "0.1.0"
 description: "Detect and stage Acute Kidney Injury using KDIGO criteria"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Detect and stage Acute Kidney Injury using KDIGO criteria"
+  rationale: "Early AKI detection enables timely intervention to prevent progression to renal failure"
+  provenance: "KDIGO Clinical Practice Guideline for Acute Kidney Injury (2012)"
+
 # ── Population ───────────────────────────────────
 population:
   include:

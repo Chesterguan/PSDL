@@ -19,6 +19,12 @@ scenario: Sepsis_Screening_v1
 version: "0.1.0"
 description: "Sepsis screening using qSOFA criteria and lactate"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Screen for sepsis using qSOFA criteria combined with lactate"
+  rationale: "Early sepsis identification enables timely antibiotics and resuscitation, reducing mortality"
+  provenance: "Singer et al. JAMA 2016 (Sepsis-3 Consensus Definition)"
+
 # ── Population ───────────────────────────────────
 population:
   include:

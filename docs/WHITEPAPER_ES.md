@@ -37,6 +37,37 @@ La IA sanitaria tiene un problema de implementación. A pesar de los notables av
 
 ---
 
+## Principios de PSDL
+
+> Para la referencia autoritativa completa, consulte [PRINCIPLES.md](../PRINCIPLES.md)
+
+### La Ley Fundamental
+
+**PSDL define QUÉ detectar, no CÓMO recopilar o ejecutar.**
+
+### Primeros Principios
+
+| # | Principio | Declaración |
+|---|-----------|-------------|
+| **P1** | Especificación Primero | PSDL es una especificación, no software. Las implementaciones de referencia la demuestran. |
+| **P2** | Los Datos Existen | PSDL opera sobre datos que existen. No crea ni recopila datos. |
+| **P3** | Intención vs Implementación | Los escenarios expresan intención clínica (QUÉ). Los runtimes manejan la ejecución (CÓMO). |
+| **P4** | Determinista | Mismo escenario + mismos datos = mismo resultado. Siempre. |
+| **P5** | Neutral al Proveedor | Sin dependencias propietarias. Gobernado por la comunidad. |
+
+### Leyes de Alcance
+
+| PSDL HACE | PSDL NO HACE |
+|-----------|--------------|
+| **S1** Definir señales (enlaces de datos) | **N1** Recopilar datos de pacientes |
+| **S2** Definir tendencias (cálculos temporales) | **N2** Ejecutar modelos ML/IA |
+| **S3** Definir lógica (combinaciones booleanas) | **N3** Orquestar flujos de trabajo clínicos |
+| **S4** Definir disparadores (qué acciones) | **N4** Definir almacenamiento de datos |
+| **S5** Definir poblaciones (criterios de pacientes) | **N5** Reemplazar OMOP o FHIR |
+| **S6** Definir semántica de operadores | **N6** Definir cómo se ejecutan los disparadores |
+
+---
+
 ## El Problema: Por Qué la IA Clínica No Se Implementa
 
 ```mermaid
@@ -335,6 +366,8 @@ PSDL llena un vacío específico en la pila tecnológica sanitaria. Comprender d
 ---
 
 ## Alcance y Limitaciones
+
+> Para la versión concisa de estos principios, consulte [PRINCIPLES.md](../PRINCIPLES.md)
 
 **La honestidad intelectual requiere claridad sobre lo que PSDL puede y no puede hacer.** PSDL es una especificación para expresar lógica de detección clínica — entender sus límites es esencial.
 

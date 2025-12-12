@@ -5,7 +5,7 @@
   "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.2 scenario documents. This schema is the SOURCE OF TRUTH for scenario structure and can be used with datamodel-codegen to generate Python types.",
   "version": "0.2.0",
   "type": "object",
-  "required": ["scenario", "version", "signals", "logic"],
+  "required": ["scenario", "version", "signals", "logic", "audit"],
   "additionalProperties": false,
 
   "properties": {
@@ -58,6 +58,14 @@
     "metadata": {
       "$ref": "#/$defs/ScenarioMetadata",
       "description": "Additional metadata for documentation and tooling"
+    },
+    "audit": {
+      "$ref": "#/$defs/AuditBlock",
+      "description": "Required audit information for regulatory compliance"
+    },
+    "state": {
+      "$ref": "#/$defs/StateMachine",
+      "description": "Optional state machine for tracking clinical state transitions"
     }
   },
 
@@ -396,6 +404,75 @@
       "type": "string",
       "enum": ["AND", "OR", "NOT"],
       "description": "Boolean operators for logic expressions"
+    },
+
+    "AuditBlock": {
+      "type": "object",
+      "description": "Required audit information for regulatory compliance and traceability",
+      "required": ["intent", "rationale", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "type": "string",
+          "description": "What this scenario is designed to detect",
+          "examples": ["Detect AKI using KDIGO criteria", "Early sepsis screening"]
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Clinical rationale for why this detection matters",
+          "examples": ["Early detection enables intervention before irreversible damage"]
+        },
+        "provenance": {
+          "type": "string",
+          "description": "Source of clinical logic (guidelines, literature, institutional)",
+          "examples": ["KDIGO 2012 Clinical Practice Guideline for AKI", "Sepsis-3 Consensus Definition"]
+        }
+      }
+    },
+
+    "StateMachine": {
+      "type": "object",
+      "description": "Simple state machine for tracking clinical state transitions",
+      "additionalProperties": false,
+      "properties": {
+        "initial": {
+          "type": "string",
+          "description": "Initial state when no transitions have occurred",
+          "examples": ["normal", "baseline"]
+        },
+        "states": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "All valid states in the state machine",
+          "examples": [["normal", "elevated", "critical"]]
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/StateTransition" },
+          "description": "State transition rules"
+        }
+      }
+    },
+
+    "StateTransition": {
+      "type": "object",
+      "description": "A state transition rule triggered by logic conditions",
+      "required": ["from", "to", "when"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source state"
+        },
+        "to": {
+          "type": "string",
+          "description": "Target state"
+        },
+        "when": {
+          "type": "string",
+          "description": "Logic condition that triggers this transition (must reference a logic rule)"
+        }
+      }
     }
   }
 }

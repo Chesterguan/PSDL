@@ -15,6 +15,12 @@ scenario: ICU_Deterioration_v1
 version: "0.1.0"
 description: "Detect early signs of clinical deterioration in ICU patients"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Detect early signs of clinical deterioration in ICU patients"
+  rationale: "Early warning of deterioration enables proactive intervention before organ failure"
+  provenance: "Multi-parameter early warning systems literature and clinical practice guidelines"
+
 # ── Population Scope ─────────────────────────────
 # Only evaluate for adult ICU patients not on comfort care
 population:

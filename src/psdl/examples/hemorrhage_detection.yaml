@@ -18,6 +18,12 @@ scenario: Hemorrhage_Detection
 version: "0.1.0"
 description: "Detect acute blood loss through hemoglobin, platelet, and lactate patterns"
 
+# ── Audit Block ──────────────────────────────────
+audit:
+  intent: "Detect acute blood loss through laboratory patterns"
+  rationale: "Early hemorrhage detection enables timely transfusion and surgical intervention"
+  provenance: "AABB Transfusion Guidelines and Trauma Resuscitation Protocols"
+
 # ── Population ───────────────────────────────────
 population:
   include:
