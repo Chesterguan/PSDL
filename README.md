@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
-  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.2.0-blue?style=flat-square" alt="Spec Version"></a>
+  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.3.0-blue?style=flat-square" alt="Spec Version"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" alt="License"></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
   <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8-3.12">
@@ -69,9 +69,9 @@ Run PSDL in your browser with Google Colab - zero installation, real clinical da
 
 | Notebook | Data | Description |
 |----------|------|-------------|
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_PhysioNet_Demo.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_PhysioNet_Demo.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
 
 ---
 
@@ -107,9 +107,9 @@ PSDL (Patient Scenario Definition Language) is a declarative, vendor-neutral lan
 ## Quick Example
 
 ```yaml
-# Detect early kidney injury
+# Detect early kidney injury (v0.3 syntax)
 scenario: AKI_Early_Detection
-version: "0.2.0"
+version: "0.3.0"
 
 audit:
   intent: "Detect early acute kidney injury using creatinine trends"
@@ -118,22 +118,32 @@ audit:
 
 signals:
   Cr:
-    source: creatinine
-    concept_id: 3016723  # OMOP concept
+    ref: creatinine        # v0.3: 'ref' instead of 'source'
+    concept_id: 3016723    # OMOP concept
     unit: mg/dL
 
 trends:
-  cr_rising:
-    expr: delta(Cr, 6h) > 0.3
-    description: "Creatinine rise > 0.3 mg/dL in 6 hours"
+  # v0.3: Trends produce numeric values only
+  cr_delta_6h:
+    expr: delta(Cr, 6h)
+    description: "Creatinine change over 6 hours"
 
-  cr_high:
-    expr: last(Cr) > 1.5
-    description: "Current creatinine elevated"
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine value"
 
 logic:
+  # v0.3: Comparisons belong in logic layer
+  cr_rising:
+    when: cr_delta_6h > 0.3
+    description: "Rising creatinine (> 0.3 mg/dL in 6h)"
+
+  cr_high:
+    when: cr_current > 1.5
+    description: "Elevated creatinine"
+
   aki_risk:
-    expr: cr_rising AND cr_high
+    when: cr_rising AND cr_high
     severity: high
     description: "Early AKI - rising and elevated creatinine"
 ```
@@ -171,7 +181,14 @@ pip install psdl-lang[full]
 ```python
 from psdl.core import parse_scenario
 
-scenario = parse_scenario("scenarios/aki_detection.yaml")
+# Use bundled scenarios (included with pip install)
+from psdl.examples import get_scenario, list_scenarios
+
+# List available scenarios
+print(list_scenarios())  # ['aki_detection', 'sepsis_screening', ...]
+
+# Load a bundled scenario
+scenario = get_scenario("aki_detection")
 
 print(f"Scenario: {scenario.name}")
 print(f"Signals: {list(scenario.signals.keys())}")
@@ -181,12 +198,12 @@ print(f"Logic rules: {list(scenario.logic.keys())}")
 ### Evaluate Against Patient Data
 
 ```python
-from psdl.core import parse_scenario
+from psdl.examples import get_scenario
 from psdl.runtimes.single import SinglePatientEvaluator, InMemoryBackend
 from datetime import datetime, timedelta
 
-# Parse scenario
-scenario = parse_scenario("scenarios/aki_detection.yaml")
+# Load bundled scenario
+scenario = get_scenario("aki_detection")
 
 # Set up data backend
 backend = InMemoryBackend()
@@ -244,16 +261,19 @@ psdl/
 ├── src/psdl/              # REFERENCE IMPLEMENTATION (Python)
 │   ├── __init__.py        # Package entry point
 │   ├── operators.py       # Temporal operators (shared)
-│   ├── core/              # Core module (parsing, IR)
+│   ├── core/              # Core module (parsing, IR) - v0.3 strict mode
 │   │   ├── parser.py      # YAML parser
 │   │   └── ir.py          # Intermediate representation
 │   ├── runtimes/          # Execution runtimes
 │   │   ├── single/        # Single patient evaluation
 │   │   └── cohort/        # Cohort SQL compilation
-│   └── adapters/          # Data adapters (OMOP, FHIR, PhysioNet)
-├── examples/              # Example scenarios (7 scenarios)
-├── notebooks/             # Jupyter demos (5 notebooks)
+│   ├── adapters/          # Data adapters (OMOP, FHIR, PhysioNet)
+│   └── examples/          # Bundled scenarios (7 scenarios)
+├── examples/              # Demo content (not in package)
+│   ├── notebooks/         # Jupyter demos (5 notebooks, Colab-ready)
+│   └── data/              # Sample data (compressed archives)
 ├── docs/                  # Documentation + Whitepapers
+├── rfcs/                  # Design proposals (5 RFCs)
 └── tests/                 # 284 tests (all passing)
 ```
 

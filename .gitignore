@@ -68,4 +68,7 @@ CLAUDE.md
 
 # Local docs (not for publishing)
 localDocs/
-/data/physionet.org
+
+# Example data (keep only compressed archives)
+/examples/data/physionet.org/
+/examples/data/sepsis_sample_500/
