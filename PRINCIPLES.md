@@ -12,7 +12,7 @@ This means:
 - PSDL defines **WHAT** clinical patterns to detect
 - PSDL does NOT define **HOW** to collect data (data collection layer)
 - PSDL does NOT define **HOW** to execute computation (runtime layer)
-- PSDL does NOT define **HOW** to run triggers (action layer)
+- PSDL does NOT define **WHAT** to do with results (workflow layer)
 
 ---
 
@@ -73,9 +73,9 @@ audit:
 | Law | PSDL Defines... | Example |
 |-----|-----------------|---------|
 | **S1** | **Signals** - bindings to clinical data sources | `Cr: creatinine (mg/dL)` |
-| **S2** | **Trends** - temporal computations over signals | `delta(Cr, 48h) > 0.3` |
-| **S3** | **Logic** - boolean combinations of trends | `cr_rising AND cr_elevated` |
-| **S4** | **Triggers** - what actions to take when logic fires | `notify_team("nephrology")` |
+| **S2** | **Trends** - temporal computations over signals (numeric only) | `delta(Cr, 48h)` |
+| **S3** | **Logic** - boolean combinations of trends with comparisons | `cr_delta > 0.3 AND cr_elevated` |
+| **S4** | **Outputs** - standardized result interface | `decision`, `features`, `evidence` |
 | **S5** | **Populations** - which patients a scenario applies to | `age >= 18 AND unit == "ICU"` |
 | **S6** | **Operator Semantics** - mathematical definitions of temporal operators | `delta`, `slope`, `ema`, `sma`, `min`, `max`, `count`, `last` |
 
@@ -90,7 +90,7 @@ audit:
 | **N3** | Orchestrate clinical workflows | EHR workflow engines |
 | **N4** | Define data storage schemas | FHIR servers, databases |
 | **N5** | Replace OMOP or FHIR | PSDL *consumes* these standards |
-| **N6** | Define how triggers execute | Runtime's responsibility |
+| **N6** | Define actions/alerts | Workflow systems consume PSDL output |
 | **N7** | Handle interactive dialogue | Clinical decision support systems |
 | **N8** | Generate queries or optimize SQL | Execution backends (SQL/Flink/DuckDB) |
 
@@ -130,7 +130,7 @@ Quick reference for common questions:
 | **Purpose** | Define the language | Demonstrate one way to run it |
 | **Scope** | Detection logic only | May add conveniences |
 | **Portability** | Must be portable | Python-specific |
-| **Triggers** | Declares WHAT action | HOW to execute is runtime's job |
+| **Output** | Declares WHAT to detect | HOW to respond is workflow's job |
 | **Location** | `spec/` | `src/psdl/` |
 | **Audience** | All implementers | Python developers |
 
@@ -160,10 +160,10 @@ The reference implementation can do many things, but **PSDL the specification re
 |   Tablet -> Pain Score ----+     |   signals:                        |
 |                            |     |     pain: pain_score              |
 |   Nurse -> Assessment -----+---> |   trends:                         |
-|                            |     |     pain_high: last(pain) > 7     |
+|                            |     |     pain_val: last(pain)          |
 |   ML Model -> Prediction --+     |   logic:                          |
-|                            |     |     needs_eval: pain_high         |
-|   Lab System -> Results ---+     |                                   |
+|                            |     |     pain_high: pain_val > 7       |
+|   Lab System -> Results ---+     |     needs_eval: pain_high         |
 |                                  |                                   |
 |   [HOW data gets there]          |   [WHAT to detect]                |
 +----------------------------------+-----------------------------------+

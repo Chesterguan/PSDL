@@ -12,7 +12,7 @@ PSDL development follows a phased approach, building from a solid semantic found
 Phase 1          Phase 2           Phase 3          Phase 4
 Semantic    →    Enhanced     →    Community   →    Adoption
 Foundation       Runtime           Growth           & Scale
-[Complete]       [Current]         [Planned]        [Future]
+[Complete]       [Complete]        [Planned]        [Future]
 ```
 
 ---
@@ -35,7 +35,7 @@ Foundation       Runtime           Growth           & Scale
 - [x] FHIR R4 data adapter (REST)
 
 ### Validation
-- [x] 234 unit and integration tests (all passing)
+- [x] 284 unit and integration tests (all passing)
 - [x] SQL equivalence proof (100% match)
 - [x] Clinical validation against KDIGO guidelines
 - [x] Real data validation (Synthea synthetic, MIMIC-IV real)
@@ -48,7 +48,7 @@ Foundation       Runtime           Growth           & Scale
 
 ---
 
-## Phase 2: Enhanced Runtime 🚧 In Progress
+## Phase 2: Enhanced Runtime ✅ Complete
 
 **Goal**: Enable real-time execution and production-ready features.
 
@@ -69,15 +69,9 @@ Foundation       Runtime           Growth           & Scale
 - [ ] State management for temporal operators
 
 ### Query Generation
-- [ ] SQL query generation from PSDL scenarios
+- [x] SQL query generation from PSDL scenarios (CohortCompiler)
 - [ ] Query optimization for large datasets
 - [ ] Explain/debug mode for generated queries
-
-### Triggers & Actions (v0.2)
-- [ ] Event-condition-action rule syntax
-- [ ] Action types (notify, log, order_suggestion)
-- [ ] Trigger chaining and dependencies
-- [ ] Cooldown and rate limiting
 
 ### Performance
 - [ ] Benchmarking suite
@@ -85,8 +79,8 @@ Foundation       Runtime           Growth           & Scale
 - [ ] Parallel evaluation support
 
 ### Packaging
-- [ ] Python package (`pip install psdl`)
-- [ ] CLI tool for scenario validation
+- [x] Python package (`pip install psdl-lang`)
+- [x] CLI tool for scenario validation
 - [ ] Docker images for quick start
 
 ---
@@ -177,7 +171,7 @@ The whitepaper evolves with the specification. Major updates are versioned to ma
 | Version | Target | Content |
 |---------|--------|---------|
 | **0.2.0** | Phase 2 | ✅ Clinical Accountability, Dataset Spec, State Machine |
-| **0.3.0** | Phase 2 | 🔴 RFC-0005: Signal/Trend/Logic/Output separation (BREAKING CHANGE) |
+| **0.3.0** | Phase 2 | ✅ RFC-0005: Signal/Trend/Logic/Output separation |
 | **1.0.0** | Phase 4 | Production-ready specification |
 
 ### Translation Sync Policy
@@ -221,8 +215,8 @@ Major features are proposed through RFCs:
 | Phase | Target |
 |-------|--------|
 | Phase 1 | ✅ Complete (Dec 2025) |
-| Phase 2 | Q1-Q2 2026 |
-| Phase 3 | Q3-Q4 2026 |
+| Phase 2 | ✅ Complete (Dec 2025) |
+| Phase 3 | 2026 |
 | Phase 4 | 2027+ |
 
 ---

@@ -9,56 +9,112 @@ This guide will help you get started with PSDL (Patient Scenario Definition Lang
 - Python 3.8 or higher
 - pip package manager
 
+### Install from PyPI (Recommended)
+
+```bash
+# Basic installation
+pip install psdl-lang
+
+# With OMOP adapter support
+pip install psdl-lang[omop]
+
+# With FHIR adapter support
+pip install psdl-lang[fhir]
+
+# Full installation (all adapters)
+pip install psdl-lang[full]
+```
+
 ### Install from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/Chesterguan/PSDL.git
-cd psdl
+cd PSDL
 
 # Set up virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in development mode
+pip install -e ".[dev]"
 ```
 
-## Your First Scenario
+## Quick Start: Use Bundled Scenarios
+
+PSDL comes with bundled clinical scenarios you can use immediately:
+
+```python
+from psdl.examples import get_scenario, list_scenarios
+
+# List available scenarios
+print(list_scenarios())  # ['aki_detection', 'sepsis_screening', ...]
+
+# Load a bundled scenario
+scenario = get_scenario("aki_detection")
+
+print(f"Scenario: {scenario.name}")
+print(f"Signals: {list(scenario.signals.keys())}")
+print(f"Logic rules: {list(scenario.logic.keys())}")
+```
+
+## Your First Scenario (v0.3 Syntax)
 
 Create a file called `my_scenario.yaml`:
 
 ```yaml
 scenario: My_First_Scenario
-version: "0.1.0"
+version: "0.3.0"
 description: "Detect elevated creatinine"
+
+audit:
+  intent: "Early detection of kidney dysfunction"
+  rationale: "Elevated creatinine indicates potential renal impairment"
+  provenance: "Clinical best practices"
 
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine        # v0.3: 'ref' instead of 'source'
     concept_id: 3016723
     unit: mg/dL
 
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
-    description: "Creatinine above normal"
+  # v0.3: Trends produce numeric values only
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine value"
 
 logic:
-  renal_concern:
-    expr: cr_high
+  # v0.3: Comparisons belong in logic layer with 'when'
+  cr_elevated:
+    when: cr_current > 1.5
     severity: medium
-    description: "Potential kidney issue"
+    description: "Creatinine above normal"
 ```
 
 ## Parse and Validate
 
 ```python
-from psdl import PSDLParser
+from psdl.core import parse_scenario
 
-# Parse the scenario
-parser = PSDLParser()
-scenario = parser.parse_file("my_scenario.yaml")
+# Parse from file
+scenario = parse_scenario("my_scenario.yaml")
+
+# Or parse from string
+yaml_content = """
+scenario: Quick_Test
+version: "0.3.0"
+signals:
+  Cr:
+    ref: creatinine
+trends:
+  cr_val:
+    expr: last(Cr)
+logic:
+  elevated:
+    when: cr_val > 1.5
+"""
+scenario = parse_scenario(yaml_content)
 
 # Check what was parsed
 print(f"Scenario: {scenario.name}")
@@ -67,41 +123,33 @@ print(f"Trends: {list(scenario.trends.keys())}")
 print(f"Logic: {list(scenario.logic.keys())}")
 ```
 
-## Evaluate Against Data
+## Evaluate Against Patient Data
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.execution.batch import InMemoryBackend
-from psdl.operators import DataPoint
+from psdl.examples import get_scenario
+from psdl.runtimes.single import SinglePatientEvaluator, InMemoryBackend
 from datetime import datetime, timedelta
 
-# Parse scenario
-parser = PSDLParser()
-scenario = parser.parse_file("my_scenario.yaml")
+# Load bundled scenario
+scenario = get_scenario("aki_detection")
 
 # Set up in-memory data backend
 backend = InMemoryBackend()
 now = datetime.now()
 
-# Add patient data
-backend.add_data(
-    patient_id=123,
-    signal_name="Cr",
-    data=[
-        DataPoint(now - timedelta(hours=6), 1.0),
-        DataPoint(now - timedelta(hours=3), 1.3),
-        DataPoint(now, 1.8),  # Elevated!
-    ]
-)
+# Add patient data (using convenience method)
+backend.add_observation(123, "Cr", 1.0, now - timedelta(hours=6))
+backend.add_observation(123, "Cr", 1.3, now - timedelta(hours=3))
+backend.add_observation(123, "Cr", 1.8, now)  # Elevated!
 
 # Evaluate
-evaluator = PSDLEvaluator(scenario, backend)
-result = evaluator.evaluate_patient(patient_id=123, reference_time=now)
+evaluator = SinglePatientEvaluator(scenario, backend)
+result = evaluator.evaluate(patient_id=123, reference_time=now)
 
 # Check results
 if result.is_triggered:
     print(f"Alert! Triggered rules: {result.triggered_logic}")
-    print(f"Creatinine value: {result.trend_values['cr_high']}")
+    print(f"Trend values: {result.trend_values}")
 else:
     print("No alerts")
 ```
@@ -115,8 +163,8 @@ PSDL provides operators for time-series analysis:
 | `last` | `last(Cr)` | Most recent value |
 | `delta` | `delta(Cr, 6h)` | Change over window |
 | `slope` | `slope(Lact, 3h)` | Trend direction |
-| `ema` | `ema(MAP, 30m)` | Smoothed average |
-| `sma` | `sma(HR, 1h)` | Simple average |
+| `ema` | `ema(MAP, 30m)` | Exponential moving average |
+| `sma` | `sma(HR, 1h)` | Simple moving average |
 | `min` | `min(SpO2, 4h)` | Minimum in window |
 | `max` | `max(Temp, 24h)` | Maximum in window |
 | `count` | `count(Cr, 48h)` | Number of observations |
@@ -134,18 +182,31 @@ PSDL provides operators for time-series analysis:
 Combine trends using boolean logic:
 
 ```yaml
+trends:
+  cr_delta:
+    expr: delta(Cr, 48h)
+  lactate_val:
+    expr: last(Lactate)
+
 logic:
+  # Compare numeric trends
+  cr_rising:
+    when: cr_delta > 0.3
+
+  lactate_high:
+    when: lactate_val > 2.0
+
   # AND - both must be true
   both_abnormal:
-    expr: cr_high AND lactate_high
+    when: cr_rising AND lactate_high
 
   # OR - either can be true
   any_concern:
-    expr: kidney_issue OR liver_issue
+    when: cr_rising OR lactate_high
 
   # Nested logic with parentheses
   complex:
-    expr: (cr_high AND lactate_rising) OR shock_state
+    when: (cr_rising AND lactate_high) OR shock_state
 ```
 
 ## Architecture: Scenarios + Mappings
@@ -189,143 +250,64 @@ This means:
 
 ## Using with OMOP CDM
 
-### Step 1: Choose or Create a Mapping File
-
-PSDL includes pre-built mappings for common datasets:
-
-```bash
-mappings/
-├── mimic_iv.yaml         # MIMIC-IV (unmapped OMOP)
-├── synthea.yaml          # Synthea synthetic data
-└── hospital_template.yaml # Template for your institution
-```
-
-### Step 2: Connect with Mapping (Recommended)
-
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.mapping import load_mapping
-from psdl.adapters.omop import OMOPBackend, OMOPConfig
-
-# Load your institution's mapping
-mapping = load_mapping("mappings/mimic_iv.yaml")
+from psdl.core import parse_scenario
+from psdl.adapters.omop import OMOPAdapter
 
 # Configure database connection
-config = OMOPConfig(
-    connection_string="postgresql://user:pass@localhost/mimic",
+adapter = OMOPAdapter(
+    connection_string="postgresql://user:pass@localhost/omop",
     cdm_schema="public"
 )
 
-# Create backend with mapping
-backend = OMOPBackend(config, mapping=mapping)
+# Load scenario
+scenario = parse_scenario("scenarios/aki_detection.yaml")
 
-# Parse and evaluate scenario (uses logical signal names!)
-scenario = PSDLParser().parse_file("examples/aki_detection.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
-result = evaluator.evaluate_patient(patient_id=12345)
+# Query patient data
+patient_data = adapter.get_patient_data(
+    patient_id=12345,
+    signals=scenario.signals
+)
 ```
-
-### Step 3: Create Your Own Mapping
-
-Copy the template and customize for your institution:
-
-```bash
-cp mappings/hospital_template.yaml mappings/my_hospital.yaml
-```
-
-Edit `mappings/my_hospital.yaml`:
-
-```yaml
-institution: "My Hospital"
-description: "Mapping for My Hospital OMOP database"
-data_source: "OMOP CDM 5.4"
-
-# Set to true if your database has unmapped concepts (concept_id = 0)
-use_source_values: false
-
-signals:
-  creatinine:
-    concept_id: 3016723      # Your local concept ID
-    unit: "mg/dL"
-
-  potassium:
-    concept_id: 3023103
-    unit: "mEq/L"
-
-  # For unmapped databases, use source_value instead:
-  # creatinine:
-  #   source_value: "CREAT_SERUM"  # Your local lab code
-  #   unit: "mg/dL"
-```
-
-### Finding Your Local Codes
-
-Run this SQL to discover your codes:
-
-```sql
--- Find measurement concept IDs and source values
-SELECT DISTINCT
-    measurement_concept_id,
-    measurement_source_value,
-    c.concept_name,
-    COUNT(*) as count
-FROM measurement m
-LEFT JOIN concept c ON m.measurement_concept_id = c.concept_id
-WHERE LOWER(measurement_source_value) LIKE '%creatinine%'
-GROUP BY measurement_concept_id, measurement_source_value, c.concept_name
-ORDER BY count DESC;
-```
-
-### Pre-built Dataset Support
-
-**MIMIC-IV** (PhysioNet):
-```python
-from psdl.mapping import get_mimic_iv_mapping
-
-mapping = get_mimic_iv_mapping()  # Built-in mapping
-backend = OMOPBackend(config, mapping=mapping)
-```
-
-**Synthea** (Synthetic):
-```python
-from psdl.mapping import get_synthea_mapping
-
-mapping = get_synthea_mapping()  # Built-in mapping
-backend = OMOPBackend(config, mapping=mapping)
-```
-
-See [OMOP Adapter Documentation](./adapters/omop.md) for detailed setup instructions.
 
 ## Using with FHIR R4
 
 For EHR integration using FHIR:
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.adapters import FHIRBackend, FHIRConfig
+from psdl.core import parse_scenario
+from psdl.adapters.fhir import FHIRAdapter
 
 # Configure FHIR connection
-config = FHIRConfig(
+adapter = FHIRAdapter(
     base_url="https://fhir.hospital.org/r4",
-    auth_token="your-token-here"
+    auth_token="your-token-here"  # Optional
 )
 
-backend = FHIRBackend(config)
-scenario = PSDLParser().parse_file("my_scenario.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
-
-# Evaluate patient from FHIR server
-result = evaluator.evaluate_patient(patient_id="patient-uuid")
+# Load and evaluate
+scenario = parse_scenario("my_scenario.yaml")
+patient_data = adapter.get_patient_data(
+    patient_id="patient-uuid",
+    signals=scenario.signals
+)
 ```
 
-See [FHIR Adapter Documentation](./adapters/fhir.md) for detailed setup instructions.
+## Try It in Google Colab
+
+Run PSDL in your browser with zero installation:
+
+| Notebook | Data | Description |
+|----------|------|-------------|
+| [Synthea Demo](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb) | Synthetic | Quick demo (2 min) |
+| [MIMIC-IV Demo](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | Real ICU | 100 patients |
+| [PhysioNet Sepsis](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_PhysioNet_Demo.ipynb) | Sepsis | 40,000+ patients |
 
 ## Next Steps
 
-- Browse [example scenarios](../examples/) for clinical use cases
-- Read the [language specification](../spec/schema-v0.1.yaml)
-- Connect to [OMOP CDM](./adapters/omop.md) for research
-- Connect to [FHIR R4](./adapters/fhir.md) for EHR integration
+- Browse [example scenarios](../src/psdl/examples/scenarios/) for clinical use cases
+- Read the [language specification](../spec/schema.json)
+- Review the [Whitepaper](./WHITEPAPER.md) for full documentation
+- Check the [Roadmap](./ROADMAP.md) for project status
 - Contribute your own scenarios!
 
 ## Running Tests
@@ -337,5 +319,8 @@ pytest tests/ -v
 # Run specific test file
 pytest tests/test_parser.py -v
 pytest tests/test_evaluator.py -v
-pytest tests/test_omop_backend.py -v
 ```
+
+---
+
+*Last updated: December 12, 2025*

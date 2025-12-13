@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-12
+
+### Added
+
+#### v0.3 Architecture (RFC-0005)
+- **Signal/Trend/Logic/Output Separation**: Clean four-layer data model
+- **Trends Produce Numeric Values Only**: Comparisons now belong in Logic layer
+- **`ref` Field for Signals**: Replaces v0.2 `source` field
+- **`when` Field for Logic**: Replaces v0.2 `expr` field
+- **Output Schema**: Three categories - Decision, Features, Evidence
+- **Bundled Scenarios**: 7 clinical scenarios included with `pip install psdl-lang`
+- **Canonical Imports**: `from psdl.core import parse_scenario`, `from psdl.examples import get_scenario`
+
+#### Packaging
+- **PyPI Publication**: `pip install psdl-lang`
+- **Optional Dependencies**: `[omop]`, `[fhir]`, `[full]` extras
+
+#### Infrastructure
+- **Reorganized Examples**: `examples/notebooks/` for Colab demos, `examples/data/` for sample data
+- **RFC-0003 Architecture**: Refactored to `src/psdl/` layout with runtimes, adapters, examples modules
+
+### Changed
+- **BREAKING**: Trends no longer accept comparison operators (use Logic layer)
+- **BREAKING**: Signal `source:` renamed to `ref:`
+- **BREAKING**: Logic `expr:` renamed to `when:`
+- Removed triggers/actions from scope (workflow systems consume PSDL output)
+- Updated all documentation to v0.3 syntax
+- Spec badge: 0.2.0 → 0.3.0
+
+### Removed
+- Triggers/actions system (moved to workflow layer per BOUNDARIES.md)
+
 ## [0.2.0] - 2025-12-12
 
 ### Added
@@ -87,7 +119,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Evaluator unit tests
 
 ### Known Limitations
-- No triggers/actions system (planned for v0.2)
 - Mapping layer for concept portability (planned)
 
 ---
@@ -96,6 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.3.0 | 2025-12-12 | v0.3 Architecture, PyPI publication, RFC-0005 |
 | 0.2.0 | 2025-12-12 | Clinical Accountability, State Machine, Dataset Spec |
 | 0.1.0 | 2025-12-05 | Initial release - Semantic Foundation |
 
@@ -103,12 +135,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Upcoming
 
-### v0.3.0 (Planned)
-- Triggers and Actions system
-- Audit bundle generation (manifest.json, normalized artifacts)
-- Performance benchmarking suite
+### v1.0.0 (Planned)
+- Production-ready specification
+- Full conformance test suite
+- Hospital pilot validation
 
-### v0.4.0 (Planned)
+### Future
 - Multi-language support (TypeScript, Rust)
 - Language-agnostic conformance test suite
 - WebAssembly compilation

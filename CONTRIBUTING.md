@@ -6,11 +6,11 @@ Thank you for your interest in contributing to PSDL (Patient Scenario Definition
 
 | Type | Description | Where |
 |------|-------------|-------|
-| **Specification** | Propose language features, operators, semantics | `rfcs/` |
-| **Implementation** | Build runtimes, backends, tooling | `runtime/` |
+| **Specification** | Propose language features, operators, semantics | `rfcs/`, `spec/` |
+| **Implementation** | Build runtimes, backends, tooling | `src/psdl/` |
 | **Documentation** | Improve guides, tutorials, examples | `docs/` |
 | **Testing** | Add conformance tests, find edge cases | `tests/` |
-| **Examples** | Share clinical scenario definitions | `examples/` |
+| **Examples** | Share clinical scenarios and notebooks | `src/psdl/examples/`, `examples/notebooks/` |
 
 ## Getting Started
 
@@ -19,12 +19,12 @@ Thank you for your interest in contributing to PSDL (Patient Scenario Definition
 ```bash
 # Clone the repository
 git clone https://github.com/Chesterguan/PSDL.git
-cd psdl
+cd PSDL
 
 # Set up Python environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # Run tests to verify setup
 pytest tests/ -v

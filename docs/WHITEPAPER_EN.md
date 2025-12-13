@@ -104,9 +104,9 @@ PSDL's primary value is **traceability**. Every scenario MUST answer:
 | **S1** Define signals (data bindings) | **N1** Collect data from patients |
 | **S2** Define trends (temporal computations) | **N2** Execute ML/AI models |
 | **S3** Define logic (boolean combinations) | **N3** Orchestrate clinical workflows |
-| **S4** Define triggers (what actions) | **N4** Define data storage |
+| **S4** Define outputs (standardized interface) | **N4** Define data storage |
 | **S5** Define populations (patient criteria) | **N5** Replace OMOP or FHIR |
-| **S6** Define operator semantics | **N6** Define how triggers execute |
+| **S6** Define operator semantics | **N6** Define actions or alerts |
 | **S7** Define audit metadata (traceability) | **N7** Generate queries or optimize SQL |
 
 ---
@@ -224,16 +224,16 @@ PSDL introduces a **semantic layer** for clinical AI — like SQL for databases,
 ### Core Concepts
 
 ```
-Scenario = Population + Signals + Trends + Logic + Triggers
+Scenario = Population + Signals + Trends + Logic + Output
 ```
 
 | Component | Description | Example |
 |-----------|-------------|---------|
 | **Population** | Which patients the scenario applies to | `age >= 18 AND unit == "ICU"` |
 | **Signals** | Time-series data bindings | `Cr: creatinine (mg/dL)` |
-| **Trends** | Temporal computations | `delta(Cr, 6h) > 0.3` |
-| **Logic** | Boolean combinations | `cr_rising AND cr_high` |
-| **Triggers** | Actions when logic fires | `notify_team("ICU")` |
+| **Trends** | Temporal computations (numeric) | `delta(Cr, 6h)` |
+| **Logic** | Boolean combinations with comparisons | `cr_delta > 0.3 AND cr_high` |
+| **Output** | Standardized result interface | `decision`, `features`, `evidence` |
 
 <p align="center">
   <img src="./assets/psdl-core-constructs.jpeg" alt="PSDL Core Constructs" width="900"/>
@@ -245,7 +245,7 @@ Scenario = Population + Signals + Trends + Logic + Triggers
 
 ```yaml
 scenario: AKI_Early_Detection
-version: "0.2.0"
+version: "0.3.0"
 description: "Detect early acute kidney injury based on creatinine trends"
 
 # Required: Clinical accountability
@@ -261,34 +261,37 @@ population:
 
 signals:
   Cr:
-    source: creatinine
-    concept_id: 3016723    # OMOP standard concept
+    ref: creatinine          # v0.3: 'ref' instead of 'source'
+    concept_id: 3016723      # OMOP standard concept
     unit: mg/dL
 
 trends:
+  # v0.3: Trends produce numeric values only
+  cr_delta_6h:
+    expr: delta(Cr, 6h)
+    description: "Creatinine change over 6 hours"
+
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine value"
+
+logic:
+  # v0.3: Comparisons belong in logic layer with 'when'
   cr_rising:
-    expr: delta(Cr, 6h) > 0.3
+    when: cr_delta_6h > 0.3
     description: "Creatinine increased >0.3 mg/dL in 6 hours"
 
   cr_elevated:
-    expr: last(Cr) > 1.5
+    when: cr_current > 1.5
     description: "Current creatinine above normal"
 
-logic:
   aki_stage1:
-    expr: cr_rising AND cr_elevated
+    when: cr_rising AND cr_elevated
     severity: high
     description: "Early AKI - KDIGO Stage 1 criteria"
-
-triggers:
-  - when: aki_stage1
-    actions:
-      - type: notify_team
-        target: nephrology_consult
-        priority: high
 ```
 
-This single YAML file replaces hundreds of lines of scattered Python, SQL, and configuration code — and it's portable, auditable, version-controlled, and **executes in real-time** as new clinical events arrive.
+This single YAML file replaces hundreds of lines of scattered Python, SQL, and configuration code — and it's portable, auditable, version-controlled, and **executes in real-time** as new clinical events arrive. Workflow systems consume PSDL's output to decide what actions to take (alerts, orders, etc.).
 
 ---
 
@@ -392,7 +395,7 @@ PSDL fills a specific gap in the healthcare technology stack. Understanding wher
 
 - Streaming-native temporal operators (`delta`, `slope`, `ema`)
 - Vendor-neutral scenario definitions
-- Standard way to connect ML models to clinical triggers
+- Standard way to connect ML models to clinical detection systems
 
 ### What PSDL Is NOT
 
@@ -402,7 +405,7 @@ PSDL fills a specific gap in the healthcare technology stack. Understanding wher
 | Compete with ATLAS for research | Use ATLAS, deploy with PSDL |
 | Replace CQL for quality measures | CQL for reporting, PSDL for real-time |
 | Train ML models | PSDL deploys trained models |
-| Define treatment pathways | Trigger pathway systems from PSDL |
+| Define treatment pathways | Workflow systems consume PSDL output |
 
 ---
 
@@ -440,9 +443,9 @@ PSDL as a language specifies:
 | Component | Purpose | Example |
 |-----------|---------|---------|
 | **Signals** | What data to bind | `Cr: creatinine (mg/dL)` |
-| **Trends** | What temporal patterns | `delta(Cr, 6h) > 0.3` |
-| **Logic** | What conditions to detect | `cr_rising AND cr_elevated` |
-| **Triggers** | What actions when detected | `notify_team("nephrology")` |
+| **Trends** | What temporal computations (numeric) | `delta(Cr, 6h)` |
+| **Logic** | What conditions to detect | `cr_delta > 0.3 AND cr_elevated` |
+| **Output** | What result interface | `decision`, `features`, `evidence` |
 
 ### What PSDL Does NOT Define
 
@@ -501,7 +504,7 @@ This distinction matters:
 | **Purpose** | Define the language | Demonstrate one way to run it |
 | **Scope** | Detection logic only | May include conveniences |
 | **Portability** | Must be portable | Python-specific |
-| **Triggers** | Declares WHAT action | HOW to execute is runtime's job |
+| **Output** | Declares WHAT to detect | HOW to respond is workflow's job |
 
 The reference implementation can do many things (API calls, complex integrations), but **PSDL the specification remains elegant and focused** on expressing detection logic.
 
@@ -525,9 +528,9 @@ This clean separation enables:
 - **Yes** — model outputs are data that PSDL can consume
 - **No** — PSDL doesn't define how to run the models
 
-**Q: Can PSDL trigger complex workflows?**
-- **Yes** — PSDL triggers declare what should happen
-- **No** — How workflows execute is the runtime's responsibility
+**Q: Can PSDL integrate with workflow systems?**
+- **Yes** — PSDL outputs detection results that workflow systems consume
+- **No** — PSDL doesn't define actions; workflow systems handle that
 
 ### Historical Context
 
@@ -612,10 +615,10 @@ PSDL follows industry-standard patterns established by GraphQL, CQL, and ONNX: a
 │  │                    YAML Schema                            │  │
 │  │                                                           │  │
 │  │  Signals      - Time-series data bindings                │  │
-│  │  Trends       - Temporal computations                    │  │
-│  │  Logic        - Boolean combinations                     │  │
+│  │  Trends       - Temporal computations (numeric only)     │  │
+│  │  Logic        - Boolean combinations with comparisons    │  │
 │  │  Population   - Patient criteria                         │  │
-│  │  Triggers     - Event-condition-action (v0.2)            │  │
+│  │  Output       - Standardized result interface (v0.3)     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -750,24 +753,24 @@ flowchart LR
 - YAML schema definition
 - Python reference implementation
 - OMOP CDM and FHIR R4 backends
-- Clinical validation test suite (204 tests)
+- Clinical validation test suite (284 tests)
 
-### Phase 2: Real-time Execution [Current]
+### Phase 2: Enhanced Runtime ✓
+- **v0.3 Architecture** — RFC-0005 (Signal/Trend/Logic/Output separation)
 - **Streaming backend (Apache Flink)** — RFC-0002
-- Trigger/Action system (v0.2)
-- Event-time watermarks and late data handling
-- Performance benchmarking
+- SQL query generation (CohortCompiler)
+- PyPI publication (`pip install psdl-lang`)
 
-### Phase 3: AI Model Integration
-- ML outputs as signal bindings (via Dataset Spec)
-- Model registry integration patterns
-- Sample configurations for common ML frameworks
-- Production deployment guides
+### Phase 3: Community & Adoption [Current]
+- Technical blog series and conference presentations
+- Community infrastructure (forums, contributor programs)
+- VS Code extension and developer tooling
+- Hospital pilot programs
 
-### Phase 4: Adoption
-- Hospital streaming pilots
+### Phase 4: Enterprise & Standards
+- Production-ready specification (v1.0)
 - Standards body engagement (OHDSI, HL7)
-- Vendor partnerships
+- Vendor partnerships and integrations
 
 ---
 
@@ -787,7 +790,8 @@ PSDL is an open, community-driven project. We welcome contributions from:
 |----------|------|
 | GitHub Repository | [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL) |
 | Documentation | [Getting Started Guide](./getting-started.md) |
-| Examples | [Example Scenarios](../examples/) |
+| Examples | [Bundled Scenarios](../src/psdl/examples/scenarios/) |
+| Notebooks | [Jupyter Demos](../examples/notebooks/) |
 | RFCs | [Proposals](../rfcs/) |
 
 ---
@@ -868,116 +872,119 @@ population:
 signals:
   # Renal markers
   Cr:
-    source: creatinine
+    ref: creatinine
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   BUN:
-    source: blood_urea_nitrogen
+    ref: blood_urea_nitrogen
     concept_id: 3013682
     unit: mg/dL
 
   # Metabolic markers
   Lactate:
-    source: lactate
+    ref: lactate
     concept_id: 3047181
     unit: mmol/L
 
   # Hemodynamic markers
   MAP:
-    source: mean_arterial_pressure
+    ref: mean_arterial_pressure
     concept_id: 3027598
     unit: mmHg
 
   HR:
-    source: heart_rate
+    ref: heart_rate
     concept_id: 3027018
     unit: bpm
 
 trends:
+  # v0.3: Trends produce numeric values only
   # Renal trends
+  cr_delta_6h:
+    expr: delta(Cr, 6h)
+    description: "Creatinine change over 6 hours"
+
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine value"
+
+  # Metabolic trends
+  lactate_slope:
+    expr: slope(Lactate, 3h)
+    description: "Lactate trajectory over 3 hours"
+
+  lactate_current:
+    expr: last(Lactate)
+    description: "Current lactate value"
+
+  # Hemodynamic trends
+  map_avg:
+    expr: ema(MAP, 30m)
+    description: "30-minute MAP average"
+
+  hr_avg:
+    expr: sma(HR, 1h)
+    description: "1-hour heart rate average"
+
+logic:
+  # v0.3: Comparisons belong in logic layer with 'when'
+  # Renal deterioration
   cr_rising:
-    expr: delta(Cr, 6h) > 0.3
+    when: cr_delta_6h > 0.3
     description: "Creatinine increase >0.3 mg/dL over 6 hours"
 
   cr_elevated:
-    expr: last(Cr) > 1.5
+    when: cr_current > 1.5
     description: "Current creatinine above normal range"
 
-  # Metabolic trends
-  lactate_rising:
-    expr: slope(Lactate, 3h) > 0
-    description: "Positive lactate trajectory"
-
-  lactate_elevated:
-    expr: last(Lactate) > 2.0
-    description: "Lactate above normal (>2 mmol/L)"
-
-  # Hemodynamic trends
-  hypotension:
-    expr: ema(MAP, 30m) < 65
-    description: "Sustained MAP below 65 mmHg"
-
-  tachycardia:
-    expr: sma(HR, 1h) > 100
-    description: "Sustained heart rate >100 bpm"
-
-logic:
-  # Renal deterioration
   aki_risk:
-    expr: cr_rising AND cr_elevated
+    when: cr_rising AND cr_elevated
     severity: high
     description: "Acute kidney injury risk - KDIGO Stage 1"
 
   # Metabolic deterioration
+  lactate_rising:
+    when: lactate_slope > 0
+    description: "Positive lactate trajectory"
+
+  lactate_elevated:
+    when: lactate_current > 2.0
+    description: "Lactate above normal (>2 mmol/L)"
+
   metabolic_stress:
-    expr: lactate_rising AND lactate_elevated
+    when: lactate_rising AND lactate_elevated
     severity: high
     description: "Metabolic stress with rising lactate"
 
   # Hemodynamic instability
+  hypotension:
+    when: map_avg < 65
+    description: "Sustained MAP below 65 mmHg"
+
+  tachycardia:
+    when: hr_avg > 100
+    description: "Sustained heart rate >100 bpm"
+
   hemodynamic_instability:
-    expr: hypotension OR (tachycardia AND NOT hypotension)
+    when: hypotension OR (tachycardia AND NOT hypotension)
     severity: medium
     description: "Hemodynamic instability"
 
   # Combined deterioration
   deterioration:
-    expr: aki_risk OR metabolic_stress
+    when: aki_risk OR metabolic_stress
     severity: high
     description: "Clinical deterioration detected"
 
   # Critical state
   shock_risk:
-    expr: deterioration AND hemodynamic_instability
+    when: deterioration AND hemodynamic_instability
     severity: critical
     description: "High risk of shock - immediate attention required"
 
-triggers:
-  - when: deterioration
-    actions:
-      - type: notify_team
-        target: primary_team
-        priority: high
-        message: "Patient showing signs of clinical deterioration"
-      - type: log_event
-        category: clinical_alert
-
-  - when: shock_risk
-    actions:
-      - type: page_physician
-        target: attending
-        escalation: immediate
-      - type: order_suggestion
-        protocol: sepsis_bundle
-        reason: "Shock risk detected - consider sepsis workup"
-
-audit:
-  enabled: true
-  retention: 7y
-  include_patient_context: false
-  log_all_evaluations: true
+# Note: Actions/alerts are handled by workflow systems that consume PSDL output
 ```
 
 ---
@@ -989,9 +996,9 @@ audit:
 | **Specification** | The PSDL language definition (YAML schema + operator semantics) |
 | **Reference Implementation** | A conformant implementation that demonstrates the spec (Python) |
 | **Signal** | A binding between a logical name and a clinical data source |
-| **Trend** | A temporal computation over a signal (e.g., delta, slope) |
-| **Logic** | A boolean expression combining trends |
-| **Trigger** | An event-condition-action rule |
+| **Trend** | A temporal computation over a signal producing a numeric value (e.g., delta, slope) |
+| **Logic** | A boolean expression combining trends with comparisons |
+| **Output** | Standardized result interface (decision, features, evidence) |
 | **Scenario** | A complete PSDL definition combining all components |
 | **Parser** | Component that parses PSDL YAML into internal representation |
 | **Evaluator** | Component that executes parsed scenarios |
@@ -1001,4 +1008,4 @@ audit:
 
 ---
 
-*PSDL Whitepaper v0.1 | December 2025 | Apache 2.0 License*
+*PSDL Whitepaper v0.3 | December 2025 | Apache 2.0 License*

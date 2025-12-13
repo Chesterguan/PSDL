@@ -332,8 +332,8 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 | Phase | Status | Focus |
 |-------|--------|-------|
-| **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters, 284 tests |
-| **Phase 2: Enhanced Runtime** | 🚧 Current | ✅ Streaming, ✅ SQL generation, ✅ PhysioNet adapter, triggers, packaging |
+| **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters |
+| **Phase 2: Enhanced Runtime** | ✅ Complete | Streaming, SQL generation, PhysioNet adapter, v0.3 architecture |
 | **Phase 3: Community** | 📋 Planned | Blog series, conferences, tooling ecosystem |
 | **Phase 4: Adoption** | 🔮 Future | Hospital pilots, standards engagement |
 
