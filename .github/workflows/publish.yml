@@ -1,19 +1,12 @@
 name: Publish to PyPI
 
-# Industry standard: publish on GitHub release
-# This ensures version tags and releases are in sync with PyPI
+# Publish on GitHub release
 on:
   release:
     types: [published]
 
-  # Allow manual trigger for testing
+  # Allow manual trigger
   workflow_dispatch:
-    inputs:
-      test_pypi:
-        description: 'Publish to TestPyPI instead of PyPI'
-        required: true
-        default: true
-        type: boolean
 
 jobs:
   # First, run all tests to ensure quality
@@ -71,7 +64,7 @@ jobs:
   build:
     name: Build Package
     runs-on: ubuntu-latest
-    needs: [test, lint]  # Only build if tests and lint pass
+    needs: [test, lint]
     steps:
       - uses: actions/checkout@v4
 
@@ -97,41 +90,15 @@ jobs:
           name: dist
           path: dist/
 
-  # Publish to TestPyPI for manual workflow runs
-  publish-testpypi:
-    name: Publish to TestPyPI
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_pypi == 'true'
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/psdl-lang
-    permissions:
-      id-token: write  # Required for trusted publishing
-
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  # Publish to PyPI on release or manual trigger
   publish-pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_pypi == 'false')
     environment:
       name: pypi
       url: https://pypi.org/p/psdl-lang
     permissions:
-      id-token: write  # Required for trusted publishing
+      id-token: write
 
     steps:
       - name: Download build artifacts
