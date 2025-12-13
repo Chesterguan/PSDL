@@ -16,6 +16,46 @@ This means:
 
 ---
 
+## First-Citizen: Clinical Accountability
+
+> **Clinical AI doesn't fail because models are weak. It fails because decisions cannot be traced.**
+
+PSDL's primary value is **traceability**. Every scenario MUST answer three questions:
+
+| Question | Audit Field | What It Captures |
+|----------|-------------|------------------|
+| **WHO** wrote this logic? | `audit.intent` | The clinical detection goal |
+| **WHY** does this matter? | `audit.rationale` | The clinical justification |
+| **WHAT** evidence supports it? | `audit.provenance` | The source (guidelines, literature, expert consensus) |
+
+**This is not optional.** The `audit` block is REQUIRED in every PSDL scenario.
+
+```yaml
+# Every PSDL scenario must include:
+audit:
+  intent: "Detect early acute kidney injury"
+  rationale: "Early AKI detection enables timely intervention"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
+```
+
+### Why Accountability is First-Citizen
+
+| Property | Important? | First-Citizen? | Reason |
+|----------|------------|----------------|--------|
+| **Accountable** | Yes | **YES** | Unique to PSDL, mandatory, solves regulatory pain |
+| Portable | Yes | No | Many tools claim this |
+| Reproducible | Yes | No | Expected, not differentiating |
+| Declarative | Yes | No | Common pattern |
+
+### What This Enables
+
+- **Regulatory Compliance**: FDA and EU MDR reviewers can trace every clinical decision
+- **Institutional Trust**: Hospitals can audit deployed scenarios without reading code
+- **Research Validity**: Published scenarios are self-documenting
+- **Version Control**: Changes to clinical logic are auditable diffs
+
+---
+
 ## First Principles
 
 | # | Principle | Statement |

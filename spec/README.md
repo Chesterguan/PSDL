@@ -1,15 +1,37 @@
-# PSDL Specification v0.2
+# PSDL Specification v0.3
 
 > **PSDL is not a query language.** It defines clinical detection intent, not execution.
 > PSDL outputs IR (Intermediate Representation). Backends (SQL/Flink) handle execution.
 
 This directory contains the **source of truth** for the Patient Scenario Definition Language (PSDL).
 
+## Breaking Changes in v0.3 (RFC-0005)
+
+**Trends produce NUMERIC values only.** Comparisons belong in Logic layer.
+
+```yaml
+# v0.2 (deprecated)
+trends:
+  cr_rise: delta(Cr, 48h) >= 0.3    # Mixed value + comparison
+
+# v0.3 (correct)
+trends:
+  cr_delta:
+    type: float
+    expr: delta(Cr, 48h)             # Value only
+
+logic:
+  cr_rise:
+    when: cr_delta >= 0.3            # Comparison here
+```
+
+See [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) for full details.
+
 ## Directory Structure
 
 ```
 spec/
-├── VERSION                     # Current specification version (0.2.0)
+├── VERSION                     # Current specification version (0.3.0)
 ├── schema.json                 # JSON Schema for scenario documents
 ├── operators.yaml              # Operator semantics + implementation templates
 ├── grammar/
@@ -104,6 +126,7 @@ make codegen
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.3.0 | 2025-12 | **BREAKING**: Trend/Logic separation, Output schema (RFC-0005) |
 | 0.2.0 | 2025-12 | Added operators.yaml, percentile operator, std/stddev aliases, audit block, state machine |
 | 0.1.0 | 2025-12 | Initial specification |
 
@@ -111,4 +134,6 @@ make codegen
 
 - `docs/GLOSSARY.md` - Terminology definitions
 - `docs/glossary.json` - Machine-readable terminology
+- `docs/runtime-config-reference.md` - Runtime configuration samples
 - `rfcs/0003-architecture-refactor.md` - Architecture design document
+- `rfcs/0004-dataset-specification.md` - Dataset specification design

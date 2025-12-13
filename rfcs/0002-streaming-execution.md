@@ -2,14 +2,36 @@
 
 - **RFC Number**: 0002
 - **Author(s)**: PSDL Community
-- **Status**: Implementing
+- **Status**: ✅ Implemented
 - **GitHub Issue**: [#1](https://github.com/Chesterguan/PSDL/issues/1)
 - **Created**: 2025-12-06
-- **Updated**: 2025-12-06
+- **Updated**: 2025-12-12
 
 ## Summary
 
 This RFC proposes a streaming execution backend for PSDL using Apache Flink (PyFlink). It defines how PSDL scenarios compile to Flink streaming primitives, enabling real-time clinical event processing with millisecond latency for deterioration detection, sepsis alerts, and other time-critical clinical decision support.
+
+---
+
+## ⚠️ Implementation Note (2025-12-12)
+
+**Core streaming functionality is implemented** in `src/psdl/runtimes/streaming/`.
+
+### Clarification: Scenario vs Runtime Config
+
+This RFC originally showed `execution:`, `sources:`, and `sinks:` blocks within scenario files. After RFC-0004 review, this has been **clarified**:
+
+| Block | Belongs In | Rationale |
+|-------|-----------|-----------|
+| `signals`, `trends`, `logic`, `audit` | **Scenario** | Clinical intent (WHAT) |
+| `sources`, `sinks`, `checkpointing` | **Runtime Config** | Infrastructure (HOW) |
+| `execution.mode` | **Runtime Config** | Execution choice |
+
+**Scenarios remain pure clinical intent.** Infrastructure configuration lives in separate runtime config files. See [Runtime Configuration Reference](../docs/runtime-config-reference.md) for samples.
+
+The examples below show both scenario (pure) and runtime config (infrastructure) for clarity.
+
+---
 
 ## Motivation
 

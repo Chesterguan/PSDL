@@ -7,7 +7,7 @@
 # - Trend analysis over 6-hour windows
 
 scenario: physionet_sepsis_detection
-version: "0.2.0"
+version: "0.3.0"
 name: PhysioNet Sepsis Early Detection
 description: |
   Early sepsis detection scenario for PhysioNet Challenge 2019 data.
@@ -28,56 +28,56 @@ audit:
 signals:
   # Vital signs
   HR:
-    source: HeartRate
+    ref: HeartRate
     type: numeric
     unit: bpm
     description: Heart rate
 
   Temp:
-    source: Temperature
+    ref: Temperature
     type: numeric
     unit: celsius
     description: Body temperature
 
   Resp:
-    source: RespiratoryRate
+    ref: RespiratoryRate
     type: numeric
     unit: breaths/min
     description: Respiratory rate
 
   SBP:
-    source: SystolicBP
+    ref: SystolicBP
     type: numeric
     unit: mmHg
     description: Systolic blood pressure
 
   MAP:
-    source: MeanArterialPressure
+    ref: MeanArterialPressure
     type: numeric
     unit: mmHg
     description: Mean arterial pressure
 
   SpO2:
-    source: SpO2
+    ref: SpO2
     type: numeric
     unit: "%"
     description: Oxygen saturation
 
   # Lab values
   WBC:
-    source: WBC
+    ref: WBC
     type: numeric
     unit: "10^9/L"
     description: White blood cell count
 
   Lactate:
-    source: Lactate
+    ref: Lactate
     type: numeric
     unit: mmol/L
     description: Serum lactate
 
   Creatinine:
-    source: Creatinine
+    ref: Creatinine
     type: numeric
     unit: mg/dL
     description: Serum creatinine
@@ -137,34 +137,34 @@ trends:
 logic:
   # SIRS criteria (2+ of 4)
   sirs_temp:
-    expr: temp_abnormal OR temp_low
+    when: temp_abnormal OR temp_low
     description: Temperature criterion for SIRS
 
   sirs_wbc:
-    expr: wbc_abnormal_high OR wbc_abnormal_low
+    when: wbc_abnormal_high OR wbc_abnormal_low
     description: WBC criterion for SIRS
 
   sirs_positive:
-    expr: (hr_elevated AND resp_elevated) OR (hr_elevated AND sirs_temp) OR (hr_elevated AND sirs_wbc) OR (resp_elevated AND sirs_temp) OR (resp_elevated AND sirs_wbc) OR (sirs_temp AND sirs_wbc)
+    when: (hr_elevated AND resp_elevated) OR (hr_elevated AND sirs_temp) OR (hr_elevated AND sirs_wbc) OR (resp_elevated AND sirs_temp) OR (resp_elevated AND sirs_wbc) OR (sirs_temp AND sirs_wbc)
     severity: medium
     description: SIRS criteria met (2+ positive)
 
   # Organ dysfunction
   organ_dysfunction:
-    expr: map_low OR creatinine_rising
+    when: map_low OR creatinine_rising
     severity: high
     description: Evidence of organ dysfunction
 
   # Sepsis alert
   sepsis_suspected:
-    expr: sirs_positive AND (lactate_elevated OR organ_dysfunction)
+    when: sirs_positive AND (lactate_elevated OR organ_dysfunction)
     severity: high
     description: Suspected sepsis - SIRS + organ dysfunction or lactate elevation
     recommendation: Initiate sepsis bundle, obtain blood cultures, start empiric antibiotics
 
   # Early warning (trending)
   early_warning:
-    expr: (hr_rising OR lactate_rising) AND sirs_positive
+    when: (hr_rising OR lactate_rising) AND sirs_positive
     severity: medium
     description: Early warning - deteriorating trends with SIRS
     recommendation: Increase monitoring frequency, consider sepsis workup

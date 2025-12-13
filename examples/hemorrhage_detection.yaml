@@ -15,7 +15,7 @@
 # Reference: AABB Transfusion Guidelines, Trauma Resuscitation Protocols
 
 scenario: Hemorrhage_Detection
-version: "0.1.0"
+version: "0.3.0"
 description: "Detect acute blood loss through hemoglobin, platelet, and lactate patterns"
 
 # ── Audit Block ──────────────────────────────────
@@ -34,25 +34,25 @@ population:
 # ── Signal Bindings ──────────────────────────────
 signals:
   Hgb:
-    source: hemoglobin
+    ref: hemoglobin
     concept_id: 3000963
     unit: g/dL
     domain: measurement
 
   Plt:
-    source: platelet_count
+    ref: platelet_count
     concept_id: 3024929
     unit: "10^9/L"
     domain: measurement
 
   Lact:
-    source: lactate
+    ref: lactate
     concept_id: 3047181
     unit: mmol/L
     domain: measurement
 
   Cr:
-    source: creatinine
+    ref: creatinine
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
@@ -136,70 +136,70 @@ trends:
 logic:
   # Severity staging
   anemia_mild:
-    expr: hgb_low AND NOT hgb_very_low
+    when: hgb_low AND NOT hgb_very_low
     severity: low
     description: "Mild anemia (Hgb 8-10) - monitor"
 
   anemia_moderate:
-    expr: hgb_very_low AND NOT hgb_critical
+    when: hgb_very_low AND NOT hgb_critical
     severity: medium
     description: "Moderate anemia (Hgb 7-8) - evaluate for transfusion"
 
   anemia_severe:
-    expr: hgb_critical AND NOT hgb_life_threatening
+    when: hgb_critical AND NOT hgb_life_threatening
     severity: high
     description: "Severe anemia (Hgb < 7) - transfusion likely needed"
 
   anemia_critical:
-    expr: hgb_life_threatening
+    when: hgb_life_threatening
     severity: critical
     description: "Life-threatening anemia (Hgb < 5) - emergent transfusion"
 
   # Active bleeding detection
   bleeding_likely:
-    expr: hgb_drop_mild AND hgb_falling
+    when: hgb_drop_mild AND hgb_falling
     severity: medium
     description: "Likely bleeding - Hgb falling > 1 g/dL/day"
 
   bleeding_significant:
-    expr: hgb_drop_moderate
+    when: hgb_drop_moderate
     severity: high
     description: "Significant bleeding - Hgb drop > 2 g/dL in 24h"
 
   bleeding_rapid:
-    expr: hgb_drop_severe
+    when: hgb_drop_severe
     severity: high
     description: "Rapid bleeding - Hgb drop > 2 g/dL in 12h"
 
   bleeding_acute:
-    expr: hgb_drop_acute
+    when: hgb_drop_acute
     severity: critical
     description: "Acute hemorrhage - Hgb drop > 1.5 g/dL in 6h"
 
   # Multi-signal hemorrhage patterns
   hemorrhagic_shock_developing:
-    expr: hgb_drop_moderate AND lactate_elevated
+    when: hgb_drop_moderate AND lactate_elevated
     severity: critical
     description: "Hemorrhage with hypoperfusion - shock developing"
 
   hemorrhage_with_coagulopathy:
-    expr: hgb_drop_mild AND plt_consumption
+    when: hgb_drop_mild AND plt_consumption
     severity: high
     description: "Bleeding with platelet consumption - coagulopathy risk"
 
   massive_hemorrhage:
-    expr: hgb_drop_severe AND plt_falling AND lactate_rising
+    when: hgb_drop_severe AND plt_falling AND lactate_rising
     severity: critical
     description: "Massive hemorrhage - Hgb falling, platelets consumed, lactate rising"
 
   # Combined patterns
   bleeding_with_aki:
-    expr: bleeding_likely AND aki_developing
+    when: bleeding_likely AND aki_developing
     severity: high
     description: "Bleeding with AKI - hypovolemia affecting kidneys"
 
   # Transfusion decision support
   transfusion_indicated:
-    expr: hgb_critical OR (hgb_very_low AND bleeding_likely)
+    when: hgb_critical OR (hgb_very_low AND bleeding_likely)
     severity: high
     description: "Transfusion likely indicated - Hgb < 7 or actively bleeding"

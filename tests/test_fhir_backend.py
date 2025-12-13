@@ -139,7 +139,7 @@ class TestFHIRBackend:
 
         signal = Signal(
             name="custom_signal",
-            source="custom",
+            ref="custom",
             domain=Domain.MEASUREMENT,
         )
 
@@ -150,7 +150,7 @@ class TestFHIRBackend:
         """Test LOINC code lookup from signal source."""
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
 
@@ -161,7 +161,7 @@ class TestFHIRBackend:
         """Test LOINC code when source is already a LOINC code."""
         signal = Signal(
             name="custom",
-            source="12345-6",
+            ref="12345-6",
             domain=Domain.MEASUREMENT,
         )
 
@@ -296,7 +296,7 @@ class TestFHIRBackend:
 
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
 
@@ -328,7 +328,7 @@ class TestFHIRBackend:
 
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
 
@@ -351,7 +351,7 @@ class TestFHIRBackend:
 
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
 
@@ -462,7 +462,7 @@ class TestMappingProviderIntegration:
         # Test lookup from mapping
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
         code = backend._get_loinc_code(signal)
@@ -471,7 +471,7 @@ class TestMappingProviderIntegration:
         # Test custom signal
         signal2 = Signal(
             name="custom",
-            source="custom_signal",
+            ref="custom_signal",
             domain=Domain.MEASUREMENT,
         )
         code2 = backend._get_loinc_code(signal2)
@@ -496,7 +496,7 @@ class TestMappingProviderIntegration:
 
         signal = Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             domain=Domain.MEASUREMENT,
         )
 
@@ -524,7 +524,7 @@ class TestMappingProviderIntegration:
 
         signal = Signal(
             name="other",
-            source="other_signal",
+            ref="other_signal",
             domain=Domain.MEASUREMENT,
         )
 
@@ -567,7 +567,7 @@ class TestConditionHandling:
 
         signal = Signal(
             name="diabetes",
-            source="diabetes_condition",
+            ref="diabetes_condition",
             domain=Domain.CONDITION,
         )
 

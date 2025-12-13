@@ -4,7 +4,7 @@
 
 <h1 align="center">PSDL Whitepaper</h1>
 <h3 align="center">Patient Scenario Definition Language</h3>
-<h4 align="center">Version 0.1 | December 2025</h4>
+<h4 align="center">Version 0.2 | December 2025</h4>
 
 <p align="center">
   <em>An Open Standard for Clinical Logic in Healthcare AI</em>
@@ -12,28 +12,56 @@
 
 ---
 
+<h2 align="center">Accountable Clinical AI — Traceable by Design</h2>
+
 <p align="center">
-  <strong>What SQL became for data queries, ONNX became for ML models, and GraphQL became for APIs —<br/>
-  PSDL is becoming the <em>semantic layer</em> for clinical AI.</strong>
+  <strong>Clinical AI doesn't fail because models are weak.<br/>
+  It fails because decisions cannot be traced.</strong>
+</p>
+
+<p align="center">
+  <em>What SQL became for data queries, ONNX for ML models, and GraphQL for APIs —<br/>
+  PSDL is becoming the <strong>accountable semantic layer</strong> for clinical AI.</em>
 </p>
 
 ---
 
 ## Executive Summary
 
-Healthcare AI has a deployment problem. Despite remarkable advances in predictive modeling, the vast majority of clinical AI systems never reach the bedside. The barrier is not model accuracy — it is the absence of a standard way to express *when*, *where*, and *how* these models should operate in **real-time** clinical workflows.
+Healthcare AI has a **trust problem**. Despite remarkable advances in predictive modeling, the vast majority of clinical AI systems never reach the bedside. The barrier is not model accuracy — it is the inability to answer three fundamental questions:
 
-**PSDL (Patient Scenario Definition Language)** is an open, vendor-neutral standard that fills this critical gap. It provides a **streaming-native** declarative language for expressing clinical scenarios — the logic that detects patient conditions as they happen and triggers clinical actions in real-time.
+<table align="center">
+  <tr>
+    <td align="center"><strong>WHO</strong><br/>wrote this logic?</td>
+    <td align="center"><strong>WHY</strong><br/>does it matter?</td>
+    <td align="center"><strong>WHAT</strong><br/>evidence supports it?</td>
+  </tr>
+</table>
+
+**PSDL (Patient Scenario Definition Language)** is an open, vendor-neutral standard that makes every clinical decision **accountable by design**. It provides a declarative language for expressing clinical scenarios — with mandatory traceability that meets regulatory requirements (FDA, EU MDR).
+
+### First-Citizen: Clinical Accountability
+
+Every PSDL scenario **must** include an audit block:
+
+```yaml
+audit:
+  intent: "Detect early acute kidney injury"
+  rationale: "Early AKI detection enables timely intervention"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
+```
+
+This is not optional. This is what makes PSDL **regulatory-ready**.
 
 ### Key Value Propositions
 
 | Stakeholder | Value |
 |-------------|-------|
-| **Hospitals** | Real-time detection with portable logic across EHR systems |
-| **Researchers** | Reproducible scenarios with streaming execution guarantees |
-| **Vendors** | Common format for real-time clinical AI deployment |
-| **Regulators** | Auditable, version-controlled detection logic |
-| **Clinicians** | Transparent rules with immediate feedback |
+| **Regulators** | Every decision traceable: WHO, WHY, WHAT evidence |
+| **Hospitals** | Audit-ready logic portable across EHR systems |
+| **Researchers** | Self-documenting, reproducible scenarios |
+| **Vendors** | Common format for compliant clinical AI deployment |
+| **Clinicians** | Transparent rules they can review and trust |
 
 ---
 
@@ -44,6 +72,20 @@ Healthcare AI has a deployment problem. Despite remarkable advances in predictiv
 ### The Core Law
 
 **PSDL defines WHAT to detect, not HOW to collect or execute.**
+
+### First-Citizen: Clinical Accountability
+
+> **Clinical AI doesn't fail because models are weak. It fails because decisions cannot be traced.**
+
+PSDL's primary value is **traceability**. Every scenario MUST answer:
+
+| Question | Audit Field | What It Captures |
+|----------|-------------|------------------|
+| **WHO** wrote this logic? | `audit.intent` | The clinical detection goal |
+| **WHY** does this matter? | `audit.rationale` | The clinical justification |
+| **WHAT** evidence supports it? | `audit.provenance` | The source (guidelines, literature) |
+
+**This is mandatory.** The `audit` block is REQUIRED in every PSDL scenario.
 
 ### First Principles
 
@@ -65,6 +107,7 @@ Healthcare AI has a deployment problem. Despite remarkable advances in predictiv
 | **S4** Define triggers (what actions) | **N4** Define data storage |
 | **S5** Define populations (patient criteria) | **N5** Replace OMOP or FHIR |
 | **S6** Define operator semantics | **N6** Define how triggers execute |
+| **S7** Define audit metadata (traceability) | **N7** Generate queries or optimize SQL |
 
 ---
 
@@ -112,26 +155,6 @@ These are **scenario semantics** — and healthcare has no standard way to expre
 
 ### Current State: Fragmented Clinical Logic
 
-```mermaid
-flowchart TB
-    subgraph Hospital["Hospital Systems"]
-        direction TB
-        EHR["EHR Rules<br/>(Proprietary)"]
-        SQL["SQL Queries<br/>(Schema-locked)"]
-        PY["Python Scripts<br/>(Non-portable)"]
-        NB["Jupyter Notebooks<br/>(Ad-hoc)"]
-        CFG["Config Files<br/>(Custom format)"]
-    end
-
-    EHR -.->|"❌ No sharing"| SQL
-    SQL -.->|"❌ No standard"| PY
-    PY -.->|"❌ No audit"| NB
-    NB -.->|"❌ No streaming"| CFG
-
-    style Hospital fill:#fff3cd,stroke:#856404
-```
-*Clinical logic today is scattered across incompatible systems*
-
 Today, clinical decision logic is scattered across:
 
 | Implementation | Problems |
@@ -143,6 +166,12 @@ Today, clinical decision logic is scattered across:
 | Configuration files | Ad-hoc formats, no streaming support |
 
 **The result:** Every hospital reinvents the same clinical logic from scratch — usually as batch jobs that run hours behind patient events. Real-time detection requires custom engineering. Research cannot be reproduced. Regulatory audits require manual documentation.
+
+<p align="center">
+  <img src="./assets/psdl-problem-solution.jpeg" alt="The PSDL Story: Problem and Solution" width="900"/>
+  <br/>
+  <em>The PSDL Story: From implicit decisions to shared, auditable artifacts</em>
+</p>
 
 ---
 
@@ -206,12 +235,24 @@ Scenario = Population + Signals + Trends + Logic + Triggers
 | **Logic** | Boolean combinations | `cr_rising AND cr_high` |
 | **Triggers** | Actions when logic fires | `notify_team("ICU")` |
 
+<p align="center">
+  <img src="./assets/psdl-core-constructs.jpeg" alt="PSDL Core Constructs" width="900"/>
+  <br/>
+  <em>PSDL Core Constructs: An Audit-First Scenario Specification Language</em>
+</p>
+
 ### Example: Early AKI Detection
 
 ```yaml
 scenario: AKI_Early_Detection
-version: "0.1.0"
+version: "0.2.0"
 description: "Detect early acute kidney injury based on creatinine trends"
+
+# Required: Clinical accountability
+audit:
+  intent: "Detect early acute kidney injury using KDIGO Stage 1 criteria"
+  rationale: "Early AKI detection enables timely intervention to prevent progression"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
 
 population:
   include:
@@ -534,12 +575,12 @@ The streaming backend (RFC-0002) enables:
 - Stateful temporal operators
 - Integration with Kafka/Flink infrastructure
 
-### v1.x Goal: AI Model Deployment Bridge
+### v1.x Goal: AI Model Integration
 
-RFC-0001 enables:
-- Declare model dependencies in scenarios
-- Standard `predict()`, `forecast()` operators
-- Timeout and fallback handling for real-time inference
+ML model outputs are treated as regular signals via Dataset Spec bindings:
+- Model outputs bound to signals (e.g., `sepsis_risk_score`)
+- Model registry integration via Dataset Spec configuration
+- Consistent with PSDL's "WHAT not HOW" philosophy
 
 ### The Pitch
 
@@ -661,31 +702,6 @@ The same PSDL scenario can execute in different modes and connect to different d
 
 ## Comparison: Before and After PSDL
 
-```mermaid
-flowchart LR
-    subgraph Before["Before PSDL"]
-        direction TB
-        B1["300+ lines Python/SQL"]
-        B2["Batch jobs (hours delay)"]
-        B3["Manual documentation"]
-        B4["Vendor-locked"]
-    end
-
-    subgraph After["After PSDL"]
-        direction TB
-        A1["~50 lines YAML"]
-        A2["Real-time streaming"]
-        A3["Built-in audit trail"]
-        A4["Portable anywhere"]
-    end
-
-    Before -->|"PSDL"| After
-
-    style Before fill:#f8d7da,stroke:#721c24
-    style After fill:#d4edda,stroke:#155724
-```
-*PSDL dramatically simplifies clinical logic management*
-
 | Aspect | Before PSDL | After PSDL |
 |--------|-------------|------------|
 | **Execution** | Batch jobs (hours delay) | Real-time streaming |
@@ -743,10 +759,10 @@ flowchart LR
 - Performance benchmarking
 
 ### Phase 3: AI Model Integration
-- **Model deployment bridge** — RFC-0001
-- `predict()`, `forecast()` operators
-- Timeout and fallback handling
-- ONNX model integration
+- ML outputs as signal bindings (via Dataset Spec)
+- Model registry integration patterns
+- Sample configurations for common ML frameworks
+- Production deployment guides
 
 ### Phase 4: Adoption
 - Hospital streaming pilots
@@ -817,14 +833,20 @@ The modern AI stack has semantic layers for data (SQL), APIs (GraphQL), ML model
 
 ```yaml
 # ICU Deterioration Detection Scenario
-# PSDL v0.1.0
+# PSDL v0.2.0
 
 scenario: ICU_Deterioration_Detection
-version: "0.1.0"
+version: "0.2.0"
 description: |
   Comprehensive monitoring for early signs of clinical deterioration
   in adult ICU patients. Combines kidney function, lactate trends,
   and hemodynamic stability markers.
+
+# Required: Clinical accountability (First-Citizen)
+audit:
+  intent: "Detect early clinical deterioration in ICU patients using multi-organ markers"
+  rationale: "Early deterioration detection enables timely intervention and reduces mortality"
+  provenance: "KDIGO AKI Guidelines 2012; Surviving Sepsis Campaign 2021"
 
 metadata:
   author: Clinical Informatics Team

@@ -77,7 +77,7 @@ class TestOMOPBackend:
     def creatinine_signal(self):
         return Signal(
             name="Cr",
-            source="creatinine",
+            ref="creatinine",
             concept_id=3016723,
             unit="mg/dL",
             domain=Domain.MEASUREMENT,
@@ -91,12 +91,12 @@ class TestOMOPBackend:
         config.concept_mappings["CustomSignal"] = 12345
         backend = OMOPBackend(config)
 
-        signal = Signal(name="CustomSignal", source="custom", concept_id=None)
+        signal = Signal(name="CustomSignal", ref="custom", concept_id=None)
         concept_id = backend._get_concept_id(signal)
         assert concept_id == 12345
 
     def test_get_concept_id_missing(self, backend):
-        signal = Signal(name="Unknown", source="unknown", concept_id=None)
+        signal = Signal(name="Unknown", ref="unknown", concept_id=None)
         with pytest.raises(ValueError) as exc_info:
             backend._get_concept_id(signal)
         assert "No concept_id found" in str(exc_info.value)

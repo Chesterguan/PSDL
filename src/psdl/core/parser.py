@@ -5,6 +5,12 @@ This module handles:
 1. YAML parsing and validation
 2. Expression parsing for trends and logic
 3. Semantic validation (signal references, etc.)
+
+Version 0.3.0 (RFC-0005) - STRICT MODE:
+- Signals: 'ref' required (v0.2 'source' no longer accepted)
+- Logic: 'when' required (v0.2 'expr' no longer accepted)
+- Trends: numeric only (comparisons belong in logic layer)
+- Outputs: optional section for standardized output interface
 """
 
 import re
@@ -14,8 +20,13 @@ import yaml
 
 from .ir import (
     AuditBlock,
+    DecisionOutput,
     Domain,
+    EvidenceOutput,
+    FeatureOutput,
     LogicExpr,
+    OutputDefinitions,
+    OutputType,
     PopulationFilter,
     PSDLScenario,
     Severity,
@@ -107,6 +118,9 @@ class PSDLParser:
         # Parse state machine (optional)
         state = self._parse_state(data.get("state"))
 
+        # Parse outputs (optional, v0.3)
+        outputs = self._parse_outputs(data.get("outputs"))
+
         # Parse mapping (optional)
         mapping = data.get("mapping")
 
@@ -120,6 +134,7 @@ class PSDLParser:
             logic=logic,
             audit=audit,
             state=state,
+            outputs=outputs,
             mapping=mapping,
         )
 
@@ -184,18 +199,79 @@ class PSDLParser:
 
         return StateMachine(initial=initial, states=states, transitions=transitions)
 
+    def _parse_outputs(self, data: Optional[dict]) -> Optional[OutputDefinitions]:
+        """Parse outputs section (v0.3)."""
+        if data is None:
+            return None
+
+        outputs = OutputDefinitions()
+
+        # Parse decision outputs
+        if "decision" in data:
+            for name, spec in data["decision"].items():
+                output_type = OutputType.BOOLEAN
+                if spec.get("type") == "enum":
+                    output_type = OutputType.ENUM
+
+                outputs.decision[name] = DecisionOutput(
+                    name=name,
+                    type=output_type,
+                    from_ref=spec.get("from"),
+                    values=spec.get("values"),
+                    description=spec.get("description"),
+                )
+
+        # Parse feature outputs
+        if "features" in data:
+            for name, spec in data["features"].items():
+                output_type = OutputType.FLOAT
+                if spec.get("type") == "int":
+                    output_type = OutputType.INT
+
+                outputs.features[name] = FeatureOutput(
+                    name=name,
+                    type=output_type,
+                    from_ref=spec.get("from"),
+                    expr=spec.get("expr"),
+                    unit=spec.get("unit"),
+                    description=spec.get("description"),
+                )
+
+        # Parse evidence outputs
+        if "evidence" in data:
+            for name, spec in data["evidence"].items():
+                type_str = spec.get("type", "string")
+                type_map = {
+                    "timestamp": OutputType.TIMESTAMP,
+                    "interval": OutputType.INTERVAL,
+                    "string": OutputType.STRING,
+                    "string[]": OutputType.STRING_ARRAY,
+                }
+                output_type = type_map.get(type_str, OutputType.STRING)
+
+                outputs.evidence[name] = EvidenceOutput(
+                    name=name,
+                    type=output_type,
+                    from_ref=spec.get("from"),
+                    expr=spec.get("expr"),
+                    description=spec.get("description"),
+                )
+
+        return outputs
+
     def _parse_signals(self, data: dict) -> Dict[str, Signal]:
-        """Parse signal bindings."""
+        """Parse signal bindings (v0.3 strict: requires 'ref')."""
         signals = {}
 
         for name, spec in data.items():
             if isinstance(spec, str):
-                # Shorthand: just the source
-                signals[name] = Signal(name=name, source=spec)
+                # Shorthand: just the ref
+                signals[name] = Signal(name=name, ref=spec)
             elif isinstance(spec, dict):
-                source = spec.get("source")
-                if not source:
-                    raise PSDLParseError(f"Signal '{name}' missing 'source'")
+                # v0.3 strict: only 'ref' is accepted
+                ref = spec.get("ref")
+                if not ref:
+                    raise PSDLParseError(f"Signal '{name}' missing 'ref'")
 
                 domain = Domain.MEASUREMENT
                 if "domain" in spec:
@@ -208,7 +284,7 @@ class PSDLParser:
 
                 signals[name] = Signal(
                     name=name,
-                    source=source,
+                    ref=ref,
                     concept_id=spec.get("concept_id"),
                     unit=spec.get("unit"),
                     domain=domain,
@@ -289,23 +365,36 @@ class PSDLParser:
 
         # Find all terms (excluding operators)
         expr_without_ops = self.LOGIC_OPERATOR_PATTERN.sub(" ", expr)
-        terms = self.LOGIC_TERM_PATTERN.findall(expr_without_ops)
+        all_terms = self.LOGIC_TERM_PATTERN.findall(expr_without_ops)
+
+        # v0.3: Filter out numeric values and comparison operators
+        # Numbers can appear in comparisons like "cr_delta_48h >= 0.3"
+        terms = [
+            t
+            for t in all_terms
+            if not t.replace("_", "").isdigit()  # Filter pure numbers
+            and not t.startswith(
+                ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+            )  # Filter numeric literals
+            and t not in ("true", "false", "True", "False")  # Filter boolean literals
+        ]
 
         return terms, operators
 
     def _parse_logic(self, data: dict) -> Dict[str, LogicExpr]:
-        """Parse logic definitions."""
+        """Parse logic definitions (v0.3 strict: requires 'when')."""
         logic = {}
 
         for name, spec in data.items():
             if isinstance(spec, str):
-                # Shorthand: just the expression
+                # Shorthand: just the expression (v0.3: treated as 'when')
                 terms, operators = self._parse_logic_expr(name, spec)
                 logic[name] = LogicExpr(name=name, expr=spec, terms=terms, operators=operators)
             elif isinstance(spec, dict):
-                expr = spec.get("expr")
+                # v0.3 strict: only 'when' is accepted
+                expr = spec.get("when")
                 if not expr:
-                    raise PSDLParseError(f"Logic '{name}' missing 'expr'")
+                    raise PSDLParseError(f"Logic '{name}' missing 'when'")
 
                 terms, operators = self._parse_logic_expr(name, expr)
 

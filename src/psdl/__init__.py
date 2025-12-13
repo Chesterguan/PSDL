@@ -1,6 +1,6 @@
 """
 PSDL - Patient Scenario Definition Language
-Python Reference Implementation v0.2
+Python Reference Implementation v0.3
 
 A declarative language for expressing clinical scenarios.
 
@@ -16,19 +16,33 @@ Usage:
     backend.add_patient_data("patient_1", {"Cr": [...], "HR": [...]})
 
     evaluator = PSDLEvaluator(scenario, backend)
-    results = evaluator.evaluate("patient_1")
+    result = evaluator.evaluate("patient_1")
+
+    # v0.3: Get standardized output
+    standard_result = result.to_standard_result()
 
 Structure:
-- parser.py: YAML parsing and validation
+- core/: Parser, IR types, expression parsing
 - operators.py: Temporal operator implementations
-- execution/: Execution backends (batch, streaming)
+- runtimes/: Execution backends (single, cohort, streaming)
 - adapters/: Data source adapters (OMOP, FHIR)
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 # Core components
 from .core import PSDLParser, PSDLScenario
+from .core.ir import (
+    DecisionOutput,
+    EvaluationResult,
+    EvidenceOutput,
+    FeatureOutput,
+    LogicExpr,
+    OutputDefinitions,
+    OutputType,
+    Signal,
+    TrendExpr,
+)
 from .operators import DataPoint, TemporalOperators
 
 # Runtimes
@@ -72,10 +86,21 @@ __all__ = [
     "PSDLScenario",
     "DataPoint",
     "TemporalOperators",
+    # v0.3 IR types
+    "Signal",
+    "TrendExpr",
+    "LogicExpr",
+    "EvaluationResult",
+    "OutputType",
+    "OutputDefinitions",
+    "DecisionOutput",
+    "FeatureOutput",
+    "EvidenceOutput",
     # Execution
     "PSDLEvaluator",
     "BatchEvaluator",
     "InMemoryBackend",
+    "SinglePatientEvaluator",
     # Streaming (optional)
     "StreamingEvaluator",
     "STREAMING_AVAILABLE",

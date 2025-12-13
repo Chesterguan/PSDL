@@ -52,6 +52,15 @@ Foundation       Runtime           Growth           & Scale
 
 **Goal**: Enable real-time execution and production-ready features.
 
+### v0.3 Architecture (RFC-0005) ✅ Complete
+- [x] Trend/Logic separation schema and IR types
+- [x] Output schema (Decision/Feature/Evidence categories)
+- [x] Strict mode parser (v0.2 syntax no longer accepted)
+- [x] Output section parsing in parser
+- [x] Evaluator returns EvaluationResult (via to_standard_result())
+- [x] All example scenarios migrated to v0.3 format
+- [ ] Output profiles (cohort, ml_features, audit)
+
 ### Streaming Execution (RFC-0002)
 - [x] Streaming adapter architecture (Phase 1 backend complete)
 - [ ] Apache Flink integration
@@ -122,11 +131,12 @@ Foundation       Runtime           Growth           & Scale
 - [ ] HL7 FHIR Clinical Reasoning alignment
 - [ ] Potential Arden Syntax convergence discussions
 
-### AI Integration (RFC-0001)
-- [ ] Model deployment bridge specification
-- [ ] `predict()`, `forecast()` operators
-- [ ] ONNX model integration
-- [ ] Timeout and fallback handling
+### AI/ML Integration
+> **Note**: RFC-0001 was withdrawn. ML model outputs are now treated as regular signals via Dataset Spec bindings, consistent with PSDL's "WHAT not HOW" philosophy.
+
+- [ ] ML output as signal binding (via Dataset Spec)
+- [ ] Model registry integration patterns
+- [ ] Sample configurations for common ML frameworks
 
 ### Enterprise Features
 - [ ] Multi-tenant scenario management
@@ -158,15 +168,16 @@ The whitepaper evolves with the specification. Major updates are versioned to ma
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **0.1.0** | Dec 2025 | Initial release — Core specification, batch execution |
+| **0.2.0** | Dec 2025 | Clinical Accountability (audit block), State Machine, Dataset Spec (RFC-0004) |
 | **0.1.1** | Dec 2025 | Added "Scope and Limitations" section (WHAT vs HOW) |
+| **0.1.0** | Dec 2025 | Initial release — Core specification, batch execution |
 
 ### Planned Whitepaper Updates
 
 | Version | Target | Content |
 |---------|--------|---------|
-| **0.2.0** | Phase 2 | Streaming execution, Triggers & Actions |
-| **0.3.0** | Phase 3 | AI/ML integration (RFC-0001) |
+| **0.2.0** | Phase 2 | ✅ Clinical Accountability, Dataset Spec, State Machine |
+| **0.3.0** | Phase 2 | 🔴 RFC-0005: Signal/Trend/Logic/Output separation (BREAKING CHANGE) |
 | **1.0.0** | Phase 4 | Production-ready specification |
 
 ### Translation Sync Policy
@@ -181,11 +192,11 @@ When the English whitepaper is updated:
 
 | Language | Version | Status |
 |----------|---------|--------|
-| English (EN) | 0.1.1 | Current |
-| 简体中文 (ZH) | 0.1.1 | Current |
-| Español (ES) | 0.1.1 | Current |
-| Français (FR) | 0.1.1 | Current |
-| 日本語 (JA) | 0.1.1 | Current |
+| English (EN) | 0.2.0 | Current |
+| 简体中文 (ZH) | 0.2.0 | Current |
+| Español (ES) | 0.2.0 | Current |
+| Français (FR) | 0.2.0 | Current |
+| 日本語 (JA) | 0.2.0 | Current |
 
 ---
 
@@ -195,8 +206,11 @@ Major features are proposed through RFCs:
 
 | RFC | Title | Status |
 |-----|-------|--------|
-| [RFC-0001](../rfcs/0001-ai-integration.md) | AI/LLM Integration | Draft |
-| [RFC-0002](../rfcs/0002-streaming.md) | Streaming Execution | Phase 1 Complete |
+| [RFC-0001](../rfcs/0001-ai-model-integration.md) | AI/ML Integration | ❌ Withdrawn |
+| [RFC-0002](../rfcs/0002-streaming-execution.md) | Streaming Execution | ✅ Implemented |
+| [RFC-0003](../rfcs/0003-architecture-refactor.md) | Architecture Refactor | ✅ Implemented |
+| [RFC-0004](../rfcs/0004-dataset-specification.md) | Dataset Specification | Draft |
+| [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) | PSDL v0.3 Architecture | ✅ Implemented |
 
 ---
 
@@ -213,4 +227,4 @@ Major features are proposed through RFCs:
 
 ---
 
-*Last updated: December 2025*
+*Last updated: December 12, 2025*

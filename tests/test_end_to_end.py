@@ -77,7 +77,8 @@ class TestFullWorkflow:
         for rule_name in triggered_rules:
             if rule_name in scenario.logic:
                 rule = scenario.logic[rule_name]
-                severities.append((rule_name, rule.severity.value, rule.description))
+                severity = rule.severity.value if rule.severity else "info"
+                severities.append((rule_name, severity, rule.description))
 
         max_severity = max((s[1] for s in severities), default="unknown")
 
@@ -180,7 +181,7 @@ description: "Dynamically created scenario"
 
 signals:
   TestSignal:
-    source: test_source
+    ref: test_source
     unit: units
 
 trends:
@@ -190,7 +191,7 @@ trends:
 
 logic:
   alert_high:
-    expr: high_value
+    when: high_value
     severity: medium
     description: "High value detected"
 """

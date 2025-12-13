@@ -109,7 +109,7 @@ class TestInMemoryBackend:
 
         from psdl.core.ir import Signal
 
-        signal = Signal(name="Cr", source="creatinine")
+        signal = Signal(name="Cr", ref="creatinine")
 
         backend.add_data(patient_id=1, signal_name="Cr", data=data)
 
@@ -144,7 +144,7 @@ scenario: Test_Evaluator
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
     unit: mg/dL
 trends:
   cr_high:
@@ -153,10 +153,10 @@ trends:
     expr: delta(Cr, 6h) > 0.3
 logic:
   renal_concern:
-    expr: cr_high AND cr_rising
+    when: cr_high AND cr_rising
     severity: high
   any_issue:
-    expr: cr_high OR cr_rising
+    when: cr_high OR cr_rising
 """
 
     @pytest.fixture
@@ -353,11 +353,11 @@ scenario: Complex_Logic_Test
 version: "0.1.0"
 signals:
   A:
-    source: signal_a
+    ref: signal_a
   B:
-    source: signal_b
+    ref: signal_b
   C:
-    source: signal_c
+    ref: signal_c
 trends:
   a_high:
     expr: last(A) > 5
@@ -367,11 +367,11 @@ trends:
     expr: last(C) > 5
 logic:
   stage1:
-    expr: a_high
+    when: a_high
   stage2:
-    expr: stage1 AND b_high
+    when: stage1 AND b_high
   stage3:
-    expr: stage2 OR c_high
+    when: stage2 OR c_high
 """
 
     def test_cascading_logic(self, complex_scenario_yaml):
@@ -426,13 +426,13 @@ scenario: Missing_Data_Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_high:
     expr: last(Cr) > 1.5
 logic:
   concern:
-    expr: cr_high
+    when: cr_high
 """
 
     def test_no_data_for_signal(self, scenario_yaml):

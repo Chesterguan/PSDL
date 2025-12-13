@@ -5,9 +5,11 @@
 | RFC | 0003 |
 | Title | Architecture Refactor - Spec-Driven Code Generation |
 | Author | PSDL Team |
-| Status | Draft |
+| Status | ✅ Implemented |
 | Created | 2025-12-11 |
 | Updated | 2025-12-12 |
+
+> **Note**: Core architecture refactor is complete. Directory structure follows this RFC. Full codegen pipeline (operators.yaml → generated code) is planned for future iteration.
 
 ## Summary
 

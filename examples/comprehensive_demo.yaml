@@ -1,0 +1,348 @@
+# PSDL v0.3 Comprehensive Demo
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# This scenario demonstrates ALL PSDL v0.3 features:
+# - Signals with full configuration
+# - All temporal operators (delta, slope, last, first, ema, sma, min, max, count, exists, missing)
+# - Logic with AND, OR, NOT and comparison operators
+# - Population criteria
+# - Audit block
+# - State machine with transitions
+# - Outputs (decision, features, evidence)
+# - Mapping reference
+#
+# Clinical Context: Multi-parameter patient monitoring with progressive deterioration staging
+
+scenario: Comprehensive_Demo_v0.3
+version: "0.3.0"
+description: "Comprehensive demonstration of all PSDL v0.3 features"
+
+# ── Audit Block ────────────────────────────────────
+audit:
+  intent: "Demonstrate all PSDL v0.3 specification features"
+  rationale: "Serves as reference implementation for PSDL language capabilities"
+  provenance: "PSDL v0.3 Language Specification (RFC-0005)"
+
+# ── Population ─────────────────────────────────────
+population:
+  include:
+    - age >= 18
+    - admission_type IN ["ICU", "Step-Down", "ED"]
+  exclude:
+    - status == "comfort_care_only"
+    - has_DNR == true
+
+# ── Signal Bindings ────────────────────────────────
+signals:
+  Cr:
+    ref: creatinine
+    concept_id: 3016723
+    unit: mg/dL
+    domain: measurement
+
+  Lact:
+    ref: lactate
+    concept_id: 3047181
+    unit: mmol/L
+    domain: measurement
+
+  HR:
+    ref: heart_rate
+    concept_id: 3027018
+    unit: beats/min
+    domain: measurement
+
+  MAP:
+    ref: mean_arterial_pressure
+    concept_id: 3027598
+    unit: mmHg
+    domain: measurement
+
+  SpO2:
+    ref: oxygen_saturation
+    concept_id: 3016502
+    unit: percent
+    domain: measurement
+
+  Temp:
+    ref: body_temperature
+    concept_id: 3020891
+    unit: C
+    domain: measurement
+
+  Vasopressors:
+    ref: vasopressor_use
+    concept_id: 4150375
+    domain: drug
+
+# ── Trends (Numeric Values Only) ───────────────────
+trends:
+  # delta operator - change over time
+  cr_delta_48h:
+    expr: delta(Cr, 48h)
+    description: "Creatinine change over 48 hours"
+
+  lact_delta_6h:
+    expr: delta(Lact, 6h)
+    description: "Lactate change over 6 hours"
+
+  # slope operator - rate of change
+  cr_slope_24h:
+    expr: slope(Cr, 24h)
+    description: "Creatinine slope over 24 hours"
+
+  lact_slope_2h:
+    expr: slope(Lact, 2h)
+    description: "Lactate slope over 2 hours"
+
+  # last operator - most recent value
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine"
+
+  lact_current:
+    expr: last(Lact)
+    description: "Current lactate"
+
+  hr_current:
+    expr: last(HR)
+    description: "Current heart rate"
+
+  map_current:
+    expr: last(MAP)
+    description: "Current MAP"
+
+  spo2_current:
+    expr: last(SpO2)
+    description: "Current oxygen saturation"
+
+  temp_current:
+    expr: last(Temp)
+    description: "Current temperature"
+
+  # first operator - earliest value in window
+  cr_baseline:
+    expr: first(Cr, 7d)
+    description: "Baseline creatinine (7-day)"
+
+  # ema operator - exponential moving average
+  hr_ema_15m:
+    expr: ema(HR, 15m)
+    description: "15-minute EMA of heart rate"
+
+  map_ema_30m:
+    expr: ema(MAP, 30m)
+    description: "30-minute EMA of MAP"
+
+  # sma operator - simple moving average
+  hr_sma_1h:
+    expr: sma(HR, 1h)
+    description: "1-hour SMA of heart rate"
+
+  # min/max operators
+  spo2_min_4h:
+    expr: min(SpO2, 4h)
+    description: "Minimum SpO2 in 4 hours"
+
+  temp_max_24h:
+    expr: max(Temp, 24h)
+    description: "Maximum temperature in 24 hours"
+
+  # count operator - observation count
+  cr_count_48h:
+    expr: count(Cr, 48h)
+    description: "Creatinine measurements in 48 hours"
+
+  vasopressor_count:
+    expr: count(Vasopressors, 24h)
+    description: "Vasopressor doses in 24 hours"
+
+  lact_count_6h:
+    expr: count(Lact, 6h)
+    description: "Lactate measurements in 6 hours"
+
+# ── Logic (Boolean Expressions) ────────────────────
+logic:
+  # Comparison operators: >=, <=, >, <, ==, !=
+  aki_by_delta:
+    when: cr_delta_48h >= 0.3
+    description: "AKI by absolute creatinine rise (KDIGO Stage 1)"
+
+  aki_by_ratio:
+    when: cr_current >= 1.5
+    description: "Creatinine elevated above normal"
+
+  cr_rapidly_rising:
+    when: cr_slope_24h > 0.000002
+    description: "Creatinine rising rapidly"
+
+  lactate_elevated:
+    when: lact_current > 2.0
+    description: "Lactate above normal"
+
+  lactate_critical:
+    when: lact_current > 4.0
+    description: "Critical lactate level"
+
+  lactate_rising:
+    when: lact_slope_2h > 0.0001
+    description: "Lactate trending upward"
+
+  hypotension:
+    when: map_ema_30m < 65
+    description: "Sustained hypotension (MAP <65)"
+
+  tachycardia:
+    when: hr_sma_1h > 100
+    description: "Sustained tachycardia"
+
+  hypoxemia:
+    when: spo2_min_4h < 90
+    description: "Hypoxemia in last 4 hours"
+
+  fever:
+    when: temp_max_24h > 38.3
+    description: "Fever (>38.3C)"
+
+  insufficient_monitoring:
+    when: cr_count_48h < 2
+    description: "Insufficient creatinine monitoring"
+
+  on_vasopressors:
+    when: vasopressor_count > 0
+    description: "Patient receiving vasopressors"
+
+  lactate_data_sparse:
+    when: lact_count_6h < 2
+    description: "Insufficient lactate monitoring"
+
+  # Boolean logic: AND, OR, NOT
+  aki_present:
+    when: aki_by_delta OR aki_by_ratio
+    severity: medium
+    description: "AKI detected by any criterion"
+
+  shock_developing:
+    when: hypotension AND (lactate_elevated OR tachycardia)
+    severity: high
+    description: "Signs of developing shock"
+
+  vasopressor_dependent_shock:
+    when: shock_developing AND on_vasopressors
+    severity: critical
+    description: "Shock requiring vasopressors"
+
+  multi_organ_stress:
+    when: aki_present AND lactate_elevated AND hypoxemia
+    severity: critical
+    description: "Multiple organ systems stressed"
+
+  stable_patient:
+    when: NOT (aki_present OR shock_developing OR hypoxemia OR fever)
+    severity: low
+    description: "Patient is clinically stable"
+
+  # Complex nested logic
+  sepsis_criteria:
+    when: (fever OR lactate_elevated) AND (tachycardia OR hypotension) AND NOT stable_patient
+    severity: high
+    description: "Possible sepsis - meets screening criteria"
+
+  critical_alert:
+    when: multi_organ_stress OR vasopressor_dependent_shock OR lactate_critical
+    severity: critical
+    description: "Critical condition requiring immediate attention"
+
+# ── State Machine ──────────────────────────────────
+state:
+  initial: stable
+  states:
+    - stable
+    - early_warning
+    - deteriorating
+    - critical
+
+  transitions:
+    - from: stable
+      to: early_warning
+      when: aki_present OR lactate_elevated OR fever
+      description: "Initial signs of concern"
+
+    - from: early_warning
+      to: deteriorating
+      when: shock_developing OR multi_organ_stress
+      description: "Worsening condition"
+
+    - from: deteriorating
+      to: critical
+      when: critical_alert
+      description: "Critical state reached"
+
+    - from: early_warning
+      to: stable
+      when: stable_patient
+      description: "Recovery to stable"
+
+    - from: deteriorating
+      to: early_warning
+      when: NOT shock_developing AND NOT multi_organ_stress
+      description: "Partial recovery"
+
+# ── Outputs (v0.3 Three Categories) ────────────────
+outputs:
+  decision:
+    in_cohort:
+      type: boolean
+      from: logic.aki_present
+      description: "Patient has AKI"
+
+    needs_escalation:
+      type: boolean
+      from: logic.critical_alert
+      description: "Requires ICU escalation"
+
+    sepsis_possible:
+      type: boolean
+      from: logic.sepsis_criteria
+      description: "Sepsis screening positive"
+
+  features:
+    cr_delta_48h:
+      type: float
+      from: trends.cr_delta_48h
+      description: "Creatinine delta for ML models"
+
+    lact_slope_2h:
+      type: float
+      from: trends.lact_slope_2h
+      description: "Lactate trajectory for prediction"
+
+    map_ema_30m:
+      type: float
+      from: trends.map_ema_30m
+      description: "Smoothed MAP for analysis"
+
+    hr_sma_1h:
+      type: float
+      from: trends.hr_sma_1h
+      description: "Average HR for trending"
+
+  evidence:
+    current_state:
+      type: string
+      from: state.current
+      description: "Current state machine state"
+
+    triggered_rules:
+      type: string[]
+      expr: rules_fired()
+      description: "List of triggered logic rules"
+
+    timestamp:
+      type: datetime
+      expr: evaluation_time()
+      description: "When evaluation was performed"
+
+# ── Mapping ────────────────────────────────────────
+mapping:
+  source: mappings/omop_v5.yaml

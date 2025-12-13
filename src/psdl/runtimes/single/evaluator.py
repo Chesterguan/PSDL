@@ -7,9 +7,16 @@ This module provides:
 3. Temporal operator computation
 4. Logic expression evaluation
 
+Version 0.3.0 Changes (RFC-0005):
+- Added to_standard_result() for v0.3 EvaluationResult format
+- Added triggered property for v0.3 compatibility
+
 Usage:
     evaluator = SinglePatientEvaluator(scenario, backend)
     result = evaluator.evaluate(patient_id=123)
+
+    # v0.3 standard format
+    standard_result = result.to_standard_result()
 """
 
 import re
@@ -19,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from ...core.ir import EvaluationResult as StandardEvaluationResult
 from ...core.ir import LogicExpr, PSDLScenario, Signal, TrendExpr
 from ...operators import DataPoint, TemporalOperators, apply_operator
 
@@ -55,6 +63,31 @@ class EvaluationResult:
     def any_triggered(self) -> bool:
         """Alias for is_triggered for backward compatibility."""
         return self.is_triggered
+
+    @property
+    def triggered(self) -> bool:
+        """v0.3 compatible alias for is_triggered."""
+        return self.is_triggered
+
+    def to_standard_result(self) -> StandardEvaluationResult:
+        """
+        Convert to v0.3 StandardEvaluationResult format.
+
+        Returns:
+            StandardEvaluationResult with standardized fields
+        """
+        # Filter out None values from trend_values for standard format
+        filtered_trend_values = {k: v for k, v in self.trend_values.items() if v is not None}
+
+        return StandardEvaluationResult(
+            patient_id=str(self.patient_id),
+            triggered=self.is_triggered,
+            triggered_logic=self.triggered_logic,
+            current_state=None,  # State machine not evaluated in single patient mode
+            trend_values=filtered_trend_values,
+            logic_results=self.logic_results,
+            index_time=self.timestamp if self.is_triggered else None,
+        )
 
 
 class DataBackend(ABC):
@@ -304,45 +337,62 @@ class SinglePatientEvaluator:
         logic: LogicExpr,
         trend_results: Dict[str, bool],
         logic_results: Dict[str, bool],
+        trend_values: Optional[Dict[str, Optional[float]]] = None,
     ) -> bool:
         """
         Evaluate a logic expression.
 
         Supports: AND, OR, NOT operators with proper precedence.
-        """
-        expr = logic.expr.upper()
+        v0.3: Also supports comparison operators (>=, <=, >, <, ==, !=) with trend values.
 
-        # Replace term names with their boolean values
+        NULL handling: If any trend value used in a comparison is None,
+        the comparison evaluates to False (SQL-like semantics).
+        """
+        expr = logic.expr
+
+        # v0.3: Check if expression contains comparison operators
+        has_comparison = any(op in expr for op in [">=", "<=", ">", "<", "==", "!="])
+
+        # Replace term names with their values
         # Process in order of length (longest first) to avoid partial replacements
         terms_by_length = sorted(logic.terms, key=len, reverse=True)
 
         for term in terms_by_length:
-            # Look up value in trends first, then logic
-            value = trend_results.get(term)
-            if value is None:
-                value = logic_results.get(term, False)
+            if has_comparison and trend_values and term in trend_values:
+                # v0.3: Use numeric trend value for comparisons
+                value = trend_values.get(term)
+                if value is None:
+                    # NULL comparison semantics: if value is None, replace with
+                    # a marker that makes the comparison False
+                    # We use "None" as a Python literal that will make comparisons fail safely
+                    replacement = "None"
+                else:
+                    replacement = str(value)
+            else:
+                # Use boolean result from trends or logic
+                value = trend_results.get(term)
+                if value is None:
+                    value = logic_results.get(term, False)
+                replacement = str(value)
 
-            # Replace term with Python boolean
-            pattern = r"\b" + re.escape(term.upper()) + r"\b"
-            expr = re.sub(pattern, str(value), expr)
+            # Replace term with value (case-insensitive)
+            pattern = r"\b" + re.escape(term) + r"\b"
+            expr = re.sub(pattern, replacement, expr, flags=re.IGNORECASE)
 
         # Convert logic operators to Python
-        expr = expr.replace(" AND ", " and ")
-        expr = expr.replace(" OR ", " or ")
-        expr = re.sub(r"\bNOT\s+", "not ", expr)
+        expr = expr.replace(" AND ", " and ").replace(" and ", " and ")
+        expr = expr.replace(" OR ", " or ").replace(" or ", " or ")
+        expr = re.sub(r"\bNOT\s+", "not ", expr, flags=re.IGNORECASE)
 
         # Evaluate the expression safely
         try:
-            # Only allow boolean operations
-            allowed_names = {
-                "True": True,
-                "False": False,
-                "and": None,
-                "or": None,
-                "not": None,
-            }
-            result = eval(expr, {"__builtins__": {}}, allowed_names)
+            # Allow boolean and comparison operations
+            # None comparisons will raise TypeError, which we catch and return False
+            result = eval(expr, {"__builtins__": {}}, {"True": True, "False": False, "None": None})
             return bool(result)
+        except TypeError:
+            # None comparison (e.g., None < 92) - return False per NULL semantics
+            return False
         except Exception:
             return False
 
@@ -392,7 +442,7 @@ class SinglePatientEvaluator:
                 )
 
                 if deps_resolved:
-                    result = self._evaluate_logic(logic, trend_results, logic_results)
+                    result = self._evaluate_logic(logic, trend_results, logic_results, trend_values)
                     logic_results[name] = result
                     if result:
                         triggered_logic.append(name)

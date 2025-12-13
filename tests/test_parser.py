@@ -46,11 +46,11 @@ scenario: Test_Minimal
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
     unit: mg/dL
 logic:
   simple_check:
-    expr: Cr > 1.0
+    when: Cr > 1.0
 """
         parser = PSDLParser()
         # This will fail validation because Cr is not defined as a trend
@@ -70,7 +70,7 @@ population:
     - status == "DNR"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
@@ -80,7 +80,7 @@ trends:
     description: "Creatinine above normal"
 logic:
   renal_issue:
-    expr: cr_high
+    when: cr_high
     severity: medium
 """
         parser = PSDLParser()
@@ -98,10 +98,10 @@ logic:
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 logic:
   test:
-    expr: Cr > 1.0
+    when: Cr > 1.0
 """
         parser = PSDLParser()
         with pytest.raises(PSDLParseError) as exc_info:
@@ -123,7 +123,7 @@ trends:
     expr: last(Cr) > 1.0
 logic:
   test:
-    expr: cr_check
+    when: cr_check
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -137,7 +137,7 @@ scenario: Test
 version: "0.1.0"
 signals:
   Lact:
-    source: lactate
+    ref: lactate
     concept_id: 3047181
     unit: mmol/L
     domain: measurement
@@ -146,7 +146,7 @@ trends:
     expr: last(Lact) > 2.0
 logic:
   test:
-    expr: lact_check
+    when: lact_check
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -167,13 +167,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_rising:
     expr: delta(Cr, 6h) > 0.3
 logic:
   test:
-    expr: cr_rising
+    when: cr_rising
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -192,13 +192,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Lact:
-    source: lactate
+    ref: lactate
 trends:
   lact_high:
     expr: last(Lact) > 2.0
 logic:
   test:
-    expr: lact_high
+    when: lact_high
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -215,13 +215,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Lact:
-    source: lactate
+    ref: lactate
 trends:
   lact_rising:
     expr: slope(Lact, 3h) > 0
 logic:
   test:
-    expr: lact_rising
+    when: lact_rising
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -236,13 +236,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   invalid:
     expr: delta(UnknownSignal, 6h) > 0.3
 logic:
   test:
-    expr: invalid
+    when: invalid
 """
         parser = PSDLParser()
         with pytest.raises(PSDLParseError) as exc_info:
@@ -259,9 +259,9 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
   Lact:
-    source: lactate
+    ref: lactate
 trends:
   cr_high:
     expr: last(Cr) > 1.5
@@ -269,7 +269,7 @@ trends:
     expr: last(Lact) > 2.0
 logic:
   both_high:
-    expr: cr_high AND lact_high
+    when: cr_high AND lact_high
     severity: high
 """
         parser = PSDLParser()
@@ -287,7 +287,7 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_high:
     expr: last(Cr) > 1.5
@@ -295,7 +295,7 @@ trends:
     expr: last(Cr) > 3.0
 logic:
   cr_abnormal:
-    expr: cr_high OR cr_very_high
+    when: cr_high OR cr_very_high
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -309,11 +309,11 @@ scenario: Test
 version: "0.1.0"
 signals:
   A:
-    source: signal_a
+    ref: signal_a
   B:
-    source: signal_b
+    ref: signal_b
   C:
-    source: signal_c
+    ref: signal_c
 trends:
   a_high:
     expr: last(A) > 1
@@ -323,7 +323,7 @@ trends:
     expr: last(C) > 1
 logic:
   complex:
-    expr: (a_high AND b_high) OR c_high
+    when: (a_high AND b_high) OR c_high
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -349,13 +349,13 @@ population:
     - status == "DNR"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_check:
     expr: last(Cr) > 1.0
 logic:
   test:
-    expr: cr_check
+    when: cr_check
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -370,13 +370,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_check:
     expr: last(Cr) > 1.0
 logic:
   test:
-    expr: cr_check
+    when: cr_check
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -393,13 +393,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_high:
     expr: last(Cr) > 1.5
 logic:
   renal:
-    expr: cr_high
+    when: cr_high
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -413,13 +413,13 @@ scenario: Test
 version: "0.1.0"
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
 trends:
   cr_high:
     expr: last(Cr) > 1.5
 logic:
   bad_logic:
-    expr: cr_high AND unknown_trend
+    when: cr_high AND unknown_trend
 """
         parser = PSDLParser()
         with pytest.raises(PSDLParseError) as exc_info:

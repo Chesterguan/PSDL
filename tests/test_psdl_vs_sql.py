@@ -474,7 +474,15 @@ class TestBatchComparison:
             evaluator = PSDLEvaluator(aki_scenario, backend)
             psdl_result = evaluator.evaluate_patient(patient_id, reference_time)
 
-            if sql_result["triggered"] == psdl_result.is_triggered:
+            # Compare AKI-specific logic, not all logic expressions
+            # (some PSDL logic like cr_rising_trend are informational, not alerts)
+            psdl_aki_triggered = (
+                psdl_result.logic_results.get("aki_stage1", False)
+                or psdl_result.logic_results.get("aki_stage2", False)
+                or psdl_result.logic_results.get("aki_stage3", False)
+            )
+
+            if sql_result["triggered"] == psdl_aki_triggered:
                 matches += 1
             else:
                 mismatches.append(
@@ -482,7 +490,7 @@ class TestBatchComparison:
                         "patient_id": patient_id,
                         "pattern": pattern,
                         "sql": sql_result,
-                        "psdl_triggered": psdl_result.is_triggered,
+                        "psdl_triggered": psdl_aki_triggered,
                     }
                 )
 

@@ -17,7 +17,7 @@
 # Reference: Rhodes et al. Surviving Sepsis Campaign Guidelines
 
 scenario: Lactic_Acidosis_Detection
-version: "0.1.0"
+version: "0.3.0"
 description: "Detect lactic acidosis through lactate and pH patterns"
 
 # ── Audit Block ──────────────────────────────────
@@ -36,31 +36,31 @@ population:
 # ── Signal Bindings ──────────────────────────────
 signals:
   Lact:
-    source: lactate
+    ref: lactate
     concept_id: 3047181
     unit: mmol/L
     domain: measurement
 
   pH:
-    source: blood_ph
+    ref: blood_ph
     concept_id: 3019977
     unit: pH
     domain: measurement
 
   HCO3:
-    source: bicarbonate
+    ref: bicarbonate
     concept_id: 3015632
     unit: mEq/L
     domain: measurement
 
   Cr:
-    source: creatinine
+    ref: creatinine
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   Glucose:
-    source: glucose
+    ref: glucose
     concept_id: 3004501
     unit: mg/dL
     domain: measurement
@@ -140,66 +140,66 @@ trends:
 logic:
   # Core lactic acidosis definition
   lactic_acidosis_mild:
-    expr: lactate_elevated AND acidosis AND NOT lactate_high
+    when: lactate_elevated AND acidosis AND NOT lactate_high
     severity: medium
     description: "Mild lactic acidosis (lactate 2-4, pH < 7.35)"
 
   lactic_acidosis_moderate:
-    expr: lactate_high AND acidosis AND NOT lactate_severe
+    when: lactate_high AND acidosis AND NOT lactate_severe
     severity: high
     description: "Moderate lactic acidosis (lactate 4-6)"
 
   lactic_acidosis_severe:
-    expr: lactate_severe AND acidosis
+    when: lactate_severe AND acidosis
     severity: critical
     description: "Severe lactic acidosis (lactate > 6)"
 
   lactic_acidosis_critical:
-    expr: lactate_critical OR (lactate_severe AND severe_acidosis)
+    when: lactate_critical OR (lactate_severe AND severe_acidosis)
     severity: critical
     description: "Critical lactic acidosis - high mortality risk"
 
   # Trajectory-based alerts
   acidosis_worsening:
-    expr: lactate_elevated AND lactate_rising AND ph_falling
+    when: lactate_elevated AND lactate_rising AND ph_falling
     severity: high
     description: "Acidosis worsening - lactate rising, pH falling"
 
   acidosis_rapid_onset:
-    expr: lactate_rising_fast
+    when: lactate_rising_fast
     severity: critical
     description: "Rapid lactate rise - acute decompensation"
 
   # Isolated hyperlactatemia (without acidosis)
   hyperlactatemia_isolated:
-    expr: lactate_high AND NOT acidosis
+    when: lactate_high AND NOT acidosis
     severity: medium
     description: "Isolated hyperlactatemia - lactate high but pH normal"
 
   # Recovery indicators
   lactic_acidosis_responding:
-    expr: lactate_elevated AND lactate_clearing
+    when: lactate_elevated AND lactate_clearing
     severity: low
     description: "Lactic acidosis responding to treatment"
 
   lactate_normalized:
-    expr: NOT lactate_elevated AND lactate_falling
+    when: NOT lactate_elevated AND lactate_falling
     severity: low
     description: "Lactate normalizing"
 
   # Multi-factor severe patterns
   metabolic_crisis:
-    expr: severe_acidosis AND bicarb_very_low AND lactate_high
+    when: severe_acidosis AND bicarb_very_low AND lactate_high
     severity: critical
     description: "Metabolic crisis - severe acidosis with high lactate"
 
   lactic_acidosis_with_aki:
-    expr: lactic_acidosis_moderate AND aki_present
+    when: lactic_acidosis_moderate AND aki_present
     severity: critical
     description: "Lactic acidosis with AKI - impaired clearance"
 
   # Shock indicator
   tissue_hypoxia_likely:
-    expr: lactate_high AND lactate_rising
+    when: lactate_high AND lactate_rising
     severity: high
     description: "Rising high lactate - tissue hypoxia/shock likely"

@@ -21,9 +21,31 @@
 
     "Scenario": {
       "category": "core",
-      "definition": "A complete PSDL definition that describes a clinical situation to detect. Contains signals, trends, logic, and optionally population filters.",
+      "definition": "A complete PSDL definition that describes a clinical situation to detect. Contains signals, trends, logic, audit block (required), and optionally population filters and state machine.",
       "example": "AKI_Detection, Sepsis_Screening, ICU_Deterioration",
-      "file_format": "YAML or JSON"
+      "file_format": "YAML or JSON",
+      "required_sections": ["scenario", "version", "audit", "signals", "logic"]
+    },
+
+    "Audit Block": {
+      "category": "core",
+      "definition": "Required metadata that makes every scenario traceable and accountable. This is PSDL's first-citizen feature. Contains intent (WHAT), rationale (WHY), and provenance (WHAT evidence).",
+      "properties": ["intent", "rationale", "provenance"],
+      "required": true,
+      "first_citizen": true
+    },
+
+    "Clinical Accountability": {
+      "category": "core",
+      "definition": "PSDL's first-citizen principle. Every clinical decision must be traceable: WHO wrote it, WHY it matters, and WHAT evidence supports it. This is what makes PSDL regulatory-ready (FDA, EU MDR).",
+      "first_citizen": true
+    },
+
+    "State Machine": {
+      "category": "core",
+      "definition": "Optional component for tracking clinical state progression over time. Unlike signals/trends/logic (stateless), state machines maintain history across evaluations.",
+      "properties": ["initial", "states", "transitions"],
+      "required": false
     },
 
     "Signal": {
@@ -87,7 +109,7 @@
       "full_name": "Intermediate Representation",
       "category": "architecture",
       "definition": "The in-memory data structure representing a parsed and validated scenario. IR is independent of execution method - it can be compiled to SQL, Flink, or evaluated in Python.",
-      "types": ["ScenarioIR", "SignalIR", "TrendIR", "LogicIR", "PopulationIR"]
+      "types": ["PSDLScenario", "Signal", "Trend", "Logic", "AuditBlock", "StateMachine", "StateTransition"]
     },
 
     "Parser": {
@@ -140,9 +162,19 @@
       }
     },
 
+    "Dataset Spec": {
+      "full_name": "Dataset Specification",
+      "category": "data",
+      "definition": "A declarative binding layer that maps PSDL semantic references to concrete data source locations. Enables the same scenario to run across different datasets without modification.",
+      "principle": "Scenario = intent (WHAT), Dataset Spec = binding (WHERE), Adapter = execution (HOW)",
+      "contents": ["element bindings", "encoding bindings", "type declarations", "time axis conventions"],
+      "file_format": "YAML",
+      "rfc": "RFC-0004"
+    },
+
     "Adapter": {
       "category": "data",
-      "definition": "Component that connects PSDL to a specific data source. Adapters abstract away the details of data retrieval.",
+      "definition": "Component that connects PSDL to a specific data source. Adapters load Dataset Specs and execute queries against data infrastructure.",
       "types": ["OMOPAdapter", "FHIRAdapter", "InMemoryAdapter"]
     },
 

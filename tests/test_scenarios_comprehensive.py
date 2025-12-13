@@ -335,7 +335,7 @@ version: "0.1.0"
 
 signals:
   Value:
-    source: test_value
+    ref: test_value
     unit: units
 
 trends:
@@ -349,7 +349,7 @@ trends:
 
 logic:
   acute_rise:
-    expr: rising_fast
+    when: rising_fast
     severity: high
 """
         f = tmp_path / "delta_test.yaml"
@@ -414,7 +414,7 @@ version: "0.1.0"
 
 signals:
   Value:
-    source: test_value
+    ref: test_value
     unit: units
 
 trends:
@@ -428,11 +428,11 @@ trends:
 
 logic:
   going_up:
-    expr: rising_trend
+    when: rising_trend
     severity: low
 
   going_down:
-    expr: falling_trend
+    when: falling_trend
     severity: low
 """
         f = tmp_path / "slope_test.yaml"
@@ -527,7 +527,7 @@ version: "0.1.0"
 
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
     unit: mg/dL
 
 trends:
@@ -537,7 +537,7 @@ trends:
 
 logic:
   test:
-    expr: bad_trend
+    when: bad_trend
     severity: low
 """
         f = tmp_path / "invalid.yaml"
@@ -560,7 +560,7 @@ version: "0.1.0"
 
 signals:
   Value:
-    source: test
+    ref: test
     unit: units
 
 trends:
@@ -570,11 +570,11 @@ trends:
 
 logic:
   rule_a:
-    expr: rule_b
+    when: rule_b
     severity: low
 
   rule_b:
-    expr: rule_a
+    when: rule_a
     severity: low
 """
         f = tmp_path / "circular.yaml"

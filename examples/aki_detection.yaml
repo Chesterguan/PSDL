@@ -13,7 +13,7 @@
 # https://kdigo.org/guidelines/acute-kidney-injury/
 
 scenario: AKI_KDIGO_Detection
-version: "0.1.0"
+version: "0.3.0"
 description: "Detect and stage Acute Kidney Injury using KDIGO criteria"
 
 # ── Audit Block ──────────────────────────────────
@@ -30,106 +30,129 @@ population:
     - dialysis_status == "chronic"
     - kidney_transplant == true
 
-# ── Signal Bindings ──────────────────────────────
+# ── Signal Bindings (v0.3: 'ref' required) ───────
 signals:
   Cr:
-    source: creatinine
+    ref: creatinine
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   Cr_baseline:
-    source: creatinine_baseline
+    ref: creatinine_baseline
     concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   UOP:
-    source: urine_output
-    concept_id: 3014315  # Urine output 24h
+    ref: urine_output
+    concept_id: 3014315
     unit: mL/kg/hr
     domain: measurement
 
   BUN:
-    source: blood_urea_nitrogen
+    ref: blood_urea_nitrogen
     concept_id: 3013682
     unit: mg/dL
     domain: measurement
 
-# ── Trend Computations ───────────────────────────
+# ── Trends (v0.3: numeric values only) ───────────
 trends:
   # Absolute creatinine changes
-  cr_rise_48h:
-    expr: delta(Cr, 48h) >= 0.3
-    description: "Creatinine rise ≥0.3 mg/dL in 48 hours"
+  cr_delta_48h:
+    expr: delta(Cr, 48h)
+    description: "Creatinine change over 48 hours"
 
-  cr_rise_7d:
-    expr: delta(Cr, 7d) >= 0.5
-    description: "Creatinine rise ≥0.5 mg/dL in 7 days"
+  cr_delta_7d:
+    expr: delta(Cr, 7d)
+    description: "Creatinine change over 7 days"
 
-  # Current creatinine level
-  cr_elevated:
-    expr: last(Cr) >= 4.0
-    description: "Absolute creatinine ≥4.0 mg/dL"
+  # Current values
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine level"
 
   # Creatinine trajectory
+  cr_slope_24h:
+    expr: slope(Cr, 24h)
+    description: "Creatinine slope over 24 hours"
+
+  cr_slope_12h:
+    expr: slope(Cr, 12h)
+    description: "Creatinine slope over 12 hours"
+
+  # BUN level
+  bun_current:
+    expr: last(BUN)
+    description: "Current BUN level"
+
+# ── Logic (v0.3: 'when' with comparisons) ────────
+logic:
+  # Threshold comparisons (moved from trends)
+  cr_rise_48h:
+    when: cr_delta_48h >= 0.3
+    description: "Creatinine rise >=0.3 mg/dL in 48 hours"
+
+  cr_rise_7d:
+    when: cr_delta_7d >= 0.5
+    description: "Creatinine rise >=0.5 mg/dL in 7 days"
+
+  cr_elevated:
+    when: cr_current >= 4.0
+    description: "Absolute creatinine >=4.0 mg/dL"
+
   cr_rising_trend:
-    expr: slope(Cr, 24h) > 0
-    description: "Upward creatinine trajectory"
+    when: cr_slope_24h > 0.000001
+    description: "Upward creatinine trajectory (>0.08 mg/dL per day)"
 
   cr_rapid_rise:
-    expr: slope(Cr, 12h) > 0.1
-    description: "Rapid creatinine rise (>0.1 mg/dL per 12h)"
+    when: cr_slope_12h > 0.000002
+    description: "Rapid creatinine rise (>0.17 mg/dL per day)"
 
-  # Recovery patterns
   cr_falling:
-    expr: slope(Cr, 24h) < 0
-    description: "Creatinine trending down (recovery)"
+    when: cr_slope_24h < -0.000001
+    description: "Creatinine trending down (recovery, >0.08 mg/dL per day decline)"
 
-  # BUN/Cr ratio (prerenal indicator)
   bun_cr_ratio_high:
-    expr: last(BUN) > 20
+    when: bun_current > 20
     description: "BUN elevated (may indicate prerenal)"
 
-# ── Logic Layer ──────────────────────────────────
-logic:
   # KDIGO Stage 1
   aki_stage1:
-    expr: cr_rise_48h OR cr_rise_7d
+    when: cr_rise_48h OR cr_rise_7d
     severity: medium
     description: "AKI Stage 1 - Creatinine rise meets KDIGO criteria"
 
   # KDIGO Stage 2 (approximated without baseline ratio)
   aki_stage2:
-    expr: aki_stage1 AND cr_rapid_rise
+    when: aki_stage1 AND cr_rapid_rise
     severity: high
     description: "AKI Stage 2 - Significant and rapid creatinine rise"
 
   # KDIGO Stage 3
   aki_stage3:
-    expr: cr_elevated OR (aki_stage2 AND cr_rising_trend)
+    when: cr_elevated OR (aki_stage2 AND cr_rising_trend)
     severity: critical
     description: "AKI Stage 3 - Severe kidney injury"
 
   # Any AKI
   aki_present:
-    expr: aki_stage1 OR aki_stage2 OR aki_stage3
+    when: aki_stage1 OR aki_stage2 OR aki_stage3
     severity: medium
     description: "AKI present at any stage"
 
   # Recovery indicator
   aki_recovering:
-    expr: aki_present AND cr_falling
+    when: aki_present AND cr_falling
     severity: low
     description: "AKI with signs of recovery"
 
   # Prerenal pattern
   prerenal_likely:
-    expr: aki_stage1 AND bun_cr_ratio_high
+    when: aki_stage1 AND bun_cr_ratio_high
     severity: medium
     description: "AKI Stage 1 with prerenal pattern - check volume status"
 
 # ── Mapping ──────────────────────────────────────
-# Site-specific mappings can override concept_ids
 mapping:
   source: mappings/omop_v5.yaml

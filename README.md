@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
-  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.1.0-blue?style=flat-square" alt="Spec Version"></a>
+  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.2.0-blue?style=flat-square" alt="Spec Version"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" alt="License"></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
   <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8-3.12">
@@ -33,6 +33,36 @@
 
 ---
 
+<h2 align="center">Accountable Clinical AI — Traceable by Design</h2>
+
+<p align="center">
+  <strong>Clinical AI doesn't fail because models are weak.<br/>
+  It fails because decisions cannot be traced.</strong>
+</p>
+
+<p align="center">
+  PSDL makes every clinical decision <strong>accountable</strong>:
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center"><strong>WHO</strong><br/>wrote this logic?</td>
+    <td align="center"><strong>WHY</strong><br/>does it matter?</td>
+    <td align="center"><strong>WHAT</strong><br/>evidence supports it?</td>
+  </tr>
+  <tr>
+    <td align="center"><code>audit.intent</code></td>
+    <td align="center"><code>audit.rationale</code></td>
+    <td align="center"><code>audit.provenance</code></td>
+  </tr>
+</table>
+
+<p align="center">
+  <em>This is not optional. This is what makes PSDL regulatory-ready (FDA, EU MDR).</em>
+</p>
+
+---
+
 ## Try It Now (No Setup Required)
 
 Run PSDL in your browser with Google Colab - zero installation, real clinical data:
@@ -50,9 +80,9 @@ Run PSDL in your browser with Google Colab - zero installation, real clinical da
 Despite significant advances in clinical AI and machine learning, **real-time decision support in healthcare remains fragmented, non-portable, non-reproducible, and exceptionally difficult to audit or regulate**.
 
 <p align="center">
-  <img src="docs/assets/layers.jpeg" alt="Healthcare AI Semantic Stack" width="800"/>
+  <img src="docs/assets/psdl-value-proposition.jpeg" alt="PSDL Value Proposition - Before and After" width="900"/>
   <br/>
-  <em>PSDL fills the missing semantic layer in the healthcare AI stack</em>
+  <em>PSDL bridges the determination, audit, and portability gaps in clinical research</em>
 </p>
 
 ## What is PSDL?
@@ -64,8 +94,9 @@ PSDL (Patient Scenario Definition Language) is a declarative, vendor-neutral lan
 | **Signals** | Time-series clinical data bindings (labs, vitals, etc.) |
 | **Trends** | Temporal computations over signals (deltas, slopes, averages) |
 | **Logic** | Boolean algebra combining trends into clinical states |
+| **Audit** | Required traceability (intent, rationale, provenance) |
 | **Population** | Criteria for which patients a scenario applies to |
-| **Triggers** | Event-condition-action rules (v0.2) |
+| **State** | Optional state machine for tracking clinical progression |
 
 <p align="center">
   <img src="docs/assets/semantic langauge.jpeg" alt="How PSDL Works" width="800"/>
@@ -78,7 +109,12 @@ PSDL (Patient Scenario Definition Language) is a declarative, vendor-neutral lan
 ```yaml
 # Detect early kidney injury
 scenario: AKI_Early_Detection
-version: "0.1.0"
+version: "0.2.0"
+
+audit:
+  intent: "Detect early acute kidney injury using creatinine trends"
+  rationale: "Early AKI detection enables timely intervention"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
 
 signals:
   Cr:
@@ -200,6 +236,11 @@ PSDL follows industry-standard patterns (like GraphQL, CQL, ONNX):
 ```
 psdl/
 ├── README.md              # This file
+├── PRINCIPLES.md          # Core laws defining PSDL scope
+├── spec/                  # SPECIFICATION (Source of Truth)
+│   ├── schema.json        # JSON Schema for scenarios
+│   ├── operators.yaml     # Operator definitions
+│   └── grammar/           # Lark/EBNF grammars
 ├── src/psdl/              # REFERENCE IMPLEMENTATION (Python)
 │   ├── __init__.py        # Package entry point
 │   ├── operators.py       # Temporal operators (shared)
@@ -209,22 +250,10 @@ psdl/
 │   ├── runtimes/          # Execution runtimes
 │   │   ├── single/        # Single patient evaluation
 │   │   └── cohort/        # Cohort SQL compilation
-│   ├── execution/         # Execution engines
-│   │   ├── batch.py       # Batch execution
-│   │   ├── sql_compiler.py # SQL code generation
-│   │   └── streaming/     # Real-time streaming (Flink)
-│   └── adapters/          # Data Adapters
-│       ├── omop.py        # OMOP CDM adapter (SQL)
-│       ├── fhir.py        # FHIR R4 adapter (REST)
-│       └── physionet.py   # PhysioNet Challenge adapter
-├── scenarios/             # Example scenarios
-│   ├── aki_detection.yaml
-│   ├── sepsis_screening.yaml
-│   └── physionet_sepsis.yaml
+│   └── adapters/          # Data adapters (OMOP, FHIR, PhysioNet)
+├── examples/              # Example scenarios (7 scenarios)
 ├── notebooks/             # Jupyter demos (5 notebooks)
-├── docs/
-│   ├── WHITEPAPER.md      # Full specification document
-│   └── assets/            # Images and diagrams
+├── docs/                  # Documentation + Whitepapers
 └── tests/                 # 284 tests (all passing)
 ```
 

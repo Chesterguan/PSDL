@@ -17,11 +17,63 @@ A declarative, vendor-neutral language for expressing clinical scenarios. PSDL d
 
 ### Scenario
 
-A complete PSDL definition that describes a clinical situation to detect. Contains signals, trends, logic, and optionally population filters.
+A complete PSDL definition that describes a clinical situation to detect. Contains signals, trends, logic, **audit block (required)**, and optionally population filters and state machine.
 
 **Examples:** `AKI_Detection`, `Sepsis_Screening`, `ICU_Deterioration`
 
 **File format:** YAML or JSON
+
+**Required sections:** `scenario`, `version`, `audit`, `signals`, `logic`
+
+---
+
+### Audit Block (First-Citizen)
+
+**Required** metadata that makes every scenario traceable and accountable. This is PSDL's first-citizen feature.
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `intent` | WHAT is being detected | "Detect early acute kidney injury" |
+| `rationale` | WHY it matters clinically | "Early detection enables intervention" |
+| `provenance` | WHAT evidence supports it | "KDIGO Guidelines 2012" |
+
+```yaml
+audit:
+  intent: "Detect early AKI using KDIGO criteria"
+  rationale: "Early detection enables timely intervention"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
+```
+
+**This is not optional.** Every PSDL scenario must include an audit block.
+
+---
+
+### Clinical Accountability
+
+PSDL's **first-citizen principle**. Every clinical decision must be traceable: WHO wrote it, WHY it matters, and WHAT evidence supports it.
+
+Clinical accountability is what makes PSDL regulatory-ready (FDA, EU MDR).
+
+---
+
+### State Machine
+
+Optional component for tracking clinical state progression over time. Unlike signals/trends/logic (which are stateless point-in-time evaluations), state machines maintain history.
+
+**Components:**
+- `initial`: Starting state
+- `states`: List of possible states
+- `transitions`: Rules for moving between states (from, to, when)
+
+```yaml
+state:
+  initial: normal
+  states: [normal, elevated, critical]
+  transitions:
+    - from: normal
+      to: elevated
+      when: aki_stage1
+```
 
 ---
 
@@ -111,7 +163,7 @@ The formal definition of PSDL - what the language IS. Includes schema, grammar, 
 
 The in-memory data structure representing a parsed and validated scenario. IR is independent of execution method - it can be compiled to SQL, Flink, or evaluated in Python.
 
-**Types:** `ScenarioIR`, `SignalIR`, `TrendIR`, `LogicIR`, `PopulationIR`
+**Types:** `PSDLScenario`, `Signal`, `Trend`, `Logic`, `AuditBlock`, `StateMachine`, `StateTransition`
 
 ---
 
@@ -206,9 +258,32 @@ Evaluates a scenario **CONTINUOUSLY** as new data arrives. Used for real-time mo
 
 ## Data Models & Sources
 
+### Dataset Spec (Dataset Specification)
+
+A declarative binding layer that maps PSDL semantic references to concrete data source locations. Enables the same scenario to run across different datasets (OMOP, FHIR, MIMIC) without modification.
+
+**Core principle:**
+```
+Scenario   = intent  (WHAT to detect)
+Dataset Spec = binding (WHERE to find it)
+Adapter    = execution (HOW to run it)
+```
+
+**Contents:**
+- Element bindings (semantic name → table/field/path)
+- Encoding bindings (concept_id, LOINC codes, valuesets)
+- Type declarations (unit, value_type)
+- Time axis conventions (time_field, timezone)
+
+**File format:** YAML
+
+See [RFC-0004](../rfcs/0004-dataset-specification.md) for full specification.
+
+---
+
 ### Adapter
 
-Component that connects PSDL to a specific data source. Adapters abstract away the details of data retrieval.
+Component that connects PSDL to a specific data source. Adapters load Dataset Specs and execute queries against data infrastructure.
 
 | Adapter | Data Source |
 |---------|-------------|

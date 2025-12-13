@@ -2,10 +2,67 @@
 
 - **RFC Number**: 0001
 - **Author(s)**: PSDL Community
-- **Status**: Draft
+- **Status**: ❌ Withdrawn
 - **GitHub Issue**: [#2](https://github.com/Chesterguan/PSDL/issues/2)
 - **Created**: 2025-12-05
-- **Updated**: 2025-12-05
+- **Updated**: 2025-12-12
+
+---
+
+## ⚠️ Withdrawal Notice
+
+**This RFC has been withdrawn** after critical review (2025-12-12).
+
+### Reason for Withdrawal
+
+The proposed design violates PSDL's core principle: *"PSDL defines WHAT to detect, not HOW to compute."*
+
+Putting model implementation details (`registry`, `version`, `inputs`) directly in scenarios:
+- Mixes clinical intent with infrastructure concerns
+- Conflicts with RFC-0004's clean separation (Scenario → Dataset Spec → Adapter)
+- Reduces scenario portability
+
+### Recommended Alternative
+
+**Treat ML model outputs as regular signals**, bound via Dataset Spec:
+
+```yaml
+# Scenario (pure intent)
+signals:
+  SepsisRisk:
+    ref: sepsis_risk_score
+    expected_unit: probability
+
+trends:
+  high_risk:
+    expr: last(SepsisRisk) > 0.7
+```
+
+```yaml
+# Dataset Spec (binding - handles WHERE data comes from)
+elements:
+  sepsis_risk_score:
+    kind: ml_output
+    source: ml_pipeline_topic    # Pre-computed by MLOps
+    # OR adapter calls model API internally
+    model_config:
+      registry: "hospital-ai"
+      model_id: "sepsis_onset_6h:4.2.0"
+```
+
+This approach:
+- Keeps scenarios as pure clinical intent
+- Model details are auditable in Dataset Spec
+- Same scenario works with different models (swap Dataset Spec)
+- Consistent with RFC-0004 architecture
+
+### Future Consideration
+
+If explicit model integration is needed later, it should follow the Dataset Spec pattern rather than polluting scenarios.
+
+---
+
+## Original RFC (Preserved for Historical Reference)
 
 ## Summary
 

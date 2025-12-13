@@ -489,12 +489,12 @@ El backend de streaming (RFC-0002) permite:
 - Operadores temporales con estado
 - Integración con infraestructura Kafka/Flink
 
-### Objetivo v1.x: Puente de Despliegue de Modelos IA
+### Objetivo v1.x: Integración de Modelos IA
 
-RFC-0001 permite:
-- Declarar dependencias de modelos en escenarios
-- Operadores estándar `predict()`, `forecast()`
-- Manejo de timeouts y fallbacks para inferencia en tiempo real
+Las salidas de modelos ML se tratan como señales regulares mediante enlaces Dataset Spec:
+- Salidas de modelos vinculadas a señales (ej. `sepsis_risk_score`)
+- Integración de registro de modelos vía configuración Dataset Spec
+- Consistente con la filosofía PSDL de "QUÉ, no CÓMO"
 
 ### El Pitch
 
