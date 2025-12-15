@@ -443,6 +443,7 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 | Document | Description |
 |----------|-------------|
+| [API Reference](wiki/API.md) | Developer API documentation |
 | [Principles](PRINCIPLES.md) | The laws defining PSDL's scope and boundaries |
 | [Whitepaper](docs/WHITEPAPER.md) | Full project vision and specification (5 languages) |
 | [Getting Started](docs/getting-started.md) | Quick start guide |
