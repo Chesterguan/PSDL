@@ -135,28 +135,29 @@ class TestInMemoryBackend:
 
 
 class TestPSDLEvaluator:
-    """Tests for the PSDL evaluator."""
+    """Tests for the PSDL evaluator (v0.3 syntax)."""
 
     @pytest.fixture
     def simple_scenario_yaml(self):
+        """v0.3: trends produce numeric, logic handles comparisons."""
         return """
 scenario: Test_Evaluator
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
     unit: mg/dL
 trends:
   cr_high:
-    expr: last(Cr) > 1.5
+    expr: last(Cr)
   cr_rising:
-    expr: delta(Cr, 6h) > 0.3
+    expr: delta(Cr, 6h)
 logic:
   renal_concern:
-    when: cr_high AND cr_rising
+    when: cr_high > 1.5 AND cr_rising > 0.3
     severity: high
   any_issue:
-    when: cr_high OR cr_rising
+    when: cr_high > 1.5 OR cr_rising > 0.3
 """
 
     @pytest.fixture
@@ -200,6 +201,7 @@ logic:
         return backend, base_time
 
     def test_evaluate_single_patient_triggered(self, simple_scenario_yaml, backend_with_data):
+        """v0.3: Test patient that triggers both conditions."""
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -210,10 +212,12 @@ logic:
 
         assert result.is_triggered
         assert "renal_concern" in result.triggered_logic
-        assert result.trend_results["cr_high"] is True
-        assert result.trend_results["cr_rising"] is True
+        # v0.3: trends produce numeric values, check trend values
+        assert result.trend_values["cr_high"] == 1.8  # last value > 1.5
+        assert result.trend_values["cr_rising"] > 0.3  # delta > 0.3
 
     def test_evaluate_single_patient_not_triggered(self, simple_scenario_yaml, backend_with_data):
+        """v0.3: Test patient with normal values."""
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -223,10 +227,12 @@ logic:
         result = evaluator.evaluate_patient(patient_id=2, reference_time=base_time)
 
         assert not result.is_triggered
-        assert result.trend_results["cr_high"] is False
-        assert result.trend_results["cr_rising"] is False
+        # v0.3: trends produce numeric values, logic does comparison
+        assert result.trend_values["cr_high"] == 1.0  # last value <= 1.5
+        assert result.trend_values["cr_rising"] <= 0.3  # delta <= 0.3
 
     def test_evaluate_partial_match(self, simple_scenario_yaml, backend_with_data):
+        """v0.3: Test patient that only triggers one condition."""
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -236,11 +242,12 @@ logic:
         # Patient 3 is high but not rising
         result = evaluator.evaluate_patient(patient_id=3, reference_time=base_time)
 
-        assert result.is_triggered  # any_issue should trigger
+        assert result.is_triggered  # any_issue should trigger (cr_high > 1.5)
         assert "any_issue" in result.triggered_logic
         assert "renal_concern" not in result.triggered_logic
-        assert result.trend_results["cr_high"] is True
-        assert result.trend_results["cr_rising"] is False
+        # v0.3: check numeric trend values
+        assert result.trend_values["cr_high"] == 1.6  # > 1.5
+        assert result.trend_values["cr_rising"] == 0.0  # delta = 0, not > 0.3
 
     def test_evaluate_cohort(self, simple_scenario_yaml, backend_with_data):
         parser = PSDLParser()
@@ -330,6 +337,7 @@ logic:
         assert 3 in triggered_ids
 
     def test_trend_values_computed(self, simple_scenario_yaml, backend_with_data):
+        """v0.3: Verify numeric trend values are computed correctly."""
         parser = PSDLParser()
         scenario = parser.parse_string(simple_scenario_yaml)
 
@@ -338,19 +346,20 @@ logic:
 
         result = evaluator.evaluate_patient(patient_id=1, reference_time=base_time)
 
-        # Check that actual values are computed
+        # v0.3: trends produce numeric values
         assert result.trend_values["cr_high"] == 1.8  # last value
         assert abs(result.trend_values["cr_rising"] - 0.8) < 0.01  # delta
 
 
 class TestComplexLogic:
-    """Tests for complex logic expressions."""
+    """Tests for complex logic expressions (v0.3 syntax)."""
 
     @pytest.fixture
     def complex_scenario_yaml(self):
+        """v0.3: trends produce numeric, comparisons in logic."""
         return """
 scenario: Complex_Logic_Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   A:
     ref: signal_a
@@ -359,13 +368,19 @@ signals:
   C:
     ref: signal_c
 trends:
-  a_high:
-    expr: last(A) > 5
-  b_high:
-    expr: last(B) > 5
-  c_high:
-    expr: last(C) > 5
+  a_value:
+    expr: last(A)
+  b_value:
+    expr: last(B)
+  c_value:
+    expr: last(C)
 logic:
+  a_high:
+    when: a_value > 5
+  b_high:
+    when: b_value > 5
+  c_high:
+    when: c_value > 5
   stage1:
     when: a_high
   stage2:
@@ -375,6 +390,7 @@ logic:
 """
 
     def test_cascading_logic(self, complex_scenario_yaml):
+        """v0.3: Test cascading logic rules with numeric trends."""
         parser = PSDLParser()
         scenario = parser.parse_string(complex_scenario_yaml)
 
@@ -390,11 +406,16 @@ logic:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(1, base_time)
 
+        # v0.3: a_high, b_high, c_high are now logic rules, not trends
+        assert result.logic_results["a_high"] is True  # a_value > 5
+        assert result.logic_results["b_high"] is True  # b_value > 5
+        assert result.logic_results["c_high"] is False  # c_value <= 5
         assert result.logic_results["stage1"] is True  # a_high
         assert result.logic_results["stage2"] is True  # stage1 AND b_high
         assert result.logic_results["stage3"] is True  # stage2 OR c_high
 
     def test_or_logic_short_circuit(self, complex_scenario_yaml):
+        """v0.3: Test OR logic with cascading rules."""
         parser = PSDLParser()
         scenario = parser.parse_string(complex_scenario_yaml)
 
@@ -411,31 +432,38 @@ logic:
         evaluator = PSDLEvaluator(scenario, backend)
         result = evaluator.evaluate_patient(1, base_time)
 
+        # v0.3: check logic rules
+        assert result.logic_results["a_high"] is False  # a_value <= 5
+        assert result.logic_results["c_high"] is True  # c_value > 5
         assert result.logic_results["stage1"] is False
         assert result.logic_results["stage2"] is False
         assert result.logic_results["stage3"] is True  # c_high is True
 
 
 class TestMissingData:
-    """Tests for handling missing data."""
+    """Tests for handling missing data (v0.3 syntax)."""
 
     @pytest.fixture
     def scenario_yaml(self):
+        """v0.3: trends produce numeric, logic handles comparisons."""
         return """
 scenario: Missing_Data_Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
+  cr_value:
+    expr: last(Cr)
 logic:
+  cr_high:
+    when: cr_value > 1.5
   concern:
     when: cr_high
 """
 
     def test_no_data_for_signal(self, scenario_yaml):
+        """v0.3: Test handling when no data exists for a signal."""
         parser = PSDLParser()
         scenario = parser.parse_string(scenario_yaml)
 
@@ -448,8 +476,9 @@ logic:
 
         result = evaluator.evaluate_patient(1, base_time)
 
-        assert result.trend_values["cr_high"] is None
-        assert result.trend_results["cr_high"] is False
+        # v0.3: cr_value is a trend, cr_high is a logic rule
+        assert result.trend_values["cr_value"] is None
+        assert result.logic_results["cr_high"] is False
         assert result.logic_results["concern"] is False
 
 

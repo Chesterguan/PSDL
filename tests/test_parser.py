@@ -59,9 +59,10 @@ logic:
             parser.parse_string(yaml_content)
 
     def test_full_scenario(self):
+        """Test v0.3 syntax: trends produce numeric, logic handles comparisons."""
         yaml_content = """
 scenario: Test_Full
-version: "0.1.0"
+version: "0.3.0"
 description: "A test scenario"
 population:
   include:
@@ -75,19 +76,20 @@ signals:
     unit: mg/dL
     domain: measurement
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
-    description: "Creatinine above normal"
+  cr_value:
+    expr: last(Cr)
+    description: "Current creatinine value"
 logic:
-  renal_issue:
-    when: cr_high
+  cr_high:
+    when: cr_value > 1.5
     severity: medium
+    description: "Creatinine above normal"
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
         assert scenario.name == "Test_Full"
-        assert scenario.version == "0.1.0"
+        assert scenario.version == "0.3.0"
         assert scenario.description == "A test scenario"
         assert len(scenario.signals) == 1
         assert len(scenario.trends) == 1
@@ -110,20 +112,21 @@ logic:
 
 
 class TestSignalParsing:
-    """Tests for signal parsing."""
+    """Tests for signal parsing (v0.3)."""
 
     def test_signal_shorthand(self):
+        """v0.3: Signal shorthand with numeric trend and comparison in logic."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr: creatinine
 trends:
-  cr_check:
-    expr: last(Cr) > 1.0
+  cr_value:
+    expr: last(Cr)
 logic:
-  test:
-    when: cr_check
+  cr_check:
+    when: cr_value > 1.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -132,9 +135,10 @@ logic:
         assert scenario.signals["Cr"].source == "creatinine"
 
     def test_signal_full_spec(self):
+        """v0.3: Full signal spec with numeric trend."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Lact:
     ref: lactate
@@ -142,11 +146,11 @@ signals:
     unit: mmol/L
     domain: measurement
 trends:
-  lact_check:
-    expr: last(Lact) > 2.0
+  lact_value:
+    expr: last(Lact)
 logic:
-  test:
-    when: lact_check
+  lact_check:
+    when: lact_value > 2.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -159,90 +163,117 @@ logic:
 
 
 class TestTrendParsing:
-    """Tests for trend expression parsing."""
+    """Tests for trend expression parsing (v0.3: numeric only, no comparisons)."""
 
-    def test_trend_with_comparison(self):
+    def test_trend_numeric_only(self):
+        """v0.3: Trends produce numeric values, comparisons in logic."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_rising:
-    expr: delta(Cr, 6h) > 0.3
+  cr_delta:
+    expr: delta(Cr, 6h)
 logic:
-  test:
-    when: cr_rising
+  cr_rising:
+    when: cr_delta > 0.3
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
-        trend = scenario.trends["cr_rising"]
+        trend = scenario.trends["cr_delta"]
         assert trend.operator == "delta"
         assert trend.signal == "Cr"
         assert trend.window.value == 6
         assert trend.window.unit == "h"
-        assert trend.comparator == ">"
-        assert trend.threshold == 0.3
+        # v0.3: No comparator/threshold in trend
+        assert trend.comparator is None
+        assert trend.threshold is None
 
     def test_trend_last_operator(self):
+        """v0.3: last() returns numeric value."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Lact:
     ref: lactate
 trends:
-  lact_high:
-    expr: last(Lact) > 2.0
+  lact_value:
+    expr: last(Lact)
 logic:
-  test:
-    when: lact_high
+  lact_high:
+    when: lact_value > 2.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
-        trend = scenario.trends["lact_high"]
+        trend = scenario.trends["lact_value"]
         assert trend.operator == "last"
         assert trend.signal == "Lact"
         assert trend.window is None
-        assert trend.threshold == 2.0
+        # v0.3: No threshold in trend
+        assert trend.threshold is None
 
     def test_trend_slope(self):
+        """v0.3: slope() returns numeric slope value."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Lact:
     ref: lactate
 trends:
-  lact_rising:
-    expr: slope(Lact, 3h) > 0
+  lact_slope:
+    expr: slope(Lact, 3h)
 logic:
-  test:
-    when: lact_rising
+  lact_rising:
+    when: lact_slope > 0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
-        trend = scenario.trends["lact_rising"]
+        trend = scenario.trends["lact_slope"]
         assert trend.operator == "slope"
         assert trend.window.seconds == 10800  # 3 hours
 
-    def test_trend_invalid_signal_reference(self):
+    def test_trend_comparison_rejected(self):
+        """v0.3 STRICT: Comparisons in trend expressions MUST be rejected."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
   invalid:
-    expr: delta(UnknownSignal, 6h) > 0.3
+    expr: delta(Cr, 6h) > 0.3
 logic:
   test:
     when: invalid
+"""
+        parser = PSDLParser()
+        with pytest.raises(PSDLParseError) as exc_info:
+            parser.parse_string(yaml_content)
+        # Should reject comparison in trend expression
+        assert ">" in str(exc_info.value) or "Invalid trend" in str(exc_info.value)
+
+    def test_trend_invalid_signal_reference(self):
+        """Unknown signal reference should be rejected."""
+        yaml_content = """
+scenario: Test
+version: "0.3.0"
+signals:
+  Cr:
+    ref: creatinine
+trends:
+  invalid:
+    expr: delta(UnknownSignal, 6h)
+logic:
+  test:
+    when: invalid > 0.3
 """
         parser = PSDLParser()
         with pytest.raises(PSDLParseError) as exc_info:
@@ -251,51 +282,51 @@ logic:
 
 
 class TestLogicParsing:
-    """Tests for logic expression parsing."""
+    """Tests for logic expression parsing (v0.3: comparisons in logic layer)."""
 
     def test_logic_and(self):
+        """v0.3: Logic can combine trend refs with AND, comparisons in when clause."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
   Lact:
     ref: lactate
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
-  lact_high:
-    expr: last(Lact) > 2.0
+  cr_value:
+    expr: last(Cr)
+  lact_value:
+    expr: last(Lact)
 logic:
   both_high:
-    when: cr_high AND lact_high
+    when: cr_value > 1.5 AND lact_value > 2.0
     severity: high
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
         logic = scenario.logic["both_high"]
-        assert "cr_high" in logic.terms
-        assert "lact_high" in logic.terms
+        assert "cr_value" in logic.terms
+        assert "lact_value" in logic.terms
         assert "AND" in logic.operators
         assert logic.severity == Severity.HIGH
 
     def test_logic_or(self):
+        """v0.3: Logic can use OR with comparisons."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
-  cr_very_high:
-    expr: last(Cr) > 3.0
+  cr_value:
+    expr: last(Cr)
 logic:
   cr_abnormal:
-    when: cr_high OR cr_very_high
+    when: cr_value > 1.5 OR cr_value > 3.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -304,9 +335,10 @@ logic:
         assert "OR" in logic.operators
 
     def test_logic_nested(self):
+        """v0.3: Nested logic with parentheses and comparisons."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   A:
     ref: signal_a
@@ -315,32 +347,33 @@ signals:
   C:
     ref: signal_c
 trends:
-  a_high:
-    expr: last(A) > 1
-  b_high:
-    expr: last(B) > 1
-  c_high:
-    expr: last(C) > 1
+  a_value:
+    expr: last(A)
+  b_value:
+    expr: last(B)
+  c_value:
+    expr: last(C)
 logic:
   complex:
-    when: (a_high AND b_high) OR c_high
+    when: (a_value > 1 AND b_value > 1) OR c_value > 1
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
 
         logic = scenario.logic["complex"]
-        assert "a_high" in logic.terms
-        assert "b_high" in logic.terms
-        assert "c_high" in logic.terms
+        assert "a_value" in logic.terms
+        assert "b_value" in logic.terms
+        assert "c_value" in logic.terms
 
 
 class TestPopulationParsing:
     """Tests for population filter parsing."""
 
     def test_population_include_exclude(self):
+        """v0.3: Population filters with trends producing numeric, logic with comparison."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 population:
   include:
     - age >= 18
@@ -351,11 +384,11 @@ signals:
   Cr:
     ref: creatinine
 trends:
-  cr_check:
-    expr: last(Cr) > 1.0
+  cr_value:
+    expr: last(Cr)
 logic:
   test:
-    when: cr_check
+    when: cr_value > 1.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -365,18 +398,19 @@ logic:
         assert "age >= 18" in scenario.population.include
 
     def test_no_population(self):
+        """v0.3: Scenario without population filter."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_check:
-    expr: last(Cr) > 1.0
+  cr_value:
+    expr: last(Cr)
 logic:
   test:
-    when: cr_check
+    when: cr_value > 1.0
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -385,21 +419,22 @@ logic:
 
 
 class TestScenarioValidation:
-    """Tests for semantic validation."""
+    """Tests for semantic validation (v0.3)."""
 
     def test_validate_success(self):
+        """v0.3: Valid scenario with numeric trends and logic comparisons."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
+  cr_value:
+    expr: last(Cr)
 logic:
   renal:
-    when: cr_high
+    when: cr_value > 1.5
 """
         parser = PSDLParser()
         scenario = parser.parse_string(yaml_content)
@@ -408,18 +443,19 @@ logic:
         assert len(errors) == 0
 
     def test_logic_references_unknown_trend(self):
+        """v0.3: Logic referencing unknown trend should be rejected."""
         yaml_content = """
 scenario: Test
-version: "0.1.0"
+version: "0.3.0"
 signals:
   Cr:
     ref: creatinine
 trends:
-  cr_high:
-    expr: last(Cr) > 1.5
+  cr_value:
+    expr: last(Cr)
 logic:
   bad_logic:
-    when: cr_high AND unknown_trend
+    when: cr_value > 1.5 AND unknown_trend > 0
 """
         parser = PSDLParser()
         with pytest.raises(PSDLParseError) as exc_info:

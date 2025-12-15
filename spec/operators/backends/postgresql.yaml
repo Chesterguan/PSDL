@@ -1,0 +1,205 @@
+# PSDL PostgreSQL Backend
+# Version: 0.3.0
+# Last Updated: 2025-12-15
+#
+# SQL templates for PostgreSQL dialect.
+# These implement the operator signatures defined in ../signatures.yaml
+
+$schema: "https://psdl-lang.org/schema/v0.3/operators/backend"
+version: "0.3.0"
+dialect: postgresql
+min_version: "12"
+
+# Template variables available:
+#   {trend_name}     - Name of the trend
+#   {table}          - Source table
+#   {filter_cond}    - WHERE clause conditions
+#   {value_col}      - Column containing values
+#   {datetime_col}   - Column containing timestamps
+#   {window_seconds} - Window duration in seconds
+#   {schema}         - Database schema name
+#   {p}              - Percentile value (for percentile operator)
+
+templates:
+  # ===========================================================================
+  # Windowed Operators
+  # ===========================================================================
+
+  delta: |
+    -- Delta computation using CTEs
+    {trend_name}_first AS (
+        SELECT person_id, {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name}_last AS (
+        SELECT person_id, {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+    ),
+    {trend_name} AS (
+        SELECT l.person_id,
+               (l.value - f.value) as {trend_name}_value
+        FROM {trend_name}_last l
+        JOIN {trend_name}_first f ON l.person_id = f.person_id
+        WHERE l.rn = 1 AND f.rn = 1
+    )
+
+  slope: |
+    -- PostgreSQL REGR_SLOPE for linear regression
+    {trend_name} AS (
+        SELECT person_id,
+               REGR_SLOPE(
+                   {value_col},
+                   EXTRACT(EPOCH FROM {datetime_col})
+               ) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+        HAVING COUNT(*) >= 2
+    )
+
+  sma: |
+    {trend_name} AS (
+        SELECT person_id,
+               AVG({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )
+
+  ema: null  # Not supported - requires recursive CTE
+
+  min: |
+    {trend_name} AS (
+        SELECT person_id,
+               MIN({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )
+
+  max: |
+    {trend_name} AS (
+        SELECT person_id,
+               MAX({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )
+
+  count: |
+    -- IMPORTANT: count ALL observations including nulls
+    -- Use COUNT(*) not COUNT(value_col) to include nulls
+    {trend_name} AS (
+        SELECT person_id,
+               COUNT(*) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+        GROUP BY person_id
+    )
+
+  first: |
+    {trend_name}_data AS (
+        SELECT person_id,
+               {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+    ),
+    {trend_name} AS (
+        SELECT person_id, value as {trend_name}_value
+        FROM {trend_name}_data WHERE rn = 1
+    )
+
+  std: |
+    {trend_name} AS (
+        SELECT person_id,
+               STDDEV_SAMP({value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+        HAVING COUNT(*) >= 2
+    )
+
+  percentile: |
+    {trend_name} AS (
+        SELECT person_id,
+               PERCENTILE_CONT({p} / 100.0) WITHIN GROUP (ORDER BY {value_col}) as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} >= :reference_time - INTERVAL '{window_seconds} seconds'
+          AND {datetime_col} <= :reference_time
+          AND {value_col} IS NOT NULL
+        GROUP BY person_id
+    )
+
+  # ===========================================================================
+  # Pointwise Operators
+  # ===========================================================================
+
+  last: |
+    {trend_name}_data AS (
+        SELECT person_id,
+               {value_col} as value,
+               ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} DESC) as rn
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} <= :reference_time
+    ),
+    {trend_name} AS (
+        SELECT person_id, value as {trend_name}_value
+        FROM {trend_name}_data WHERE rn = 1
+    )
+
+  exists: |
+    {trend_name} AS (
+        SELECT person_id,
+               CASE WHEN COUNT(*) > 0 THEN true ELSE false END as {trend_name}_value
+        FROM {table}
+        WHERE {filter_cond}
+          AND {datetime_col} <= :reference_time
+        GROUP BY person_id
+    )
+
+  missing: |
+    -- missing is computed as NOT EXISTS
+    -- For patients with no data, use LEFT JOIN and check for NULL
+    {trend_name} AS (
+        SELECT p.person_id,
+               CASE WHEN s.person_id IS NULL THEN true ELSE false END as {trend_name}_value
+        FROM {schema}.person p
+        LEFT JOIN (
+            SELECT DISTINCT person_id
+            FROM {table}
+            WHERE {filter_cond}
+              AND {datetime_col} <= :reference_time
+        ) s ON p.person_id = s.person_id
+    )

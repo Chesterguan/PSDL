@@ -329,9 +329,10 @@ class TestTemporalOperatorEdgeCases:
 
     @pytest.fixture
     def delta_scenario_yaml(self, tmp_path):
+        """v0.3: trends produce numeric, logic handles comparisons."""
         content = """
 scenario: Delta_Test
-version: "0.1.0"
+version: "0.3.0"
 
 signals:
   Value:
@@ -339,15 +340,21 @@ signals:
     unit: units
 
 trends:
-  rising_fast:
-    expr: delta(Value, 6h) > 10
-    description: "Value increased by more than 10 in 6 hours"
+  delta_6h:
+    expr: delta(Value, 6h)
+    description: "Value change in 6 hours"
 
-  rising_slow:
-    expr: delta(Value, 24h) > 5
-    description: "Value increased by more than 5 in 24 hours"
+  delta_24h:
+    expr: delta(Value, 24h)
+    description: "Value change in 24 hours"
 
 logic:
+  rising_fast:
+    when: delta_6h > 10
+    description: "Value increased by more than 10 in 6 hours"
+  rising_slow:
+    when: delta_24h > 5
+    description: "Value increased by more than 5 in 24 hours"
   acute_rise:
     when: rising_fast
     severity: high
@@ -407,10 +414,10 @@ logic:
         print(f"Sparse data result: {result.trend_values}")
 
     def test_slope_calculation(self, tmp_path):
-        """Test slope operator for trend detection."""
+        """Test slope operator for trend detection (v0.3 syntax)."""
         content = """
 scenario: Slope_Test
-version: "0.1.0"
+version: "0.3.0"
 
 signals:
   Value:
@@ -418,19 +425,20 @@ signals:
     unit: units
 
 trends:
-  rising_trend:
-    expr: slope(Value, 6h) > 0
-    description: "Value is trending upward"
-
-  falling_trend:
-    expr: slope(Value, 6h) < 0
-    description: "Value is trending downward"
+  slope_6h:
+    expr: slope(Value, 6h)
+    description: "6-hour slope"
 
 logic:
+  rising_trend:
+    when: slope_6h > 0
+    description: "Value is trending upward"
+  falling_trend:
+    when: slope_6h < 0
+    description: "Value is trending downward"
   going_up:
     when: rising_trend
     severity: low
-
   going_down:
     when: falling_trend
     severity: low
@@ -520,10 +528,10 @@ class TestScenarioValidation:
     """Test scenario validation and error handling."""
 
     def test_invalid_signal_reference_in_trend(self, tmp_path):
-        """Scenario with invalid signal reference should fail validation."""
+        """Scenario with invalid signal reference should fail validation (v0.3 syntax)."""
         content = """
 scenario: Invalid_Test
-version: "0.1.0"
+version: "0.3.0"
 
 signals:
   Cr:
@@ -531,11 +539,14 @@ signals:
     unit: mg/dL
 
 trends:
-  bad_trend:
-    expr: last(NonExistent) > 1.0
+  bad_value:
+    expr: last(NonExistent)
     description: "References non-existent signal"
 
 logic:
+  bad_trend:
+    when: bad_value > 1.0
+    description: "Bad trend check"
   test:
     when: bad_trend
     severity: low
@@ -553,10 +564,10 @@ logic:
         assert "NonExistent" in str(exc_info.value)
 
     def test_circular_logic_reference(self, tmp_path):
-        """Scenario with circular logic should be detected."""
+        """Scenario with circular logic should be detected (v0.3 syntax)."""
         content = """
 scenario: Circular_Test
-version: "0.1.0"
+version: "0.3.0"
 
 signals:
   Value:
@@ -564,15 +575,17 @@ signals:
     unit: units
 
 trends:
-  trend_a:
-    expr: last(Value) > 5
-    description: "Simple trend"
+  value:
+    expr: last(Value)
+    description: "Current value"
 
 logic:
+  trend_a:
+    when: value > 5
+    description: "Simple trend check"
   rule_a:
     when: rule_b
     severity: low
-
   rule_b:
     when: rule_a
     severity: low

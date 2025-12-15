@@ -1,13 +1,13 @@
 """
 Auto-generated operator metadata from spec/operators.yaml
-Generated: 2025-12-11T18:16:29.769937
+Generated: 2025-12-15T12:01:47.781774
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --operators
 """
 
 from typing import Dict, List, Literal, Optional, TypedDict
 
-SPEC_VERSION = "0.2.0"
+SPEC_VERSION = "0.3.0"
 
 
 class OperatorMeta(TypedDict, total=False):
@@ -33,7 +33,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 2,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "slope": {
         "name": "slope",
@@ -43,7 +43,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 2,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "sma": {
         "name": "sma",
@@ -53,7 +53,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "ema": {
         "name": "ema",
@@ -63,7 +63,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "min": {
         "name": "min",
@@ -73,7 +73,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "max": {
         "name": "max",
@@ -83,7 +83,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "count": {
         "name": "count",
@@ -93,7 +93,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "include",
         "min_points": 0,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "first": {
         "name": "first",
@@ -103,7 +103,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "passthrough",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "std": {
         "name": "std",
@@ -113,7 +113,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 2,
         "aliases": ["stddev"],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "percentile": {
         "name": "percentile",
@@ -123,7 +123,7 @@ WINDOWED_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "filter",
         "min_points": 1,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
 }
 
@@ -138,7 +138,7 @@ POINTWISE_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "passthrough",
         "min_points": 0,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "exists": {
         "name": "exists",
@@ -148,7 +148,7 @@ POINTWISE_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "include",
         "min_points": 0,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
     "missing": {
         "name": "missing",
@@ -158,7 +158,7 @@ POINTWISE_OPERATORS: Dict[str, OperatorMeta] = {
         "null_handling": "include",
         "min_points": 0,
         "aliases": [],
-        "runtimes": ["python", "postgresql", "flink_sql"],
+        "runtimes": ["flink", "postgresql"],
     },
 }
 

@@ -15,7 +15,12 @@ from psdl.execution.streaming import config as _config
 from psdl.execution.streaming import operators as _operators
 
 # Import from the psdl package
-from psdl.execution.streaming.models import ClinicalEvent, Severity, TrendResult, WindowSpec
+from psdl.execution.streaming.models import (
+    ClinicalEvent,
+    Severity,
+    StreamingWindowSpec,
+    TrendResult,
+)
 
 DeltaWindowFunction = _operators.DeltaWindowFunction
 SlopeWindowFunction = _operators.SlopeWindowFunction
@@ -38,43 +43,43 @@ ExecutionMode = _config.ExecutionMode
 CheckpointMode = _config.CheckpointMode
 
 
-class TestWindowSpec:
-    """Test WindowSpec parsing and defaults."""
+class TestStreamingWindowSpec:
+    """Test StreamingWindowSpec parsing and defaults."""
 
     def test_parse_seconds(self):
-        spec = WindowSpec.from_psdl("30s")
+        spec = StreamingWindowSpec.from_psdl("30s")
         assert spec.size_ms == 30000
 
     def test_parse_minutes(self):
-        spec = WindowSpec.from_psdl("5m")
+        spec = StreamingWindowSpec.from_psdl("5m")
         assert spec.size_ms == 5 * 60 * 1000
 
     def test_parse_hours(self):
-        spec = WindowSpec.from_psdl("2h")
+        spec = StreamingWindowSpec.from_psdl("2h")
         assert spec.size_ms == 2 * 60 * 60 * 1000
 
     def test_parse_days(self):
-        spec = WindowSpec.from_psdl("1d")
+        spec = StreamingWindowSpec.from_psdl("1d")
         assert spec.size_ms == 24 * 60 * 60 * 1000
 
     def test_default_slide_small_window(self):
         """Windows < 1m should have 1s slide."""
-        spec = WindowSpec.from_psdl("30s")
+        spec = StreamingWindowSpec.from_psdl("30s")
         assert spec.slide_ms == 1000
 
     def test_default_slide_medium_window(self):
         """Windows 1m-10m should have 10s slide."""
-        spec = WindowSpec.from_psdl("5m")
+        spec = StreamingWindowSpec.from_psdl("5m")
         assert spec.slide_ms == 10000
 
     def test_default_slide_large_window(self):
         """Windows 1h-24h should have 5m slide."""
-        spec = WindowSpec.from_psdl("2h")
+        spec = StreamingWindowSpec.from_psdl("2h")
         assert spec.slide_ms == 5 * 60 * 1000
 
     def test_custom_slide(self):
         """Custom slide interval."""
-        spec = WindowSpec.from_psdl("1h", "30s")
+        spec = StreamingWindowSpec.from_psdl("1h", "30s")
         assert spec.size_ms == 60 * 60 * 1000
         assert spec.slide_ms == 30000
 
@@ -605,3 +610,81 @@ class TestLogicJoinFunction:
 
         # Should return None when not all trends present
         assert result is None
+
+
+class TestLateDataHandling:
+    """Test late data handling configuration."""
+
+    def test_default_late_data_policy(self):
+        """Test default late data policy is DROP."""
+        from psdl.execution.streaming.config import LateDataPolicy
+
+        config = StreamingConfig()
+        assert config.late_data_policy == LateDataPolicy.DROP
+        assert config.allowed_lateness_ms == 0
+
+    def test_late_data_policy_from_scenario(self):
+        """Test parsing late data policy from scenario config."""
+        from psdl.execution.streaming.config import LateDataPolicy
+
+        scenario = {
+            "execution": {
+                "mode": "streaming",
+                "late_data": {
+                    "policy": "side_output",
+                    "allowed_lateness": "2m",
+                },
+            }
+        }
+
+        config = StreamingConfig.from_scenario(scenario)
+
+        assert config.late_data_policy == LateDataPolicy.SIDE_OUTPUT
+        assert config.allowed_lateness_ms == 2 * 60 * 1000
+
+    def test_late_data_policy_allow(self):
+        """Test ALLOW policy configuration."""
+        from psdl.execution.streaming.config import LateDataPolicy
+
+        scenario = {
+            "execution": {
+                "mode": "streaming",
+                "late_data": {
+                    "policy": "allow",
+                    "allowed_lateness": "5m",
+                },
+            }
+        }
+
+        config = StreamingConfig.from_scenario(scenario)
+
+        assert config.late_data_policy == LateDataPolicy.ALLOW
+        assert config.allowed_lateness_ms == 5 * 60 * 1000
+
+    def test_late_data_output_tag_constant(self):
+        """Test late data output tag is defined."""
+        from psdl.execution.streaming.flink_runtime import LATE_DATA_TAG
+
+        assert LATE_DATA_TAG == "late-clinical-events"
+
+    def test_watermark_config_default(self):
+        """Test default watermark configuration."""
+        from psdl.execution.streaming.config import WatermarkConfig
+
+        config = WatermarkConfig()
+        assert config.max_lateness_ms == 5 * 60 * 1000  # 5 minutes
+        assert config.idle_timeout_ms == 30 * 1000  # 30 seconds
+
+    def test_watermark_config_custom(self):
+        """Test custom watermark configuration."""
+        from psdl.execution.streaming.config import WatermarkConfig
+
+        config = WatermarkConfig.from_dict(
+            {
+                "max_lateness": "10m",
+                "idle_timeout": "60s",
+            }
+        )
+
+        assert config.max_lateness_ms == 10 * 60 * 1000
+        assert config.idle_timeout_ms == 60 * 1000

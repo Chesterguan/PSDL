@@ -6,13 +6,23 @@ This module provides:
 2. Pluggable data backends (in-memory, OMOP, FHIR)
 3. Temporal operator computation
 4. Logic expression evaluation
+5. ScenarioIR integration for DAG-ordered evaluation
 
 Version 0.3.0 Changes (RFC-0005):
 - Added to_standard_result() for v0.3 EvaluationResult format
 - Added triggered property for v0.3 compatibility
+- Added ScenarioIR integration with from_ir() class method
+- Added compilation_hashes to EvaluationResult for audit trails
 
 Usage:
+    # From parsed scenario
     evaluator = SinglePatientEvaluator(scenario, backend)
+    result = evaluator.evaluate(patient_id=123)
+
+    # From compiled IR (recommended for audit trails)
+    from psdl.core.compile import compile_scenario
+    ir = compile_scenario("scenario.yaml")
+    evaluator = SinglePatientEvaluator.from_ir(ir, backend)
     result = evaluator.evaluate(patient_id=123)
 
     # v0.3 standard format
@@ -44,6 +54,15 @@ class EvaluationContext:
 
 
 @dataclass
+class CompilationHashes:
+    """Compilation hashes for audit trail (from ScenarioIR)."""
+
+    spec_hash: str
+    ir_hash: str
+    toolchain_hash: str
+
+
+@dataclass
 class EvaluationResult:
     """Result of evaluating a scenario for a patient."""
 
@@ -53,6 +72,7 @@ class EvaluationResult:
     trend_values: Dict[str, Optional[float]]
     trend_results: Dict[str, bool]
     logic_results: Dict[str, bool]
+    compilation_hashes: Optional[CompilationHashes] = None  # From ScenarioIR
 
     @property
     def is_triggered(self) -> bool:
@@ -226,12 +246,19 @@ class SinglePatientEvaluator:
     - Low latency (Python in-memory computation)
     - Interactive use
     - Testing and development
+    - ScenarioIR integration for DAG-ordered evaluation and audit trails
 
     For large cohort analysis, use the CohortCompiler from runtimes.cohort.
 
     Usage:
+        # From parsed scenario
         scenario = parser.parse_file("scenario.yaml")
         evaluator = SinglePatientEvaluator(scenario, backend)
+
+        # From compiled IR (recommended for production/audit)
+        from psdl.core.compile import compile_scenario
+        ir = compile_scenario("scenario.yaml")
+        evaluator = SinglePatientEvaluator.from_ir(ir, backend)
 
         # Single patient
         result = evaluator.evaluate(patient_id=123)
@@ -250,19 +277,67 @@ class SinglePatientEvaluator:
         "!=": lambda a, b: abs(a - b) >= 1e-10,
     }
 
-    def __init__(self, scenario: PSDLScenario, backend: DataBackend):
+    def __init__(
+        self,
+        scenario: PSDLScenario,
+        backend: DataBackend,
+        scenario_ir: Optional[Any] = None,
+    ):
         """
         Initialize evaluator with a scenario and data backend.
 
         Args:
             scenario: Parsed PSDL scenario
             backend: Data backend for fetching patient data
+            scenario_ir: Optional compiled ScenarioIR for DAG ordering and hashes
         """
         self.scenario = scenario
         self.backend = backend
+        self._scenario_ir = scenario_ir
 
         # Calculate max window needed for data fetching
         self._max_window_seconds = self._calculate_max_window()
+
+        # Extract DAG order if IR is provided
+        self._trend_order: Optional[List[str]] = None
+        self._logic_order: Optional[List[str]] = None
+        self._compilation_hashes: Optional[CompilationHashes] = None
+
+        if scenario_ir is not None:
+            self._trend_order = scenario_ir.dag.trend_order
+            self._logic_order = scenario_ir.dag.logic_order
+            self._compilation_hashes = CompilationHashes(
+                spec_hash=scenario_ir.spec_hash,
+                ir_hash=scenario_ir.ir_hash,
+                toolchain_hash=scenario_ir.toolchain_hash,
+            )
+
+    @classmethod
+    def from_ir(cls, scenario_ir: Any, backend: "DataBackend") -> "SinglePatientEvaluator":
+        """
+        Create an evaluator from a compiled ScenarioIR.
+
+        This is the recommended way to create evaluators for production use,
+        as it provides:
+        - Pre-computed DAG order for efficient evaluation
+        - Compilation hashes for audit trails
+        - Validated scenario with resolved dependencies
+
+        Args:
+            scenario_ir: Compiled ScenarioIR from compile_scenario()
+            backend: Data backend for fetching patient data
+
+        Returns:
+            SinglePatientEvaluator configured with IR
+
+        Usage:
+            from psdl.core.compile import compile_scenario
+            ir = compile_scenario("scenario.yaml")
+            evaluator = SinglePatientEvaluator.from_ir(ir, backend)
+        """
+        if scenario_ir.scenario is None:
+            raise ValueError("ScenarioIR does not contain original scenario")
+        return cls(scenario_ir.scenario, backend, scenario_ir=scenario_ir)
 
     def _calculate_max_window(self) -> int:
         """Calculate the maximum window size needed across all trends."""
@@ -408,53 +483,67 @@ class SinglePatientEvaluator:
 
         Returns:
             EvaluationResult with all computed values and triggered logic
+            (includes compilation_hashes if evaluator was created from ScenarioIR)
         """
         ref_time = reference_time or datetime.now()
 
         # Fetch all signal data
         signal_data = self._fetch_all_signals(patient_id, ref_time)
 
-        # Evaluate all trends
+        # Evaluate all trends (use DAG order if available)
         trend_values: Dict[str, Optional[float]] = {}
         trend_results: Dict[str, bool] = {}
 
-        for name, trend in self.scenario.trends.items():
+        trend_names = self._trend_order if self._trend_order else list(self.scenario.trends.keys())
+        for name in trend_names:
+            trend = self.scenario.trends[name]
             value, result = self._evaluate_trend(trend, signal_data, ref_time)
             trend_values[name] = value
             trend_results[name] = result
 
-        # Evaluate all logic expressions
+        # Evaluate all logic expressions (use DAG order if available)
         logic_results: Dict[str, bool] = {}
         triggered_logic: List[str] = []
 
-        # Sort logic by dependency order (simple topological sort)
-        evaluated = set()
-        to_evaluate = list(self.scenario.logic.keys())
-
-        while to_evaluate:
-            made_progress = False
-            for name in to_evaluate[:]:
+        if self._logic_order:
+            # Use pre-computed DAG order from ScenarioIR
+            for name in self._logic_order:
                 logic = self.scenario.logic[name]
+                result = self._evaluate_logic(logic, trend_results, logic_results, trend_values)
+                logic_results[name] = result
+                if result:
+                    triggered_logic.append(name)
+        else:
+            # Fall back to on-the-fly topological sort
+            evaluated = set()
+            to_evaluate = list(self.scenario.logic.keys())
 
-                # Check if all dependencies are resolved
-                deps_resolved = all(
-                    term in trend_results or term in logic_results for term in logic.terms
-                )
+            while to_evaluate:
+                made_progress = False
+                for name in to_evaluate[:]:
+                    logic = self.scenario.logic[name]
 
-                if deps_resolved:
-                    result = self._evaluate_logic(logic, trend_results, logic_results, trend_values)
-                    logic_results[name] = result
-                    if result:
-                        triggered_logic.append(name)
-                    evaluated.add(name)
-                    to_evaluate.remove(name)
-                    made_progress = True
+                    # Check if all dependencies are resolved
+                    deps_resolved = all(
+                        term in trend_results or term in logic_results for term in logic.terms
+                    )
 
-            if not made_progress and to_evaluate:
-                # Circular dependency or undefined terms - evaluate remaining as False
-                for name in to_evaluate:
-                    logic_results[name] = False
-                break
+                    if deps_resolved:
+                        result = self._evaluate_logic(
+                            logic, trend_results, logic_results, trend_values
+                        )
+                        logic_results[name] = result
+                        if result:
+                            triggered_logic.append(name)
+                        evaluated.add(name)
+                        to_evaluate.remove(name)
+                        made_progress = True
+
+                if not made_progress and to_evaluate:
+                    # Circular dependency or undefined terms - evaluate remaining as False
+                    for name in to_evaluate:
+                        logic_results[name] = False
+                    break
 
         return EvaluationResult(
             patient_id=patient_id,
@@ -463,6 +552,7 @@ class SinglePatientEvaluator:
             trend_values=trend_values,
             trend_results=trend_results,
             logic_results=logic_results,
+            compilation_hashes=self._compilation_hashes,
         )
 
     # Legacy alias

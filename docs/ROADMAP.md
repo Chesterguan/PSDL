@@ -10,10 +10,14 @@ PSDL development follows a phased approach, building from a solid semantic found
 
 ```
 Phase 1          Phase 2           Phase 3          Phase 4
-Semantic    →    Enhanced     →    Community   →    Adoption
-Foundation       Runtime           Growth           & Scale
-[Complete]       [Complete]        [Planned]        [Future]
+Semantic    →    v0.3         →    Production  →    Adoption
+Foundation       Architecture      Readiness        & Scale
+[Complete]       [Complete]        [Current]        [Future]
 ```
+
+**Important Distinction:**
+- **Specification** (WHAT): Language definition, schema, operator semantics
+- **Reference Implementation** (HOW): Python runtime, adapters, tooling
 
 ---
 
@@ -24,7 +28,7 @@ Foundation       Runtime           Growth           & Scale
 ### Specification
 - [x] Type system definition (Signals, Trends, Logic, Population)
 - [x] Operator semantics (delta, slope, ema, sma, min, max, count, last)
-- [x] YAML schema (`spec/schema-v0.1.yaml`)
+- [x] YAML schema (`spec/schema.json`)
 - [x] Window format specification (s, m, h, d)
 
 ### Reference Implementation
@@ -35,7 +39,7 @@ Foundation       Runtime           Growth           & Scale
 - [x] FHIR R4 data adapter (REST)
 
 ### Validation
-- [x] 284 unit and integration tests (all passing)
+- [x] 424 unit and integration tests (all passing)
 - [x] SQL equivalence proof (100% match)
 - [x] Clinical validation against KDIGO guidelines
 - [x] Real data validation (Synthea synthetic, MIMIC-IV real)
@@ -48,66 +52,79 @@ Foundation       Runtime           Growth           & Scale
 
 ---
 
-## Phase 2: Enhanced Runtime ✅ Complete
+## Phase 2: v0.3 Architecture ✅ Complete
 
-**Goal**: Enable real-time execution and production-ready features.
+**Goal**: Clean separation of concerns with Signal → Trend → Logic → Output model.
 
-### v0.3 Architecture (RFC-0005) ✅ Complete
-- [x] Trend/Logic separation schema and IR types
-- [x] Output schema (Decision/Feature/Evidence categories)
-- [x] Strict mode parser (v0.2 syntax no longer accepted)
-- [x] Output section parsing in parser
-- [x] Evaluator returns EvaluationResult (via to_standard_result())
-- [x] All example scenarios migrated to v0.3 format
-- [ ] Output profiles (cohort, ml_features, audit)
+### Specification (RFC-0005) ✅
+- [x] Trend/Logic separation (trends = numeric only, logic = comparisons)
+- [x] `ref` field for signals (replaces `source`)
+- [x] `when` field for logic (replaces `expr`)
+- [x] Output schema definition (Decision/Feature/Evidence categories)
+- [x] State machine specification
+- [x] Audit block as required field
 
-### Streaming Execution (RFC-0002)
-- [x] Streaming adapter architecture (Phase 1 backend complete)
-- [ ] Apache Flink integration
-- [ ] Event-time watermarks
-- [ ] Late data handling
-- [ ] State management for temporal operators
+### Reference Implementation ✅
+- [x] Parser updated to v0.3 strict mode
+- [x] IR types for Output definitions
+- [x] All bundled scenarios migrated to v0.3 format
+- [x] EvaluationResult with standard output format
 
-### Query Generation
-- [x] SQL query generation from PSDL scenarios (CohortCompiler)
-- [ ] Query optimization for large datasets
-- [ ] Explain/debug mode for generated queries
-
-### Performance
-- [ ] Benchmarking suite
-- [ ] Memory optimization for large patient cohorts
-- [ ] Parallel evaluation support
-
-### Packaging
-- [x] Python package (`pip install psdl-lang`)
+### Packaging ✅
+- [x] PyPI publication (`pip install psdl-lang`)
 - [x] CLI tool for scenario validation
-- [ ] Docker images for quick start
+- [x] Bundled scenarios accessible via `get_scenario()`
 
 ---
 
-## Phase 3: Community Growth 📋 Planned
+## Phase 3: Production Readiness 🚧 Current
 
-**Goal**: Build an active community and ecosystem.
+**Goal**: Production-ready features for real-world deployment.
 
-### Content & Outreach
-- [ ] Technical blog series
-  - Introduction to PSDL
-  - Deep dive: Temporal operators
-  - PSDL vs CQL comparison
-  - Real-world case studies
-- [ ] Conference presentations (OHDSI, AMIA, HL7)
-- [ ] Video tutorials and demos
+### Specification Work
 
-### Community Infrastructure
-- [ ] Discussion forum / Discord
-- [ ] Regular community calls
-- [ ] Contributor recognition program
-- [ ] Scenario library / registry
+#### Output Profiles (Pending)
+- [ ] Define profile schema (cohort, ml_features, audit)
+- [ ] Profile selection semantics
+- [ ] Default profile behavior
 
-### Ecosystem
-- [ ] VS Code extension (syntax highlighting, validation)
-- [ ] Jupyter notebook integration
-- [ ] Additional language implementations (Java, TypeScript)
+#### Dataset Specification (RFC-0004 - Deferred)
+> **Status**: Draft. This defines the portable binding layer for mapping semantic references to physical data locations. Deferred until core is stable.
+- [ ] Dataset Spec schema (`spec/dataset_schema.json`)
+- [ ] Element binding format
+- [ ] Valueset handling strategy
+- [ ] Unit conversion strategy
+
+### Reference Implementation Work
+
+#### Compilation & Audit (RFC-0006) ✅
+- [x] ScenarioIR with DAG-ordered evaluation
+- [x] compile_scenario() entry point
+- [x] Canonical hashing (spec_hash, ir_hash, toolchain_hash)
+- [x] CompilationDiagnostics (unused signal/trend detection)
+- [x] SinglePatientEvaluator.from_ir() integration
+
+#### Streaming Support (Architecture Complete, Full Implementation Pending)
+> **Note**: Streaming is a runtime concern (HOW), not specification (WHAT). The architecture is defined; full production implementation is optional.
+- [x] Streaming models and operators defined
+- [x] PyFlink integration (optional dependency)
+- [ ] Event-time watermarks
+- [ ] Late data handling
+- [ ] Production-ready state management
+
+#### Query Generation
+- [x] Basic SQL generation (CohortCompiler)
+- [ ] Query optimization for large datasets
+- [ ] Explain/debug mode
+
+#### Performance (Implementation Concern)
+- [ ] Benchmarking suite
+- [ ] Memory optimization
+- [ ] Parallel evaluation
+
+#### Deployment
+- [ ] Docker images
+- [ ] Kubernetes deployment guide
 
 ---
 
@@ -116,95 +133,78 @@ Foundation       Runtime           Growth           & Scale
 **Goal**: Drive real-world clinical adoption.
 
 ### Hospital Pilots
-- [ ] Partner with 2-3 health systems for pilot implementations
+- [ ] Partner with 2-3 health systems
 - [ ] Gather feedback on real-world usage
-- [ ] Document deployment patterns and best practices
+- [ ] Document deployment patterns
 
 ### Standards Engagement
 - [ ] OHDSI working group collaboration
 - [ ] HL7 FHIR Clinical Reasoning alignment
-- [ ] Potential Arden Syntax convergence discussions
+- [ ] Potential Arden Syntax convergence
 
-### AI/ML Integration
-> **Note**: RFC-0001 was withdrawn. ML model outputs are now treated as regular signals via Dataset Spec bindings, consistent with PSDL's "WHAT not HOW" philosophy.
-
-- [ ] ML output as signal binding (via Dataset Spec)
-- [ ] Model registry integration patterns
-- [ ] Sample configurations for common ML frameworks
+### Community
+- [ ] Technical blog series
+- [ ] Conference presentations (OHDSI, AMIA, HL7)
+- [ ] VS Code extension
+- [ ] Scenario library/registry
 
 ### Enterprise Features
 - [ ] Multi-tenant scenario management
-- [ ] Audit logging and compliance reporting
-- [ ] Role-based access control for scenarios
+- [ ] Role-based access control
 
 ---
 
-## How to Contribute
+## Design Boundaries
 
-Each phase has opportunities for contribution:
+> See [BOUNDARIES.md](./BOUNDARIES.md) and [PRINCIPLES.md](../PRINCIPLES.md)
 
-| Phase | Contribution Areas |
-|-------|-------------------|
-| **Phase 1** | Bug fixes, documentation improvements, test coverage |
-| **Phase 2** | Streaming implementation, SQL generation, packaging |
-| **Phase 3** | Blog posts, tutorials, tooling, translations |
-| **Phase 4** | Pilot feedback, standards work, enterprise features |
+When planning features, always ask:
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+| Question | If YES | If NO |
+|----------|--------|-------|
+| Does this define WHAT to detect? | Core PSDL spec | Not spec |
+| Does this define HOW to execute? | Reference implementation | Not spec |
+| Does this define workflow/actions? | Out of scope | ✓ Correct |
 
----
-
-## Whitepaper Versioning
-
-The whitepaper evolves with the specification. Major updates are versioned to maintain translation synchronization.
-
-### Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| **0.2.0** | Dec 2025 | Clinical Accountability (audit block), State Machine, Dataset Spec (RFC-0004) |
-| **0.1.1** | Dec 2025 | Added "Scope and Limitations" section (WHAT vs HOW) |
-| **0.1.0** | Dec 2025 | Initial release — Core specification, batch execution |
-
-### Planned Whitepaper Updates
-
-| Version | Target | Content |
-|---------|--------|---------|
-| **0.2.0** | Phase 2 | ✅ Clinical Accountability, Dataset Spec, State Machine |
-| **0.3.0** | Phase 2 | ✅ RFC-0005: Signal/Trend/Logic/Output separation |
-| **1.0.0** | Phase 4 | Production-ready specification |
-
-### Translation Sync Policy
-
-When the English whitepaper is updated:
-1. Update `docs/WHITEPAPER.md` (index) with new translation status
-2. All translations should be updated within 2 weeks
-3. Mark translations as "Needs Update" if behind English version
-4. Critical sections (Scope, Core Concepts) prioritized for sync
-
-### Current Translation Status
-
-| Language | Version | Status |
-|----------|---------|--------|
-| English (EN) | 0.2.0 | Current |
-| 简体中文 (ZH) | 0.2.0 | Current |
-| Español (ES) | 0.2.0 | Current |
-| Français (FR) | 0.2.0 | Current |
-| 日本語 (JA) | 0.2.0 | Current |
+**Examples:**
+- Output profiles → **Spec** (defines WHAT output structure)
+- Flink watermarks → **Implementation** (defines HOW to handle time)
+- Alert routing → **Out of scope** (workflow concern)
 
 ---
 
 ## RFCs
 
-Major features are proposed through RFCs:
+| RFC | Title | Status | Phase |
+|-----|-------|--------|-------|
+| [RFC-0001](../rfcs/0001-ai-model-integration.md) | AI/ML Integration | ❌ Withdrawn | - |
+| [RFC-0002](../rfcs/0002-streaming-execution.md) | Streaming Execution | ✅ Architecture | 3 |
+| [RFC-0003](../rfcs/0003-architecture-refactor.md) | Architecture Refactor | ✅ Implemented | 2 |
+| [RFC-0004](../rfcs/0004-dataset-specification.md) | Dataset Specification | 📋 Deferred | 3 |
+| [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) | PSDL v0.3 Architecture | ✅ Implemented | 2 |
+| [RFC-0006](../rfcs/0006-spec-driven-compilation.md) | Spec-Driven Compilation | ✅ Implemented | 3 |
 
-| RFC | Title | Status |
-|-----|-------|--------|
-| [RFC-0001](../rfcs/0001-ai-model-integration.md) | AI/ML Integration | ❌ Withdrawn |
-| [RFC-0002](../rfcs/0002-streaming-execution.md) | Streaming Execution | ✅ Implemented |
-| [RFC-0003](../rfcs/0003-architecture-refactor.md) | Architecture Refactor | ✅ Implemented |
-| [RFC-0004](../rfcs/0004-dataset-specification.md) | Dataset Specification | Draft |
-| [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) | PSDL v0.3 Architecture | ✅ Implemented |
+---
+
+## Whitepaper Versioning
+
+### Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| **0.3.0** | Dec 2025 | v0.3 Architecture, Signal/Trend/Logic/Output separation |
+| **0.2.0** | Dec 2025 | Clinical Accountability, State Machine, Dataset Spec draft |
+| **0.1.0** | Dec 2025 | Initial release |
+
+### Translation Status
+
+| Language | Version | Status |
+|----------|---------|--------|
+| English (EN) | 0.3.0 | ✅ Current |
+| 简体中文 (ZH) | 0.1.0 | ⚠️ Needs Update (2 versions behind) |
+| Español (ES) | 0.1.0 | ⚠️ Needs Update (2 versions behind) |
+| Français (FR) | 0.1.0 | ⚠️ Needs Update (2 versions behind) |
+| 日本語 (JA) | 0.1.0 | ⚠️ Needs Update (2 versions behind) |
 
 ---
 
@@ -212,13 +212,13 @@ Major features are proposed through RFCs:
 
 > Note: Timelines are indicative and depend on community contributions.
 
-| Phase | Target |
+| Phase | Status |
 |-------|--------|
-| Phase 1 | ✅ Complete (Dec 2025) |
-| Phase 2 | ✅ Complete (Dec 2025) |
-| Phase 3 | 2026 |
-| Phase 4 | 2027+ |
+| Phase 1: Semantic Foundation | ✅ Complete (Dec 2025) |
+| Phase 2: v0.3 Architecture | ✅ Complete (Dec 2025) |
+| Phase 3: Production Readiness | 🚧 In Progress |
+| Phase 4: Adoption & Scale | 🔮 Future |
 
 ---
 
-*Last updated: December 12, 2025*
+*Last updated: December 15, 2025*

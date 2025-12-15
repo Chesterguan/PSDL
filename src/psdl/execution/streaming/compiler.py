@@ -25,7 +25,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import StreamingConfig
-from .models import ClinicalEvent, LogicResult, Severity, TrendResult, WindowSpec
+from .models import ClinicalEvent, LogicResult, Severity, StreamingWindowSpec, TrendResult
 from .operators import (
     ProcessFunction,
     WindowFunction,
@@ -86,7 +86,7 @@ class CompiledTrend:
     operator_type: OperatorType
     window_function: Optional[WindowFunction] = None
     process_function: Optional[ProcessFunction] = None
-    window_spec: Optional[WindowSpec] = None
+    window_spec: Optional[StreamingWindowSpec] = None
 
 
 @dataclass
@@ -317,7 +317,7 @@ class StreamingCompiler:
         # Create window spec if needed
         window_spec = None
         if parsed_op.window:
-            window_spec = WindowSpec.from_psdl(parsed_op.window, parsed_op.slide)
+            window_spec = StreamingWindowSpec.from_psdl(parsed_op.window, parsed_op.slide)
 
         # Create the appropriate function
         if parsed_op.operator_type == OperatorType.WINDOW:

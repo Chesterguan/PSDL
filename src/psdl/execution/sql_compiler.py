@@ -77,7 +77,9 @@ def parse_window(window_str: str) -> int:
     return value * WINDOW_UNITS[unit]
 
 
-def parse_trend_expression(expr: str) -> Tuple[str, str, Optional[str], Optional[float], str]:
+def parse_trend_expression(
+    expr: str,
+) -> Tuple[str, str, Optional[str], Optional[float], str]:
     """
     Parse a trend expression into components.
 
@@ -285,7 +287,9 @@ class SQLCompiler:
             else:
                 # Just check if value exists (not null)
                 sql_expr = re.sub(
-                    rf"\b{trend_name}\b", f"({trend_name}.{trend_name}_value IS NOT NULL)", sql_expr
+                    rf"\b{trend_name}\b",
+                    f"({trend_name}.{trend_name}_value IS NOT NULL)",
+                    sql_expr,
                 )
 
         return f"CASE WHEN {sql_expr} THEN TRUE ELSE FALSE END AS {logic_name}"

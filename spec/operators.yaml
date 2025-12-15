@@ -1,6 +1,6 @@
 # PSDL Operator Specification
-# Version: 0.2.0
-# Last Updated: 2025-12-12
+# Version: 0.3.0
+# Last Updated: 2025-12-14
 #
 # This file is the SOURCE OF TRUTH for all PSDL temporal operators.
 # Code generation tools use this file to generate:
@@ -9,9 +9,14 @@
 #   - Flink SQL templates (_generated/operators_flink.py)
 #
 # DO NOT hand-edit generated files. Edit this specification instead.
+#
+# v0.3 BREAKING CHANGE:
+#   - Trend expressions produce NUMERIC values only
+#   - Comparison operators belong in LOGIC expressions only
+#   - See spec/grammar/expression.lark for grammar details
 
-$schema: "https://psdl-lang.org/schema/v0.2/operators"
-version: "0.2.0"
+$schema: "https://psdl-lang.org/schema/v0.3/operators"
+version: "0.3.0"
 
 # =============================================================================
 # Type Definitions
@@ -827,10 +832,14 @@ operators:
           ) s ON p.patient_id = s.patient_id
 
 # =============================================================================
-# Comparison Operators
+# Comparison Operators (Logic Layer Only - v0.3)
 # =============================================================================
+# v0.3 NOTE: Comparison operators are ONLY valid in Logic expressions.
+# They are NOT allowed in Trend expressions.
+# See CONFORMANCE.md requirement CORE-031.
 
 comparison:
+  layer: logic  # v0.3: Explicitly in Logic layer only
   operators:
     - symbol: "=="
       name: "equal"

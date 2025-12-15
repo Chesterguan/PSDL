@@ -11,15 +11,27 @@
 #
 # Reference: Singer et al. JAMA 2016 (Sepsis-3)
 
-scenario: Sepsis_Screening_v1
-version: "0.3.0"
-description: "Sepsis screening using qSOFA criteria and lactate"
+psdl_version: "0.3"
+
+scenario:
+  name: Sepsis_Screening_v1
+  version: "1.0.0"
+  description: "Sepsis screening using qSOFA criteria and lactate"
+  tags:
+    - sepsis
+    - qsofa
+    - critical-care
+    - emergency
 
 # ── Audit Block ──────────────────────────────────
 audit:
   intent: "Screen for sepsis using qSOFA criteria combined with lactate"
   rationale: "Early sepsis identification enables timely antibiotics and resuscitation"
-  provenance: "Singer et al. JAMA 2016 (Sepsis-3 Consensus Definition)"
+  provenance:
+    type: publication
+    reference: "Singer et al. The Third International Consensus Definitions for Sepsis and Septic Shock (Sepsis-3)"
+    uri: "https://doi.org/10.1001/jama.2016.0287"
+    version: "JAMA 2016"
 
 # ── Population ───────────────────────────────────
 population:
@@ -29,101 +41,102 @@ population:
   exclude:
     - status == "comfort_care_only"
 
-# ── Signals (v0.3: 'ref' required) ───────────────
+# ── Signal References (v0.3: abstract refs only) ─
 signals:
   RR:
     ref: respiratory_rate
-    concept_id: 3024171
-    unit: breaths/min
-    domain: measurement
+    expected_unit: breaths/min
+    description: "Respiratory rate"
 
   SBP:
-    ref: systolic_blood_pressure
-    concept_id: 3004249
-    unit: mmHg
-    domain: measurement
+    ref: systolic_bp
+    expected_unit: mmHg
+    description: "Systolic blood pressure"
 
   HR:
     ref: heart_rate
-    concept_id: 3027018
-    unit: beats/min
-    domain: measurement
+    expected_unit: bpm
+    description: "Heart rate"
 
   Temp:
-    ref: body_temperature
-    concept_id: 3020891
-    unit: C
-    domain: measurement
+    ref: temperature
+    expected_unit: celsius
+    description: "Body temperature"
 
   GCS:
     ref: glasgow_coma_scale
-    concept_id: 3032652
-    unit: score
-    domain: measurement
+    expected_type: numeric
+    description: "Glasgow Coma Scale score"
 
   Lact:
     ref: lactate
-    concept_id: 3047181
-    unit: mmol/L
-    domain: measurement
+    expected_unit: mmol/L
+    description: "Blood lactate"
 
   WBC:
     ref: white_blood_cell_count
-    concept_id: 3010813
-    unit: 10^9/L
-    domain: measurement
+    expected_unit: 10^9/L
+    description: "White blood cell count"
 
   Plt:
-    ref: platelet_count
-    concept_id: 3024929
-    unit: 10^9/L
-    domain: measurement
+    ref: platelets
+    expected_unit: 10^9/L
+    description: "Platelet count"
 
   Cr:
     ref: creatinine
-    concept_id: 3016723
-    unit: mg/dL
-    domain: measurement
+    expected_unit: mg/dL
+    description: "Serum creatinine"
 
 # ── Trends (v0.3: numeric values only) ───────────
 trends:
   rr_current:
+    type: float
     expr: last(RR)
     description: "Current respiratory rate"
 
   sbp_current:
+    type: float
     expr: last(SBP)
     description: "Current systolic BP"
 
   hr_current:
+    type: float
     expr: last(HR)
     description: "Current heart rate"
 
   temp_current:
+    type: float
     expr: last(Temp)
     description: "Current temperature"
 
   gcs_current:
+    type: float
     expr: last(GCS)
     description: "Current GCS score"
 
   lact_current:
+    type: float
     expr: last(Lact)
     description: "Current lactate"
 
   lact_slope_2h:
+    type: float
     expr: slope(Lact, 2h)
     description: "Lactate slope over 2 hours"
 
   wbc_current:
+    type: float
     expr: last(WBC)
     description: "Current WBC count"
 
   plt_current:
+    type: float
     expr: last(Plt)
     description: "Current platelet count"
 
   cr_delta_24h:
+    type: float
     expr: delta(Cr, 24h)
     description: "Creatinine change over 24 hours"
 
@@ -236,3 +249,23 @@ logic:
     when: (fever OR hypothermia) AND (tachycardia AND tachypnea)
     severity: low
     description: "Possible infection - monitor closely"
+
+# ── Outputs ──────────────────────────────────────
+outputs:
+  decision:
+    sepsis_positive:
+      type: boolean
+      from: logic.sepsis_screen_positive
+      description: "Sepsis screen positive"
+    septic_shock:
+      type: boolean
+      from: logic.septic_shock
+      description: "Septic shock present"
+  features:
+    lact_current:
+      type: float
+      from: trends.lact_current
+      unit: mmol/L
+    qsofa_score:
+      type: int
+      description: "qSOFA score (0-3)"

@@ -57,83 +57,151 @@ signals:
     unit: mg/dL
     domain: measurement
 
-# ── Trend Computations ───────────────────────────
+# ── Trend Computations (v0.3: NUMERIC VALUES ONLY) ─────
 trends:
+  # Hemoglobin values
+  hgb_current:
+    expr: last(Hgb)
+    type: float
+    unit: g/dL
+    description: "Current hemoglobin level"
+
+  hgb_slope_24h:
+    expr: slope(Hgb, 24h)
+    type: float
+    unit: g/dL/day
+    description: "Hemoglobin trend over 24 hours"
+
+  hgb_delta_24h:
+    expr: delta(Hgb, 24h)
+    type: float
+    unit: g/dL
+    description: "Hemoglobin change over 24 hours"
+
+  hgb_delta_12h:
+    expr: delta(Hgb, 12h)
+    type: float
+    unit: g/dL
+    description: "Hemoglobin change over 12 hours"
+
+  hgb_delta_6h:
+    expr: delta(Hgb, 6h)
+    type: float
+    unit: g/dL
+    description: "Hemoglobin change over 6 hours"
+
+  # Platelet values
+  plt_current:
+    expr: last(Plt)
+    type: float
+    unit: "10^9/L"
+    description: "Current platelet count"
+
+  plt_slope_24h:
+    expr: slope(Plt, 24h)
+    type: float
+    description: "Platelet trend over 24 hours"
+
+  plt_delta_24h:
+    expr: delta(Plt, 24h)
+    type: float
+    unit: "10^9/L"
+    description: "Platelet change over 24 hours"
+
+  # Tissue perfusion markers
+  lact_current:
+    expr: last(Lact)
+    type: float
+    unit: mmol/L
+    description: "Current lactate level"
+
+  lact_slope_6h:
+    expr: slope(Lact, 6h)
+    type: float
+    description: "Lactate trend over 6 hours"
+
+  # Renal function
+  cr_delta_24h:
+    expr: delta(Cr, 24h)
+    type: float
+    unit: mg/dL
+    description: "Creatinine change over 24 hours"
+
+# ── Logic Layer (v0.3: ALL COMPARISONS HERE) ─────
+logic:
   # Hemoglobin levels
   hgb_low:
-    expr: last(Hgb) < 10.0
+    when: hgb_current < 10.0
     description: "Hemoglobin < 10 g/dL (anemia)"
 
   hgb_very_low:
-    expr: last(Hgb) < 8.0
+    when: hgb_current < 8.0
     description: "Hemoglobin < 8 g/dL (moderate anemia)"
 
   hgb_critical:
-    expr: last(Hgb) < 7.0
+    when: hgb_current < 7.0
     description: "Hemoglobin < 7 g/dL (severe - transfusion threshold)"
 
   hgb_life_threatening:
-    expr: last(Hgb) < 5.0
+    when: hgb_current < 5.0
     description: "Hemoglobin < 5 g/dL (life-threatening)"
 
-  # Hemoglobin trajectory (key for bleeding detection)
+  # Hemoglobin trajectory
   hgb_falling:
-    expr: slope(Hgb, 24h) < 0
+    when: hgb_slope_24h < 0
     description: "Hemoglobin trending downward"
 
   hgb_drop_mild:
-    expr: delta(Hgb, 24h) < -1.0
+    when: hgb_delta_24h < -1.0
     description: "Hemoglobin drop > 1 g/dL in 24h"
 
   hgb_drop_moderate:
-    expr: delta(Hgb, 24h) < -2.0
+    when: hgb_delta_24h < -2.0
     description: "Hemoglobin drop > 2 g/dL in 24h (significant bleeding)"
 
   hgb_drop_severe:
-    expr: delta(Hgb, 12h) < -2.0
+    when: hgb_delta_12h < -2.0
     description: "Hemoglobin drop > 2 g/dL in 12h (rapid bleeding)"
 
   hgb_drop_acute:
-    expr: delta(Hgb, 6h) < -1.5
+    when: hgb_delta_6h < -1.5
     description: "Hemoglobin drop > 1.5 g/dL in 6h (acute hemorrhage)"
 
   # Platelet patterns
   plt_low:
-    expr: last(Plt) < 100
+    when: plt_current < 100
     description: "Platelets < 100 (thrombocytopenia)"
 
   plt_critical:
-    expr: last(Plt) < 50
+    when: plt_current < 50
     description: "Platelets < 50 (severe - bleeding risk)"
 
   plt_falling:
-    expr: slope(Plt, 24h) < 0
+    when: plt_slope_24h < 0
     description: "Platelet count falling"
 
   plt_consumption:
-    expr: delta(Plt, 24h) < -30
+    when: plt_delta_24h < -30
     description: "Platelet drop > 30 in 24h (consumption)"
 
   # Tissue perfusion markers
   lactate_elevated:
-    expr: last(Lact) > 2.0
+    when: lact_current > 2.0
     description: "Lactate > 2.0 mmol/L (hypoperfusion)"
 
   lactate_high:
-    expr: last(Lact) > 4.0
+    when: lact_current > 4.0
     description: "Lactate > 4.0 mmol/L (severe hypoperfusion)"
 
   lactate_rising:
-    expr: slope(Lact, 6h) > 0
+    when: lact_slope_6h > 0
     description: "Lactate trending up (worsening perfusion)"
 
   # Renal impact
   aki_developing:
-    expr: delta(Cr, 24h) >= 0.3
+    when: cr_delta_24h >= 0.3
     description: "AKI developing (possible hypovolemia)"
 
-# ── Logic Layer ──────────────────────────────────
-logic:
   # Severity staging
   anemia_mild:
     when: hgb_low AND NOT hgb_very_low

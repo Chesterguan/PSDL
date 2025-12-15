@@ -29,7 +29,9 @@ def main():
         "file", type=Path, help="Path to PSDL scenario file (YAML or JSON)"
     )
     validate_parser.add_argument(
-        "--strict", action="store_true", help="Enable strict validation (check signal references)"
+        "--strict",
+        action="store_true",
+        help="Enable strict validation (check signal references)",
     )
 
     # parse command
@@ -134,11 +136,17 @@ def parse_scenario(file_path: Path, output_json: bool = False) -> int:
                     for name, sig in scenario.signals.items()
                 },
                 "trends": {
-                    name: {"expr": trend.expr, "description": getattr(trend, "description", None)}
+                    name: {
+                        "expr": trend.expr,
+                        "description": getattr(trend, "description", None),
+                    }
                     for name, trend in scenario.trends.items()
                 },
                 "logic": {
-                    name: {"expr": logic.expr, "severity": getattr(logic, "severity", None)}
+                    name: {
+                        "expr": logic.expr,
+                        "severity": getattr(logic, "severity", None),
+                    }
                     for name, logic in scenario.logic.items()
                 },
             }

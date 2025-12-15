@@ -1,0 +1,383 @@
+# PSDL Operator Signatures
+# Version: 0.3.0
+# Last Updated: 2025-12-15
+#
+# This file defines CORE operator signatures - the interface contract.
+# Backend implementations (SQL templates) are in backends/ directory.
+#
+# Usage:
+#   - Generated code uses these signatures for type checking
+#   - Backends implement these signatures for specific dialects
+
+$schema: "https://psdl-lang.org/schema/v0.3/operators/signatures"
+version: "0.3.0"
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+types:
+  DataPoint:
+    description: "A single time-series observation"
+    fields:
+      timestamp:
+        type: "datetime"
+        description: "ISO 8601 timestamp of the observation"
+      value:
+        type: "float | null"
+        description: "Observed value (numeric or null)"
+
+  Window:
+    description: "Time window specification"
+    fields:
+      value:
+        type: "integer"
+        minimum: 1
+      unit:
+        type: "enum"
+        values: ["s", "m", "h", "d", "w"]
+
+  WindowUnits:
+    description: "Window duration in seconds for each unit"
+    values:
+      s: 1
+      m: 60
+      h: 3600
+      d: 86400
+      w: 604800
+
+# =============================================================================
+# Null Handling Strategies
+# =============================================================================
+
+null_handling:
+  filter:
+    description: "Filter out null values before computation"
+    applies_to: [delta, slope, sma, ema, min, max, std, first, percentile]
+
+  include:
+    description: "Include null values in computation"
+    applies_to: [count]
+
+  passthrough:
+    description: "Return null if most recent value is null"
+    applies_to: [last]
+
+# =============================================================================
+# Windowed Operators
+# =============================================================================
+
+operators:
+  windowed:
+    delta:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute absolute change: last_value - first_value in window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 2
+      deterministic: true
+      return_type: numeric
+
+    slope:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute linear regression slope over window (units per second)"
+      category: "temporal"
+      null_handling: filter
+      min_points: 2
+      deterministic: true
+      return_type: numeric
+
+    sma:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute simple moving average over window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+
+    ema:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Compute exponential moving average over window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+      sql_support: false
+      sql_support_reason: "EMA requires recursive computation"
+
+    min:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Find minimum value in window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+
+    max:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Find maximum value in window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+
+    count:
+      signature: "(signal: Signal, window: Window) -> int"
+      description: "Count observations in window (includes null values)"
+      category: "temporal"
+      null_handling: include
+      min_points: 0
+      deterministic: true
+      return_type: numeric
+
+    first:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      description: "Get the earliest value in window"
+      category: "temporal"
+      null_handling: passthrough
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+
+    std:
+      signature: "(signal: Signal, window: Window) -> float | null"
+      aliases: ["stddev"]
+      description: "Compute sample standard deviation in window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 2
+      deterministic: true
+      return_type: numeric
+
+    percentile:
+      signature: "(signal: Signal, window: Window, p: float) -> float | null"
+      description: "Compute percentile value in window"
+      category: "temporal"
+      null_handling: filter
+      min_points: 1
+      deterministic: true
+      return_type: numeric
+
+  # ===========================================================================
+  # Pointwise Operators (no window)
+  # ===========================================================================
+
+  pointwise:
+    last:
+      signature: "(signal: Signal) -> float | null"
+      description: "Get the most recent value for signal"
+      category: "pointwise"
+      null_handling: passthrough
+      deterministic: false  # Depends on data timing
+      return_type: numeric
+
+    exists:
+      signature: "(signal: Signal) -> bool"
+      description: "Check if any data exists for signal"
+      category: "pointwise"
+      null_handling: include
+      deterministic: false
+      return_type: boolean
+
+    missing:
+      signature: "(signal: Signal) -> bool"
+      description: "Check if no data exists for signal (inverse of exists)"
+      category: "pointwise"
+      null_handling: include
+      deterministic: false
+      return_type: boolean
+
+# =============================================================================
+# Comparison Operators (Logic Layer Only - v0.3)
+# =============================================================================
+
+comparison:
+  layer: logic
+  operators:
+    - symbol: "=="
+      name: "equal"
+      description: "Equal to"
+    - symbol: "!="
+      name: "not_equal"
+      description: "Not equal to"
+    - symbol: "<"
+      name: "less_than"
+      description: "Less than"
+    - symbol: "<="
+      name: "less_equal"
+      description: "Less than or equal to"
+    - symbol: ">"
+      name: "greater_than"
+      description: "Greater than"
+    - symbol: ">="
+      name: "greater_equal"
+      description: "Greater than or equal to"
+
+  semantics:
+    null_handling: "Any comparison involving null returns false"
+    type_rules:
+      left_operand: "Result of temporal operator (float | int | null)"
+      right_operand: "Numeric literal"
+      return_type: "bool"
+
+# =============================================================================
+# Boolean Logic
+# =============================================================================
+
+boolean_logic:
+  operators:
+    AND:
+      signature: "(bool, bool) -> bool"
+      precedence: 2
+      associativity: "left"
+    OR:
+      signature: "(bool, bool) -> bool"
+      precedence: 1
+      associativity: "left"
+    NOT:
+      signature: "(bool) -> bool"
+      precedence: 3
+      associativity: "right"
+
+  precedence_order:
+    - "OR (lowest, 1)"
+    - "AND (2)"
+    - "NOT (highest, 3)"
+
+# =============================================================================
+# Template Contract (for SQL Backend Templates)
+# =============================================================================
+#
+# All SQL backend templates MUST use these standardized placeholders.
+# This ensures consistency across dialects and enables validation.
+
+template_contract:
+  version: "0.3.0"
+  description: "Contract for SQL template placeholders used by backend templates"
+
+  # Required placeholders that MUST appear in all templates
+  required_placeholders:
+    signal_column:
+      name: "{{signal_column}}"
+      description: "Column containing the signal/measurement value"
+      type: "identifier"
+      example: "m.value_as_number"
+
+    timestamp_column:
+      name: "{{timestamp_column}}"
+      description: "Column containing the observation timestamp"
+      type: "identifier"
+      example: "m.measurement_datetime"
+
+    patient_column:
+      name: "{{patient_column}}"
+      description: "Column containing the patient identifier"
+      type: "identifier"
+      example: "m.person_id"
+
+    reference_time:
+      name: "{{reference_time}}"
+      description: "Reference point for time window calculation"
+      type: "timestamp"
+      example: "CURRENT_TIMESTAMP"
+
+  # Conditional placeholders (appear only in windowed operators)
+  conditional_placeholders:
+    window_seconds:
+      name: "{{window_seconds}}"
+      description: "Window duration in seconds"
+      type: "integer"
+      applies_to: windowed
+      example: "21600"
+
+    window_unit:
+      name: "{{window_unit}}"
+      description: "Original window unit for documentation"
+      type: "string"
+      applies_to: windowed
+      example: "h"
+
+    window_value:
+      name: "{{window_value}}"
+      description: "Original window value"
+      type: "integer"
+      applies_to: windowed
+      example: "6"
+
+    percentile_value:
+      name: "{{percentile_value}}"
+      description: "Percentile to compute (0-100)"
+      type: "float"
+      applies_to: [percentile]
+      example: "50"
+
+  # Template validation rules
+  validation:
+    - rule: "required_placeholders_present"
+      description: "All required placeholders must be present in template"
+      severity: error
+
+    - rule: "no_undefined_placeholders"
+      description: "No placeholders outside the defined set"
+      severity: error
+
+    - rule: "window_placeholders_for_windowed"
+      description: "Windowed operators must include window_seconds placeholder"
+      severity: error
+
+  # Example template showing contract usage
+  example:
+    operator: delta
+    dialect: postgresql
+    template: |
+      SELECT
+        {{patient_column}} as person_id,
+        (
+          SELECT {{signal_column}}
+          FROM measurements m2
+          WHERE m2.{{patient_column}} = m1.{{patient_column}}
+            AND m2.{{timestamp_column}} <= {{reference_time}}
+            AND m2.{{timestamp_column}} >= {{reference_time}} - INTERVAL '{{window_seconds}} seconds'
+          ORDER BY m2.{{timestamp_column}} DESC
+          LIMIT 1
+        ) - (
+          SELECT {{signal_column}}
+          FROM measurements m2
+          WHERE m2.{{patient_column}} = m1.{{patient_column}}
+            AND m2.{{timestamp_column}} <= {{reference_time}}
+            AND m2.{{timestamp_column}} >= {{reference_time}} - INTERVAL '{{window_seconds}} seconds'
+          ORDER BY m2.{{timestamp_column}} ASC
+          LIMIT 1
+        ) as delta_value
+      FROM measurements m1
+
+# =============================================================================
+# Runtime Compatibility Matrix
+# =============================================================================
+
+compatibility:
+  single_runtime:
+    supported: [delta, slope, sma, ema, min, max, count, first, last, std, percentile, exists, missing]
+    unsupported: []
+
+  cohort_runtime:
+    supported: [delta, slope, sma, min, max, count, first, last, std, percentile, exists, missing]
+    unsupported:
+      - operator: ema
+        reason: "Requires recursive computation, inefficient in SQL"
+
+  streaming_runtime:
+    supported: [delta, sma, min, max, count, first, last, exists, missing]
+    unsupported:
+      - operator: ema
+        reason: "Requires custom UDF"
+      - operator: slope
+        reason: "No built-in REGR_SLOPE"
+      - operator: std
+        reason: "Limited support in OVER windows"
+      - operator: percentile
+        reason: "PERCENTILE_CONT not supported in OVER windows"

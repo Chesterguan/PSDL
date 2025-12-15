@@ -83,27 +83,54 @@ A binding from a logical name to a clinical data source. Signals represent time-
 
 **Examples:** `Cr` (creatinine), `HR` (heart rate), `MAP` (mean arterial pressure)
 
-**Properties:** `source`, `concept_id`, `unit`, `domain`
+**Properties:** `ref` (v0.3), `expected_type`, `expected_unit`, `description`
+
+```yaml
+signals:
+  Cr:
+    ref: creatinine          # v0.3: semantic reference
+    expected_type: numeric
+    expected_unit: mg/dL
+```
 
 ---
 
 ### Trend
 
-A temporal computation over a signal that produces a boolean result. Trends apply operators to signals and compare against thresholds.
+A temporal computation over a signal that produces a **numeric value** (v0.3). Trends apply operators to signals within time windows.
 
-**Example:** `delta(Cr, 48h) > 0.3` (creatinine rise in 48 hours)
+**Example:** `delta(Cr, 48h)` produces the creatinine change over 48 hours
 
-**Components:** operator, signal, window, comparator, threshold
+**Components:** operator, signal, window
+
+```yaml
+trends:
+  cr_delta_48h:
+    expr: delta(Cr, 48h)      # v0.3: numeric output
+    description: "Creatinine change over 48 hours"
+```
+
+**Note:** In v0.3, comparisons (`> 0.3`) belong in the Logic layer, not Trends.
 
 ---
 
 ### Logic
 
-Boolean expressions that combine trends into clinical states. Uses AND, OR, NOT operators.
+Boolean expressions that combine trends and comparisons into clinical states. Uses AND, OR, NOT operators.
 
-**Example:** `aki_stage1 AND NOT recovering`
+**Example:** `cr_delta_48h > 0.3 AND cr_current > 1.5`
 
-**Properties:** `expr`, `severity`, `description`
+**Properties:** `when` (v0.3), `severity`, `description`, `recommendation`
+
+```yaml
+logic:
+  aki_risk:
+    when: cr_delta_48h > 0.3 AND cr_current > 1.5   # v0.3: 'when' keyword
+    severity: high
+    description: "Rising and elevated creatinine"
+```
+
+**Note:** In v0.3, the `when:` keyword replaces `expr:` and comparisons live here.
 
 ---
 
@@ -164,6 +191,29 @@ The formal definition of PSDL - what the language IS. Includes schema, grammar, 
 The in-memory data structure representing a parsed and validated scenario. IR is independent of execution method - it can be compiled to SQL, Flink, or evaluated in Python.
 
 **Types:** `PSDLScenario`, `Signal`, `Trend`, `Logic`, `AuditBlock`, `StateMachine`, `StateTransition`
+
+---
+
+### ScenarioIR (v0.3)
+
+A compiled intermediate representation with pre-computed analysis. Created by `compile_scenario()` for production deployments.
+
+**Features:**
+- **DAG ordering** - Evaluation order computed from dependencies
+- **Canonical hashes** - SHA-256 hashes for audit trails
+- **Diagnostics** - Warnings for unused signals/trends
+- **Compilation info** - Toolchain version, timestamps
+
+```python
+from psdl.core.compile import compile_scenario
+
+ir = compile_scenario("scenario.yaml")
+print(ir.spec_hash)       # Hash of input YAML
+print(ir.ir_hash)         # Hash of compiled IR
+print(ir.toolchain_hash)  # Hash of compiler version
+```
+
+**Use:** Production deployments requiring cryptographic audit trails
 
 ---
 

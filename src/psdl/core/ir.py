@@ -9,12 +9,16 @@ Version 0.3.0 Changes (RFC-0005):
 - Logic layer handles all comparisons
 - New Output types (Decision, Feature, Evidence)
 - Standardized EvaluationResult
+- AST types generated from spec/ast-nodes.yaml
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
+# Import AST types from generated code (consolidation)
+from psdl._generated.ast_types import LogicNode, WindowSpec
 
 
 class Domain(Enum):
@@ -74,21 +78,7 @@ class Signal:
         return self.ref
 
 
-@dataclass
-class WindowSpec:
-    """Time window specification (e.g., 6h, 30m, 1d)."""
-
-    value: int
-    unit: str  # s, m, h, d
-
-    @property
-    def seconds(self) -> int:
-        """Convert window to seconds."""
-        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
-        return self.value * multipliers.get(self.unit, 1)
-
-    def __str__(self) -> str:
-        return f"{self.value}{self.unit}"
+# WindowSpec is imported from psdl._generated.ast_types
 
 
 @dataclass
@@ -100,16 +90,18 @@ class TrendExpr:
     - type: explicit return type (float, int, timestamp)
     - unit: unit of computed value
     - comparator/threshold: REMOVED (comparisons belong in Logic layer)
+    - ast: Full AST for complex expressions (ArithExpr, etc.)
     """
 
     name: str
-    operator: str  # delta, slope, ema, sma, min, max, count, last, first
-    signal: str
+    operator: str  # delta, slope, ema, sma, min, max, count, last, first, or 'arith' for compound
+    signal: str  # Primary signal (may be empty for compound expressions)
     window: Optional[WindowSpec] = None
     type: TrendType = TrendType.FLOAT  # v0.3: explicit type
     unit: Optional[str] = None  # v0.3: unit of computed value
     description: Optional[str] = None
     raw_expr: str = ""
+    ast: Optional[Any] = None  # v0.3: Full AST for complex expressions (ArithExpr, etc.)
     # v0.2 compatibility (deprecated in v0.3)
     comparator: Optional[str] = None  # <, <=, >, >=, ==, !=
     threshold: Optional[float] = None
@@ -123,6 +115,7 @@ class LogicExpr:
     v0.3 Changes:
     - when: preferred syntax (instead of expr)
     - Logic now handles ALL comparisons (trend >= threshold)
+    - ast: Full AST tree for accurate DAG visualization (Issue #6)
     """
 
     name: str
@@ -131,6 +124,7 @@ class LogicExpr:
     operators: List[str]  # AND, OR, NOT, comparison operators
     severity: Optional[Severity] = None
     description: Optional[str] = None
+    ast: Optional["LogicNode"] = None  # v0.3: Full AST tree for DAG visualization
 
 
 @dataclass
@@ -249,13 +243,39 @@ class PSDLScenario:
         """Get a logic expression by name."""
         return self.logic.get(name)
 
+    def _extract_signals_from_ast(self, ast_node: Any) -> List[str]:
+        """Extract all signal references from an AST node (for compound expressions)."""
+        from psdl._generated.ast_types import ArithExpr, TemporalCall, TrendExpression
+
+        signals = []
+
+        def visit(node):
+            if isinstance(node, TrendExpression):
+                if node.temporal:
+                    signals.append(node.temporal.signal)
+            elif isinstance(node, TemporalCall):
+                signals.append(node.signal)
+            elif isinstance(node, ArithExpr):
+                visit(node.left)
+                visit(node.right)
+            # NumberLiteral and float don't have signals
+
+        visit(ast_node)
+        return signals
+
     def validate(self) -> List[str]:
         """Validate the scenario for semantic correctness. Returns list of errors."""
         errors = []
 
         # Check trend expressions reference valid signals
         for trend_name, trend in self.trends.items():
-            if trend.signal not in self.signals:
+            # For compound arithmetic expressions, extract all signals from AST
+            if trend.operator == "arith" and trend.ast is not None:
+                signals_in_expr = self._extract_signals_from_ast(trend.ast)
+                for sig in signals_in_expr:
+                    if sig not in self.signals:
+                        errors.append(f"Trend '{trend_name}' references unknown signal '{sig}'")
+            elif trend.signal and trend.signal not in self.signals:
                 errors.append(f"Trend '{trend_name}' references unknown signal '{trend.signal}'")
 
         # Check logic expressions reference valid trends

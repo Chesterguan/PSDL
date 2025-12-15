@@ -1,0 +1,1469 @@
+{
+  "$schema": "./conformance-tests.schema.json",
+  "name": "PsdlScenarioConformanceTests",
+  "version": "0.3.0",
+  "description": "End-to-end scenario evaluation tests. Validates that complete scenarios produce expected results when evaluated against test data.",
+  "reference": "https://psdl-lang.org/spec/v0.3/scenarios",
+  "conformanceLevel": "core",
+  "notes": "v0.3 requires psdl_version field and forbids physical bindings in scenarios. Trends produce numeric values only; comparisons in logic layer.",
+
+  "groups": [
+    {
+      "name": "DocumentValidation",
+      "description": "Tests for document structure validation (Level 1 conformance)",
+      "context": "scenario",
+      "tests": [
+        {
+          "id": "doc_001",
+          "name": "Valid minimal scenario",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "minimal_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test minimal scenario structure",
+              "rationale": "Validates parser accepts minimal valid document",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine",
+                "expected_unit": "mg/dL"
+              }
+            },
+            "trends": {
+              "cr_current": {
+                "type": "float",
+                "expr": "last(Cr)"
+              }
+            },
+            "logic": {
+              "cr_elevated": {
+                "when": "cr_current >= 1.5"
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Minimal scenario with all required fields"
+        },
+        {
+          "id": "doc_002",
+          "name": "Missing psdl_version",
+          "scenario": {
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test intent",
+              "rationale": "Test rationale",
+              "provenance": "Test"
+            },
+            "signals": {},
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "psdl_version is required"
+        },
+        {
+          "id": "doc_003",
+          "name": "Missing audit block",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "signals": {},
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "audit block is required"
+        },
+        {
+          "id": "doc_004",
+          "name": "Missing signals",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test intent",
+              "rationale": "Test rationale",
+              "provenance": "Test"
+            },
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "signals section is required"
+        },
+        {
+          "id": "doc_005",
+          "name": "Missing logic",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test intent",
+              "rationale": "Test rationale",
+              "provenance": "Test"
+            },
+            "signals": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "logic section is required"
+        },
+        {
+          "id": "doc_006",
+          "name": "Unsupported psdl_version",
+          "scenario": {
+            "psdl_version": "99.0",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test intent",
+              "rationale": "Test rationale",
+              "provenance": "Test"
+            },
+            "signals": {},
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "Unsupported major version"
+        },
+        {
+          "id": "doc_007",
+          "name": "Physical binding in signal (forbidden)",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test intent",
+              "rationale": "Test rationale",
+              "provenance": "Test"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine",
+                "concept_id": 3016723
+              }
+            },
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E004",
+          "explanation": "Physical bindings (concept_id) forbidden in scenario"
+        },
+        {
+          "id": "doc_008",
+          "name": "Audit intent too short",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test",
+              "rationale": "Test rationale that is long enough",
+              "provenance": "Test"
+            },
+            "signals": {},
+            "logic": {}
+          },
+          "invalid": "semantic",
+          "explanation": "Audit intent must be at least 10 characters"
+        },
+        {
+          "id": "doc_009",
+          "name": "Comparison operator in trend expression (v0.3 violation)",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test comparison in trend",
+              "rationale": "v0.3 forbids comparison operators in trends",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "trends": {
+              "cr_elevated": {
+                "type": "float",
+                "expr": "delta(Cr, 48h) >= 0.3"
+              }
+            },
+            "logic": {
+              "alert": {
+                "when": "cr_elevated"
+              }
+            }
+          },
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "CORE-031: Trend expressions MUST NOT contain comparison operators (>=, <=, etc.)"
+        },
+        {
+          "id": "doc_010",
+          "name": "State transition 'when' with inline expression",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test state transition validation",
+              "rationale": "State transition when must reference a logic rule",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "last(Cr) >= 4.0"
+              }
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "critical"],
+              "transitions": [
+                {
+                  "from": "normal",
+                  "to": "critical",
+                  "when": "last(Cr) >= 4.0"
+                }
+              ]
+            }
+          },
+          "invalid": "syntax",
+          "errorCode": "E006",
+          "explanation": "STATE-003: Transition 'when' MUST reference a logic rule name, not an inline expression"
+        },
+        {
+          "id": "doc_011",
+          "name": "Decision output missing required 'from' field",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output validation",
+              "rationale": "Output definitions require proper fields",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "last(Cr) >= 1.5"
+              }
+            },
+            "outputs": {
+              "decision": {
+                "in_cohort": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "DecisionOutput requires both 'type' and 'from' fields"
+        },
+        {
+          "id": "doc_012",
+          "name": "Feature output with neither 'from' nor 'expr'",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test feature output validation",
+              "rationale": "Feature outputs require either from or expr",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "last(Cr) >= 1.5"
+              }
+            },
+            "outputs": {
+              "features": {
+                "some_feature": {
+                  "type": "float"
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "FeatureOutput requires either 'from' or 'expr' to define value source"
+        },
+        {
+          "id": "doc_013",
+          "name": "Invalid decision output 'from' reference format",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output from reference validation",
+              "rationale": "Decision output from must reference logic or state",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "last(Cr) >= 1.5"
+              }
+            },
+            "outputs": {
+              "decision": {
+                "in_cohort": {
+                  "type": "boolean",
+                  "from": "elevated"
+                }
+              }
+            }
+          },
+          "invalid": "syntax",
+          "explanation": "DecisionOutput 'from' must be in format 'logic.<name>' or 'state.<property>'"
+        }
+      ]
+    },
+    {
+      "name": "SemanticValidation",
+      "description": "Tests for semantic validation (Level 3 conformance)",
+      "context": "scenario",
+      "tests": [
+        {
+          "id": "sem_001",
+          "name": "Undefined signal in trend",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test undefined signal reference",
+              "rationale": "Validates semantic checking of signal refs",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "trends": {
+              "lact_current": {
+                "type": "float",
+                "expr": "last(Lactate)"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "lact_current > 2"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Signal 'Lactate' referenced in trend but not defined"
+        },
+        {
+          "id": "sem_002",
+          "name": "Undefined trend in logic",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test undefined trend reference",
+              "rationale": "Validates semantic checking of trend refs",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "trends": {
+              "cr_current": {
+                "type": "float",
+                "expr": "last(Cr)"
+              }
+            },
+            "logic": {
+              "elevated": {
+                "when": "undefined_trend > 2"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Trend 'undefined_trend' referenced in logic but not defined"
+        },
+        {
+          "id": "sem_003",
+          "name": "Circular logic reference",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test circular reference detection",
+              "rationale": "Validates circular dependency checking",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine"
+              }
+            },
+            "trends": {
+              "cr_current": {
+                "type": "float",
+                "expr": "last(Cr)"
+              }
+            },
+            "logic": {
+              "rule_a": {
+                "when": "rule_b"
+              },
+              "rule_b": {
+                "when": "rule_a"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E005",
+          "explanation": "Circular reference between rule_a and rule_b"
+        }
+      ]
+    },
+    {
+      "name": "EndToEndEvaluation",
+      "description": "End-to-end scenario evaluation tests (Level 4+ conformance)",
+      "context": "scenario",
+      "tests": [
+        {
+          "id": "e2e_001",
+          "name": "AKI Stage 1 detection - positive",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "aki_simple",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Detect AKI using creatinine rise",
+              "rationale": "Early AKI detection enables intervention",
+              "provenance": "KDIGO Guidelines"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine",
+                "expected_unit": "mg/dL"
+              }
+            },
+            "trends": {
+              "cr_delta_48h": {
+                "type": "float",
+                "expr": "delta(Cr, 48h)"
+              }
+            },
+            "logic": {
+              "aki_stage1": {
+                "when": "cr_delta_48h >= 0.3",
+                "severity": "medium"
+              }
+            }
+          },
+          "input": {
+            "patient_id": "P001",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [
+                {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+                {"timestamp": "2024-01-01T12:00:00Z", "value": 1.5}
+              ]
+            }
+          },
+          "expected": {
+            "trends": {
+              "cr_delta_48h": 0.5
+            },
+            "logic": {
+              "aki_stage1": true
+            }
+          },
+          "invalid": "false",
+          "explanation": "Creatinine rose 0.5 mg/dL in 12h, exceeds 0.3 threshold"
+        },
+        {
+          "id": "e2e_002",
+          "name": "AKI Stage 1 detection - negative",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "aki_simple",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Detect AKI using creatinine rise",
+              "rationale": "Early AKI detection enables intervention",
+              "provenance": "KDIGO Guidelines"
+            },
+            "signals": {
+              "Cr": {
+                "ref": "creatinine",
+                "expected_unit": "mg/dL"
+              }
+            },
+            "trends": {
+              "cr_delta_48h": {
+                "type": "float",
+                "expr": "delta(Cr, 48h)"
+              }
+            },
+            "logic": {
+              "aki_stage1": {
+                "when": "cr_delta_48h >= 0.3",
+                "severity": "medium"
+              }
+            }
+          },
+          "input": {
+            "patient_id": "P002",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [
+                {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+                {"timestamp": "2024-01-01T12:00:00Z", "value": 1.1}
+              ]
+            }
+          },
+          "expected": {
+            "trends": {
+              "cr_delta_48h": 0.1
+            },
+            "logic": {
+              "aki_stage1": false
+            }
+          },
+          "invalid": "false",
+          "explanation": "Creatinine rose only 0.1 mg/dL, below threshold"
+        },
+        {
+          "id": "e2e_003",
+          "name": "Compound logic - AND",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "compound_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test compound logic evaluation",
+              "rationale": "Validates AND operator in logic layer",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"},
+              "HR": {"ref": "heart_rate"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"},
+              "hr_current": {"type": "float", "expr": "last(HR)"}
+            },
+            "logic": {
+              "cr_high": {"when": "cr_current > 1.5"},
+              "hr_high": {"when": "hr_current > 100"},
+              "both_high": {"when": "cr_high AND hr_high", "severity": "high"}
+            }
+          },
+          "input": {
+            "patient_id": "P003",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 2.0}],
+              "heart_rate": [{"timestamp": "2024-01-01T12:00:00Z", "value": 110}]
+            }
+          },
+          "expected": {
+            "trends": {
+              "cr_current": 2.0,
+              "hr_current": 110
+            },
+            "logic": {
+              "cr_high": true,
+              "hr_high": true,
+              "both_high": true
+            }
+          },
+          "invalid": "false",
+          "explanation": "Both conditions true, AND evaluates to true"
+        },
+        {
+          "id": "e2e_004",
+          "name": "Compound logic - OR",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "compound_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test compound logic evaluation",
+              "rationale": "Validates OR operator in logic layer",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Temp": {"ref": "temperature"}
+            },
+            "trends": {
+              "temp_current": {"type": "float", "expr": "last(Temp)"}
+            },
+            "logic": {
+              "fever": {"when": "temp_current > 38.3"},
+              "hypothermia": {"when": "temp_current < 36.0"},
+              "temp_abnormal": {"when": "fever OR hypothermia"}
+            }
+          },
+          "input": {
+            "patient_id": "P004",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "temperature": [{"timestamp": "2024-01-01T12:00:00Z", "value": 35.5}]
+            }
+          },
+          "expected": {
+            "trends": {
+              "temp_current": 35.5
+            },
+            "logic": {
+              "fever": false,
+              "hypothermia": true,
+              "temp_abnormal": true
+            }
+          },
+          "invalid": "false",
+          "explanation": "Hypothermia is true, OR evaluates to true"
+        },
+        {
+          "id": "e2e_005",
+          "name": "Missing data handling",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "missing_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test missing data handling",
+              "rationale": "Validates null propagation",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_delta": {"type": "float", "expr": "delta(Cr, 48h)"}
+            },
+            "logic": {
+              "cr_rising": {"when": "cr_delta >= 0.3"}
+            }
+          },
+          "input": {
+            "patient_id": "P005",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": []
+            }
+          },
+          "expected": {
+            "trends": {
+              "cr_delta": null
+            },
+            "logic": {
+              "cr_rising": false
+            }
+          },
+          "invalid": "false",
+          "explanation": "No data = null delta, comparison with null = false"
+        }
+      ]
+    },
+    {
+      "name": "StateMachine",
+      "description": "Tests for state machine definition and evaluation (Level 3+ conformance)",
+      "context": "scenario",
+      "reference": "https://psdl-lang.org/spec/v0.3/state-machine",
+      "tests": [
+        {
+          "id": "sm_001",
+          "name": "Valid state machine definition",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "state_machine_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test state machine definition",
+              "rationale": "Validates state machine parsing",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "elevated": {"when": "cr_current > 1.5"},
+              "critical": {"when": "cr_current > 4.0"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated", "critical"],
+              "transitions": [
+                {"from": "normal", "to": "elevated", "when": "elevated"},
+                {"from": "elevated", "to": "critical", "when": "critical"},
+                {"from": "elevated", "to": "normal", "when": "NOT elevated"},
+                {"from": "critical", "to": "elevated", "when": "NOT critical AND elevated"}
+              ]
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid state machine with initial, states, and transitions"
+        },
+        {
+          "id": "sm_002",
+          "name": "State machine - initial state not in states list",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test invalid initial state",
+              "rationale": "Initial state must be in states list",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            },
+            "state": {
+              "initial": "unknown",
+              "states": ["normal", "elevated"],
+              "transitions": []
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E006",
+          "explanation": "Initial state 'unknown' not in states list"
+        },
+        {
+          "id": "sm_003",
+          "name": "State machine - transition from undefined state",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test invalid transition from state",
+              "rationale": "Transition source must be valid state",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated"],
+              "transitions": [
+                {"from": "undefined_state", "to": "elevated", "when": "elevated"}
+              ]
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E006",
+          "explanation": "Transition from undefined state 'undefined_state'"
+        },
+        {
+          "id": "sm_004",
+          "name": "State machine - transition to undefined state",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test invalid transition to state",
+              "rationale": "Transition target must be valid state",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated"],
+              "transitions": [
+                {"from": "normal", "to": "undefined_state", "when": "elevated"}
+              ]
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E006",
+          "explanation": "Transition to undefined state 'undefined_state'"
+        },
+        {
+          "id": "sm_005",
+          "name": "State machine - transition references undefined logic",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test invalid transition condition",
+              "rationale": "Transition when must reference defined logic",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated"],
+              "transitions": [
+                {"from": "normal", "to": "elevated", "when": "undefined_logic"}
+              ]
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Transition references undefined logic 'undefined_logic'"
+        },
+        {
+          "id": "sm_006",
+          "name": "State machine evaluation - transition triggered",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "sm_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test state machine evaluation",
+              "rationale": "Validates state transitions during eval",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "elevated": {"when": "cr_current > 1.5"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated"],
+              "transitions": [
+                {"from": "normal", "to": "elevated", "when": "elevated"}
+              ]
+            }
+          },
+          "input": {
+            "patient_id": "P006",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 2.0}]
+            }
+          },
+          "expected": {
+            "logic": {
+              "elevated": true
+            },
+            "state": {
+              "current": "elevated",
+              "previous": "normal"
+            }
+          },
+          "invalid": "false",
+          "explanation": "Creatinine > 1.5 triggers transition from normal to elevated"
+        },
+        {
+          "id": "sm_007",
+          "name": "State machine evaluation - no transition",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "sm_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test state machine no transition",
+              "rationale": "State remains if no transition triggered",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "elevated": {"when": "cr_current > 1.5"}
+            },
+            "state": {
+              "initial": "normal",
+              "states": ["normal", "elevated"],
+              "transitions": [
+                {"from": "normal", "to": "elevated", "when": "elevated"}
+              ]
+            }
+          },
+          "input": {
+            "patient_id": "P007",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 1.0}]
+            }
+          },
+          "expected": {
+            "logic": {
+              "elevated": false
+            },
+            "state": {
+              "current": "normal",
+              "previous": null
+            }
+          },
+          "invalid": "false",
+          "explanation": "Creatinine <= 1.5, no transition, stays in initial state"
+        }
+      ]
+    },
+    {
+      "name": "PopulationFilter",
+      "description": "Tests for population filter definition and evaluation",
+      "context": "scenario",
+      "reference": "https://psdl-lang.org/spec/v0.3/population",
+      "tests": [
+        {
+          "id": "pop_001",
+          "name": "Valid population filter - include only",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "population_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter with include",
+              "rationale": "Validates population include criteria",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "include": ["age >= 18", "unit == 'ICU'"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid population filter with include criteria (AND logic)"
+        },
+        {
+          "id": "pop_002",
+          "name": "Valid population filter - exclude only",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "population_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter with exclude",
+              "rationale": "Validates population exclude criteria",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "exclude": ["status == 'comfort_care'", "dnr == true"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid population filter with exclude criteria (OR logic)"
+        },
+        {
+          "id": "pop_003",
+          "name": "Valid population filter - include and exclude",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "population_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter with both",
+              "rationale": "Validates combined include/exclude",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "include": ["age >= 18"],
+              "exclude": ["status == 'comfort_care'"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid population filter with both include and exclude"
+        },
+        {
+          "id": "pop_004",
+          "name": "Population filter evaluation - included patient",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "pop_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter evaluation",
+              "rationale": "Patient meeting include criteria",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "include": ["age >= 18"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "input": {
+            "patient_id": "P008",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "demographics": {
+              "age": 45
+            },
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 2.0}]
+            }
+          },
+          "expected": {
+            "population": {
+              "included": true
+            },
+            "logic": {
+              "elevated": true
+            }
+          },
+          "invalid": "false",
+          "explanation": "Patient age 45 meets include criteria (>= 18)"
+        },
+        {
+          "id": "pop_005",
+          "name": "Population filter evaluation - excluded patient",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "pop_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter evaluation",
+              "rationale": "Patient excluded by exclude criteria",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "include": ["age >= 18"],
+              "exclude": ["status == 'comfort_care'"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "input": {
+            "patient_id": "P009",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "demographics": {
+              "age": 65,
+              "status": "comfort_care"
+            },
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 2.0}]
+            }
+          },
+          "expected": {
+            "population": {
+              "included": false,
+              "reason": "excluded by: status == 'comfort_care'"
+            }
+          },
+          "invalid": "false",
+          "explanation": "Patient excluded despite meeting include criteria"
+        },
+        {
+          "id": "pop_006",
+          "name": "Population filter evaluation - failed include",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "pop_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test population filter evaluation",
+              "rationale": "Patient not meeting include criteria",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "population": {
+              "include": ["age >= 18", "unit == 'ICU'"]
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "input": {
+            "patient_id": "P010",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "demographics": {
+              "age": 15,
+              "unit": "ICU"
+            },
+            "data": {
+              "creatinine": [{"timestamp": "2024-01-01T12:00:00Z", "value": 2.0}]
+            }
+          },
+          "expected": {
+            "population": {
+              "included": false,
+              "reason": "failed include: age >= 18"
+            }
+          },
+          "invalid": "false",
+          "explanation": "Patient age 15 fails include criteria (< 18)"
+        }
+      ]
+    },
+    {
+      "name": "OutputDefinitions",
+      "description": "Tests for output definition structure and validation",
+      "context": "scenario",
+      "reference": "https://psdl-lang.org/spec/v0.3/outputs",
+      "tests": [
+        {
+          "id": "out_001",
+          "name": "Valid output definitions - all types",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "output_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output definitions",
+              "rationale": "Validates output definition parsing",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_delta": {"type": "float", "expr": "delta(Cr, 48h)"}
+            },
+            "logic": {
+              "aki_stage1": {"when": "cr_delta >= 0.3"}
+            },
+            "outputs": {
+              "decision": {
+                "in_cohort": {
+                  "type": "boolean",
+                  "from": "logic.aki_stage1"
+                }
+              },
+              "features": {
+                "cr_delta_48h": {
+                  "type": "float",
+                  "unit": "mg/dL",
+                  "from": "trends.cr_delta"
+                }
+              },
+              "evidence": {
+                "evaluation_time": {
+                  "type": "timestamp",
+                  "expr": "evaluation_time()"
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid output definitions with decision, features, evidence"
+        },
+        {
+          "id": "out_002",
+          "name": "Output from undefined logic",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output from undefined source",
+              "rationale": "Output source must be defined",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            },
+            "outputs": {
+              "decision": {
+                "in_cohort": {
+                  "type": "boolean",
+                  "from": "logic.undefined_rule"
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Output references undefined logic 'undefined_rule'"
+        },
+        {
+          "id": "out_003",
+          "name": "Output from undefined trend",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output from undefined trend",
+              "rationale": "Output source must be defined",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "elevated": {"when": "cr_current > 1.5"}
+            },
+            "outputs": {
+              "features": {
+                "cr_delta": {
+                  "type": "float",
+                  "from": "trends.undefined_trend"
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Output references undefined trend 'undefined_trend'"
+        },
+        {
+          "id": "out_004",
+          "name": "Decision output with enum type",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "enum_output_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test enum decision output",
+              "rationale": "Validates enum output type",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "stage1": {"when": "cr_current >= 1.5 AND cr_current < 2.0"},
+              "stage2": {"when": "cr_current >= 2.0 AND cr_current < 3.0"},
+              "stage3": {"when": "cr_current >= 3.0"}
+            },
+            "outputs": {
+              "decision": {
+                "aki_stage": {
+                  "type": "enum",
+                  "values": ["none", "stage1", "stage2", "stage3"],
+                  "from": "state.current"
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid enum decision output with allowed values"
+        },
+        {
+          "id": "out_005",
+          "name": "Output evaluation - full result",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "output_eval_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test output evaluation",
+              "rationale": "Validates output generation",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"}
+            },
+            "trends": {
+              "cr_delta": {"type": "float", "expr": "delta(Cr, 48h)"},
+              "cr_current": {"type": "float", "expr": "last(Cr)"}
+            },
+            "logic": {
+              "aki_stage1": {"when": "cr_delta >= 0.3", "severity": "medium"}
+            },
+            "outputs": {
+              "decision": {
+                "in_cohort": {
+                  "type": "boolean",
+                  "from": "logic.aki_stage1"
+                }
+              },
+              "features": {
+                "cr_delta_48h": {
+                  "type": "float",
+                  "from": "trends.cr_delta"
+                },
+                "cr_last": {
+                  "type": "float",
+                  "from": "trends.cr_current"
+                }
+              }
+            }
+          },
+          "input": {
+            "patient_id": "P011",
+            "evaluationTime": "2024-01-01T12:00:00Z",
+            "data": {
+              "creatinine": [
+                {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+                {"timestamp": "2024-01-01T12:00:00Z", "value": 1.5}
+              ]
+            }
+          },
+          "expected": {
+            "outputs": {
+              "decision": {
+                "in_cohort": true
+              },
+              "features": {
+                "cr_delta_48h": 0.5,
+                "cr_last": 1.5
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Full output evaluation with decision and features"
+        }
+      ]
+    }
+  ]
+}

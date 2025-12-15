@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psdl-lang.org/schema/v0.3/dataset",
+  "$comment": "Schema version 0.3.0 (2025-12-14). Companion schema for Dataset Spec documents.",
+  "title": "PSDL Dataset Specification Schema v0.3",
+  "description": "JSON Schema for PSDL Dataset Specification documents. Dataset Specs define WHERE to find data (physical bindings) for PSDL scenarios. Scenarios define WHAT to detect (intent), Dataset Specs define WHERE to find it (binding). See RFC-0004.",
+  "x-psdl-schema-version": "0.3.0",
+  "x-psdl-last-updated": "2025-12-14",
+  "type": "object",
+  "required": ["psdl_version", "dataset", "data_model", "elements"],
+  "additionalProperties": false,
+
+  "properties": {
+    "psdl_version": {
+      "$ref": "#/$defs/PSDLVersion",
+      "description": "PSDL specification version this dataset spec conforms to"
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "description": "Dataset identification",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/DatasetName",
+          "description": "Unique identifier for this dataset spec"
+        },
+        "version": {
+          "$ref": "#/$defs/SemanticVersion",
+          "description": "Dataset spec version (tracks binding changes)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        }
+      }
+    },
+    "data_model": {
+      "$ref": "#/$defs/DataModel",
+      "description": "The data model this dataset uses"
+    },
+    "conventions": {
+      "$ref": "#/$defs/Conventions",
+      "description": "Global conventions for this dataset"
+    },
+    "elements": {
+      "$ref": "#/$defs/ElementDefinitions",
+      "description": "Map semantic refs to physical data locations"
+    },
+    "valuesets": {
+      "$ref": "#/$defs/ValuesetDefinitions",
+      "description": "Local valueset definitions or references"
+    },
+    "metadata": {
+      "$ref": "#/$defs/DatasetMetadata",
+      "description": "Additional metadata for auditing"
+    }
+  },
+
+  "$defs": {
+    "PSDLVersion": {
+      "type": "string",
+      "pattern": "^0\\.3(\\.\\d+)?$",
+      "description": "PSDL specification version (currently 0.3.x)",
+      "examples": ["0.3", "0.3.0"]
+    },
+
+    "DatasetName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Valid dataset identifier (lowercase, starts with letter)",
+      "examples": ["mimic_iv_omop", "uf_health_fhir", "synthea_omop_v54"]
+    },
+
+    "SemanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?(-[a-zA-Z0-9]+)?$",
+      "description": "Semantic version",
+      "examples": ["1.0.0", "2.1.3"]
+    },
+
+    "DataModel": {
+      "type": "string",
+      "enum": ["omop", "fhir", "custom"],
+      "description": "The underlying data model. Determines which adapter to use."
+    },
+
+    "Conventions": {
+      "type": "object",
+      "description": "Global conventions applying to all elements",
+      "additionalProperties": false,
+      "properties": {
+        "patient_id_field": {
+          "type": "string",
+          "description": "Default field name for patient identifier",
+          "default": "person_id",
+          "examples": ["person_id", "patient_id", "subject_id"]
+        },
+        "default_time_field": {
+          "type": "string",
+          "description": "Default field name for timestamps",
+          "examples": ["measurement_datetime", "observation_date"]
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Default timezone for timestamps",
+          "default": "UTC",
+          "examples": ["UTC", "America/New_York", "Europe/London"]
+        },
+        "schema": {
+          "type": "string",
+          "description": "Database schema name (if applicable)",
+          "examples": ["cdm", "omop_cdm", "public"]
+        },
+        "unit_strategy": {
+          "$ref": "#/$defs/UnitStrategy",
+          "description": "How to handle unit mismatches"
+        }
+      }
+    },
+
+    "UnitStrategy": {
+      "type": "string",
+      "enum": ["strict", "allow_declare", "backend_specific"],
+      "default": "strict",
+      "description": "strict: units must match exactly. allow_declare: conversions can be declared. backend_specific: adapter handles."
+    },
+
+    "ElementDefinitions": {
+      "type": "object",
+      "description": "Map of semantic reference names to physical bindings",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/ElementSpec"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/SemanticRef"
+      }
+    },
+
+    "SemanticRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Semantic reference name (must match signal.ref in scenarios)",
+      "examples": ["creatinine", "heart_rate", "systolic_bp", "lactate"]
+    },
+
+    "ElementSpec": {
+      "type": "object",
+      "required": ["table", "value_field"],
+      "additionalProperties": false,
+      "description": "Physical binding for a semantic element",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ElementKind",
+          "description": "Category of clinical data"
+        },
+        "table": {
+          "type": "string",
+          "description": "Database table or FHIR resource name",
+          "examples": ["measurement", "observation", "Observation"]
+        },
+        "value_field": {
+          "type": "string",
+          "description": "Field containing the value",
+          "examples": ["value_as_number", "valueQuantity.value"]
+        },
+        "time_field": {
+          "type": "string",
+          "description": "Field containing timestamp (overrides convention)",
+          "examples": ["measurement_datetime", "effectiveDateTime"]
+        },
+        "patient_field": {
+          "type": "string",
+          "description": "Field containing patient ID (overrides convention)",
+          "examples": ["person_id", "subject.reference"]
+        },
+        "filter": {
+          "$ref": "#/$defs/FilterSpec",
+          "description": "Criteria to identify this element in the data"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of the values in this dataset",
+          "examples": ["mg/dL", "mmol/L", "mmHg", "bpm"]
+        },
+        "value_type": {
+          "$ref": "#/$defs/ValueType",
+          "description": "Data type of values"
+        },
+        "unit_conversions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UnitConversion" },
+          "description": "Declared unit conversions (only if unit_strategy is allow_declare)"
+        },
+        "transform": {
+          "type": "string",
+          "description": "Declarative transform name (e.g., 'current_year_minus_value' for age)",
+          "examples": ["current_year_minus_value", "fahrenheit_to_celsius"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        }
+      }
+    },
+
+    "ElementKind": {
+      "type": "string",
+      "enum": ["lab", "vital", "demographic", "condition", "drug", "procedure", "observation"],
+      "description": "Category of clinical data element"
+    },
+
+    "FilterSpec": {
+      "type": "object",
+      "description": "Criteria to filter/identify the element in data",
+      "additionalProperties": false,
+      "properties": {
+        "concept_id": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "array", "items": { "type": "integer" } },
+            { "$ref": "#/$defs/ValuesetReference" }
+          ],
+          "description": "OMOP concept_id(s) or valueset reference"
+        },
+        "code": {
+          "type": "string",
+          "description": "Code value (for FHIR or other systems)",
+          "examples": ["2160-0", "8867-4"]
+        },
+        "code_system": {
+          "type": "string",
+          "description": "Code system URI (for FHIR)",
+          "examples": ["http://loinc.org", "http://snomed.info/sct"]
+        },
+        "source_value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Source value(s) for unmapped data"
+        },
+        "custom": {
+          "type": "string",
+          "description": "Custom filter expression (backend-specific SQL or query)"
+        }
+      }
+    },
+
+    "ValuesetReference": {
+      "type": "object",
+      "required": ["valueset"],
+      "additionalProperties": false,
+      "description": "Reference to a defined valueset",
+      "properties": {
+        "valueset": {
+          "type": "string",
+          "description": "Name of valueset (defined in valuesets section or external file)"
+        }
+      }
+    },
+
+    "ValueType": {
+      "type": "string",
+      "enum": ["numeric", "integer", "string", "boolean", "datetime"],
+      "default": "numeric",
+      "description": "Data type of element values"
+    },
+
+    "UnitConversion": {
+      "type": "object",
+      "required": ["to", "factor"],
+      "additionalProperties": false,
+      "description": "Unit conversion declaration",
+      "properties": {
+        "to": {
+          "type": "string",
+          "description": "Target unit"
+        },
+        "factor": {
+          "type": "number",
+          "description": "Multiplication factor (source × factor = target)"
+        },
+        "offset": {
+          "type": "number",
+          "description": "Additive offset (for temperature conversions)"
+        }
+      }
+    },
+
+    "ValuesetDefinitions": {
+      "type": "object",
+      "description": "Map of valueset names to definitions or file references",
+      "additionalProperties": {
+        "$ref": "#/$defs/ValuesetSpec"
+      }
+    },
+
+    "ValuesetSpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["codes"],
+          "additionalProperties": false,
+          "description": "Inline valueset definition",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "code_system": {
+              "type": "string",
+              "description": "Code system (OMOP, LOINC, SNOMED, etc.)"
+            },
+            "codes": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "integer" },
+                  { "type": "string" },
+                  { "$ref": "#/$defs/CodeEntry" }
+                ]
+              },
+              "description": "List of codes in this valueset"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["file"],
+          "additionalProperties": false,
+          "description": "External valueset file reference",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path to external valueset file (.vs.json)"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 hash of the file for audit"
+            }
+          }
+        }
+      ]
+    },
+
+    "CodeEntry": {
+      "type": "object",
+      "required": ["code"],
+      "additionalProperties": false,
+      "description": "Code with optional display name",
+      "properties": {
+        "code": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "string" }
+          ]
+        },
+        "display": {
+          "type": "string",
+          "description": "Human-readable display name"
+        }
+      }
+    },
+
+    "DatasetMetadata": {
+      "type": "object",
+      "description": "Metadata for auditing and documentation",
+      "additionalProperties": true,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source of this dataset",
+          "examples": ["PhysioNet MIMIC-IV v2.2", "OHDSI Synthea"]
+        },
+        "source_version": {
+          "type": "string",
+          "description": "Version of the source data"
+        },
+        "omop_version": {
+          "type": "string",
+          "description": "OMOP CDM version (if applicable)",
+          "examples": ["5.4", "5.3.1"]
+        },
+        "fhir_version": {
+          "type": "string",
+          "description": "FHIR version (if applicable)",
+          "examples": ["R4", "STU3"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "description": "Date this dataset spec was created"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "description": "Date this dataset spec was last updated"
+        },
+        "maintainer": {
+          "type": "string",
+          "description": "Maintainer contact"
+        },
+        "license": {
+          "type": "string",
+          "description": "License for this dataset spec"
+        }
+      }
+    }
+  }
+}

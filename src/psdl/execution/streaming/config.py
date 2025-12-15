@@ -207,6 +207,10 @@ class StreamingConfig:
     checkpointing: CheckpointConfig = field(default_factory=CheckpointConfig)
     error_handling: ErrorHandlingConfig = field(default_factory=ErrorHandlingConfig)
 
+    # Late data handling
+    late_data_policy: LateDataPolicy = LateDataPolicy.DROP
+    allowed_lateness_ms: int = 0  # Additional lateness beyond watermark
+
     # Source configs (keyed by source name)
     sources: Dict[str, Any] = field(default_factory=dict)
 
@@ -234,6 +238,13 @@ class StreamingConfig:
         # Parse state TTL
         if "state_ttl" in execution:
             config.state_ttl_ms = config._parse_duration(execution["state_ttl"])
+
+        # Parse late data handling
+        late_data = execution.get("late_data", {})
+        if "policy" in late_data:
+            config.late_data_policy = LateDataPolicy(late_data["policy"])
+        if "allowed_lateness" in late_data:
+            config.allowed_lateness_ms = config._parse_duration(late_data["allowed_lateness"])
 
         # Parse watermark config
         if "watermark" in execution:

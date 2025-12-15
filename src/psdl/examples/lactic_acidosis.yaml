@@ -65,79 +65,130 @@ signals:
     unit: mg/dL
     domain: measurement
 
-# ── Trend Computations ───────────────────────────
+# ── Trend Computations (v0.3: NUMERIC VALUES ONLY) ─────
 trends:
+  # Lactate values
+  lact_current:
+    expr: last(Lact)
+    type: float
+    unit: mmol/L
+    description: "Current lactate level"
+
+  lact_slope_6h:
+    expr: slope(Lact, 6h)
+    type: float
+    description: "Lactate trajectory over 6 hours"
+
+  lact_delta_6h:
+    expr: delta(Lact, 6h)
+    type: float
+    unit: mmol/L
+    description: "Lactate change over 6 hours"
+
+  # pH values
+  ph_current:
+    expr: last(pH)
+    type: float
+    unit: pH
+    description: "Current blood pH"
+
+  ph_slope_6h:
+    expr: slope(pH, 6h)
+    type: float
+    description: "pH trend over 6 hours"
+
+  # Bicarbonate values
+  hco3_current:
+    expr: last(HCO3)
+    type: float
+    unit: mEq/L
+    description: "Current bicarbonate level"
+
+  # Creatinine for AKI detection
+  cr_delta_48h:
+    expr: delta(Cr, 48h)
+    type: float
+    unit: mg/dL
+    description: "Creatinine change over 48 hours"
+
+  # Glucose value
+  glucose_current:
+    expr: last(Glucose)
+    type: float
+    unit: mg/dL
+    description: "Current glucose level"
+
+# ── Logic Layer (v0.3: ALL COMPARISONS HERE) ─────
+logic:
   # Lactate thresholds
   lactate_elevated:
-    expr: last(Lact) > 2.0
+    when: lact_current > 2.0
     description: "Lactate > 2.0 mmol/L (elevated)"
 
   lactate_high:
-    expr: last(Lact) > 4.0
+    when: lact_current > 4.0
     description: "Lactate > 4.0 mmol/L (high - significant hypoperfusion)"
 
   lactate_severe:
-    expr: last(Lact) > 6.0
+    when: lact_current > 6.0
     description: "Lactate > 6.0 mmol/L (severe)"
 
   lactate_critical:
-    expr: last(Lact) > 10.0
+    when: lact_current > 10.0
     description: "Lactate > 10.0 mmol/L (critical - high mortality)"
 
   # Lactate trajectory
   lactate_rising:
-    expr: slope(Lact, 6h) > 0
+    when: lact_slope_6h > 0
     description: "Lactate trending upward"
 
   lactate_rising_fast:
-    expr: delta(Lact, 6h) > 2.0
+    when: lact_delta_6h > 2.0
     description: "Rapid lactate rise (>2 mmol/L in 6h)"
 
   lactate_falling:
-    expr: slope(Lact, 6h) < 0
+    when: lact_slope_6h < 0
     description: "Lactate falling (treatment response)"
 
   lactate_clearing:
-    expr: delta(Lact, 6h) < -1.0
+    when: lact_delta_6h < -1.0
     description: "Lactate clearance > 1 mmol/L in 6h (good response)"
 
   # pH and acid-base status
   acidosis:
-    expr: last(pH) < 7.35
+    when: ph_current < 7.35
     description: "Acidemia (pH < 7.35)"
 
   severe_acidosis:
-    expr: last(pH) < 7.20
+    when: ph_current < 7.20
     description: "Severe acidemia (pH < 7.20)"
 
   critical_acidosis:
-    expr: last(pH) < 7.10
+    when: ph_current < 7.10
     description: "Critical acidemia (pH < 7.10)"
 
   ph_falling:
-    expr: slope(pH, 6h) < 0
+    when: ph_slope_6h < 0
     description: "pH trending down"
 
   # Bicarbonate (metabolic component)
   bicarb_low:
-    expr: last(HCO3) < 22
+    when: hco3_current < 22
     description: "Low bicarbonate (metabolic acidosis)"
 
   bicarb_very_low:
-    expr: last(HCO3) < 18
+    when: hco3_current < 18
     description: "Very low bicarbonate (severe metabolic acidosis)"
 
   # Contributing factors
   aki_present:
-    expr: delta(Cr, 48h) >= 0.3
+    when: cr_delta_48h >= 0.3
     description: "AKI present (reduced lactate clearance)"
 
   hypoglycemia:
-    expr: last(Glucose) < 70
+    when: glucose_current < 70
     description: "Hypoglycemia (altered metabolism)"
 
-# ── Logic Layer ──────────────────────────────────
-logic:
   # Core lactic acidosis definition
   lactic_acidosis_mild:
     when: lactate_elevated AND acidosis AND NOT lactate_high

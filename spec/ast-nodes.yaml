@@ -1,0 +1,371 @@
+# PSDL AST Node Definitions
+# Version: 0.3.0
+# Last Updated: 2025-12-15
+#
+# This spec defines all Abstract Syntax Tree (AST) node types used by the
+# PSDL expression parser. These are generated into Python dataclasses.
+#
+# Generation: python tools/codegen.py --ast
+# Output: src/psdl/_generated/ast_types.py
+#
+# v0.3 INVARIANT: Trends produce ONLY numeric values. Comparisons belong
+# ONLY in the Logic layer (ComparisonExpr). This separation is enforced
+# by the AST structure - TrendExpression has NO comparison field.
+
+version: "0.3.0"
+
+# =============================================================================
+# PRIMITIVE TYPES
+# =============================================================================
+
+primitives:
+  WindowUnit:
+    type: enum
+    enum_values: ["s", "m", "h", "d", "w"]
+    description: "Time window unit (seconds, minutes, hours, days, weeks)"
+
+  ComparisonOp:
+    type: enum
+    enum_values: ["<", "<=", ">", ">=", "==", "!="]
+    description: "Comparison operators"
+
+  BooleanOp:
+    type: enum
+    enum_values: ["AND", "OR", "NOT"]
+    description: "Boolean logic operators"
+
+  ArithmeticOp:
+    type: enum
+    enum_values: ["+", "-", "*", "/"]
+    description: "Arithmetic operators"
+
+# =============================================================================
+# WINDOW SPECIFICATION
+# =============================================================================
+
+nodes:
+  WindowSpec:
+    description: "Time window specification (e.g., 6h, 30m, 1d)"
+    fields:
+      value:
+        type: int
+        required: true
+        description: "Numeric value of the window"
+      unit:
+        type: str
+        required: true
+        description: "Time unit (s, m, h, d, w)"
+    computed_properties:
+      seconds:
+        type: int
+        description: "Window duration in seconds"
+        formula: "value * {s: 1, m: 60, h: 3600, d: 86400, w: 604800}[unit]"
+
+  # ===========================================================================
+  # NUMERIC/TREND EXPRESSION NODES
+  # ===========================================================================
+
+  TemporalCall:
+    description: "A parsed temporal operator call (windowed or pointwise)"
+    fields:
+      operator:
+        type: str
+        required: true
+        description: "Operator name (delta, slope, ema, sma, min, max, count, last, first, exists, missing, std, stddev, percentile)"
+      signal:
+        type: str
+        required: true
+        description: "Signal name being operated on"
+      window:
+        type: WindowSpec
+        required: false
+        description: "Time window (required for windowed operators, null for pointwise)"
+      percentile:
+        type: int
+        required: false
+        description: "Percentile value (0-100) for percentile operator"
+
+  NumberLiteral:
+    description: "A numeric literal value"
+    fields:
+      value:
+        type: float
+        required: true
+        description: "The numeric value"
+
+  ArithExpr:
+    description: "Arithmetic expression combining numeric values"
+    fields:
+      operator:
+        type: str
+        required: true
+        description: "Arithmetic operator (+, -, *, /)"
+      left:
+        type: NumericNode
+        required: true
+        description: "Left operand"
+      right:
+        type: NumericNode
+        required: true
+        description: "Right operand"
+
+  # ===========================================================================
+  # TREND EXPRESSION (v0.3: Numeric Only - NO Comparisons)
+  # ===========================================================================
+
+  TrendExpression:
+    description: "A numeric trend expression (v0.3: NO comparison field)"
+    invariant: "Trends produce numeric values only. Comparisons belong in Logic layer."
+    fields:
+      temporal:
+        type: TemporalCall
+        required: true
+        description: "The temporal operator call producing a numeric value"
+    computed_properties:
+      operator:
+        type: str
+        description: "Shortcut to temporal.operator"
+      signal:
+        type: str
+        description: "Shortcut to temporal.signal"
+      window:
+        type: WindowSpec
+        description: "Shortcut to temporal.window"
+
+  # ===========================================================================
+  # LOGIC EXPRESSION NODES
+  # ===========================================================================
+
+  TermRef:
+    description: "Reference to a named term (trend or logic rule)"
+    fields:
+      name:
+        type: str
+        required: true
+        description: "Name of the referenced term"
+
+  ComparisonExpr:
+    description: "Comparison expression in logic layer (v0.3)"
+    fields:
+      operator:
+        type: str
+        required: true
+        description: "Comparison operator (<, <=, >, >=, ==, !=)"
+      left:
+        type: NumericNode | TermRef
+        required: true
+        description: "Left operand (trend ref, temporal call, or literal)"
+      right:
+        type: NumericNode | TermRef
+        required: true
+        description: "Right operand (usually a numeric literal)"
+
+  NotExpr:
+    description: "Logical NOT expression"
+    fields:
+      operand:
+        type: LogicNode
+        required: true
+        description: "Expression to negate"
+
+  AndExpr:
+    description: "Logical AND expression"
+    fields:
+      operands:
+        type: List[LogicNode]
+        required: true
+        description: "List of expressions to AND together"
+
+  OrExpr:
+    description: "Logical OR expression"
+    fields:
+      operands:
+        type: List[LogicNode]
+        required: true
+        description: "List of expressions to OR together"
+
+# =============================================================================
+# TYPE ALIASES (Union Types)
+# =============================================================================
+
+type_aliases:
+  NumericNode:
+    description: "Union type for numeric AST nodes (v0.3: trends produce numeric only)"
+    union_of:
+      - TemporalCall
+      - ArithExpr
+      - NumberLiteral
+      - float  # Direct numeric value
+
+  LogicNode:
+    description: "Union type for logic AST nodes (v0.3: NO TrendExpression)"
+    invariant: "Logic nodes produce boolean values. Comparisons compare numeric values."
+    union_of:
+      - TermRef          # Reference to a named trend or logic rule
+      - ComparisonExpr   # Comparison of numeric values (trend >= threshold)
+      - NotExpr          # Boolean NOT
+      - AndExpr          # Boolean AND
+      - OrExpr           # Boolean OR
+      # NOTE: TrendExpression is NOT in LogicNode - it produces numeric, not boolean
+
+  ExpressionNode:
+    description: "Union type for any expression node"
+    union_of:
+      - NumericNode
+      - LogicNode
+
+# =============================================================================
+# GRAMMAR → AST MAPPINGS (for Lark Transformer generation)
+# =============================================================================
+# These mappings define how grammar rules transform into AST nodes.
+# Generation: python tools/codegen.py --transformer
+# Output: src/psdl/_generated/transformer.py
+
+grammar_mappings:
+  # ---------------------------------------------------------------------------
+  # Simple inline mappings (v_args inline=True)
+  # ---------------------------------------------------------------------------
+  window:
+    inline: true
+    returns: WindowSpec
+    code: "WindowSpec(value=int(args[0]), unit=str(args[1]))"
+
+  windowed_call:
+    inline: true
+    returns: TrendExpression
+    code: |
+      temporal = TemporalCall(operator=str(args[0]), signal=str(args[1]), window=args[2])
+      return TrendExpression(temporal=temporal)
+
+  pointwise_call:
+    inline: true
+    returns: TrendExpression
+    code: |
+      temporal = TemporalCall(operator=str(args[0]), signal=str(args[1]), window=None)
+      return TrendExpression(temporal=temporal)
+
+  percentile_call:
+    inline: true
+    returns: TrendExpression
+    code: |
+      temporal = TemporalCall(
+          operator="percentile",
+          signal=str(args[0]),
+          window=args[1],
+          percentile=int(args[2])
+      )
+      return TrendExpression(temporal=temporal)
+
+  number:
+    inline: true
+    returns: float
+    code: "float(args[0])"
+
+  arith_op:
+    inline: true
+    returns: str
+    code: "str(args[0])"
+
+  # NOTE: trend_comparison removed in v0.3 - comparisons belong in Logic layer only
+
+  term_ref:
+    inline: true
+    returns: TermRef
+    code: "TermRef(name=str(args[0]))"
+
+  trend_ref_in_comparison:
+    inline: true
+    returns: TermRef
+    code: "TermRef(name=str(args[0]))"
+
+  # ---------------------------------------------------------------------------
+  # List-based handlers (items list)
+  # ---------------------------------------------------------------------------
+  arith_expr:
+    inline: false
+    returns: ArithExpr
+    code: |
+      left = items[0]
+      op = items[1]
+      right = items[2]
+      return ArithExpr(operator=op, left=left, right=right)
+
+  comparison_expr:
+    inline: false
+    returns: ComparisonExpr
+    code: |
+      left = items[0]
+      op = str(items[1])
+      right = items[2]
+      return ComparisonExpr(operator=op, left=left, right=right)
+
+  not_term:
+    inline: false
+    returns: NotExpr
+    code: |
+      operand = items[-1]  # Last item is the actual operand
+      return NotExpr(operand=operand)
+
+  # ---------------------------------------------------------------------------
+  # Variadic handlers (filter tokens, collapse single)
+  # ---------------------------------------------------------------------------
+  and_expr:
+    inline: false
+    mode: variadic
+    returns: AndExpr
+    filter_tokens: ["AND"]
+    collapse_single: true
+    code: |
+      operands = [x for x in items if not hasattr(x, "type") or x.type != "AND"]
+      if len(operands) == 1:
+          return operands[0]
+      return AndExpr(operands=operands)
+
+  or_expr:
+    inline: false
+    mode: variadic
+    returns: OrExpr
+    filter_tokens: ["OR"]
+    collapse_single: true
+    code: |
+      operands = [x for x in items if not hasattr(x, "type") or x.type != "OR"]
+      if len(operands) == 1:
+          return operands[0]
+      return OrExpr(operands=operands)
+
+  # ---------------------------------------------------------------------------
+  # Complex handlers (conditional logic)
+  # v0.3: Trends are numeric only - NO comparison support
+  # ---------------------------------------------------------------------------
+  trend_with_optional_comparison:
+    inline: false
+    mode: conditional
+    returns: TrendExpression | ArithExpr
+    note: "v0.3: This handler no longer supports comparison - just passes through numeric"
+    code: |
+      # v0.3: Trends produce numeric only, no comparison
+      if len(items) == 1:
+          item = items[0]
+          if isinstance(item, TrendExpression):
+              return item
+          if isinstance(item, ArithExpr):
+              return item
+          if isinstance(item, TemporalCall):
+              return TrendExpression(temporal=item)
+          return item
+      # v0.3: Multiple items means arithmetic, not comparison
+      return items[0]
+
+  trend_expr:
+    inline: false
+    mode: conditional
+    returns: TrendExpression
+    note: "v0.3: Simplified - trends are numeric only, no comparison"
+    code: |
+      # v0.3: Trends produce numeric only
+      item = items[0]
+      if isinstance(item, TrendExpression):
+          return item
+      if isinstance(item, TemporalCall):
+          return TrendExpression(temporal=item)
+      return item

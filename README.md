@@ -223,6 +223,35 @@ if result.is_triggered:
     print(f"Trend values: {result.trend_values}")
 ```
 
+### Compile for Production (v0.3)
+
+For production deployments requiring audit trails, use `compile_scenario` to get a compiled IR with cryptographic hashes:
+
+```python
+from psdl.core.compile import compile_scenario
+from psdl.runtimes.single import SinglePatientEvaluator
+
+# Compile scenario to IR with audit hashes
+ir = compile_scenario("scenario.yaml")
+
+print(f"Spec Hash: {ir.spec_hash}")       # Hash of input YAML
+print(f"IR Hash: {ir.ir_hash}")           # Hash of compiled IR
+print(f"Toolchain: {ir.toolchain_hash}")  # Hash of compiler version
+
+# Create evaluator from compiled IR
+evaluator = SinglePatientEvaluator.from_ir(ir, backend)
+result = evaluator.evaluate(patient_id=123, reference_time=now)
+
+# Results include compilation hashes for audit
+print(f"Compilation Hashes: {result.compilation_hashes}")
+```
+
+The compiled IR includes:
+- **DAG-ordered evaluation** - Dependencies computed once, evaluated in correct order
+- **Canonical hashing** - Reproducible SHA-256 hashes per `spec/hashing.yaml`
+- **Compilation diagnostics** - Warnings for unused signals/trends
+- **Audit trail** - Full traceability from YAML to evaluation
+
 ## Temporal Operators
 
 | Operator | Syntax | Description |
@@ -274,7 +303,7 @@ psdl/
 │   └── data/              # Sample data (compressed archives)
 ├── docs/                  # Documentation + Whitepapers
 ├── rfcs/                  # Design proposals (5 RFCs)
-└── tests/                 # 284 tests (all passing)
+└── tests/                 # 369 tests (all passing)
 ```
 
 | Component | Description |
@@ -284,6 +313,67 @@ psdl/
 | **Core** | Parser, IR types, expression parsing |
 | **Runtimes** | Single patient, cohort SQL, streaming execution |
 | **Adapters** | Data sources (OMOP, FHIR, PhysioNet) |
+
+## Spec-Driven Code Generation
+
+PSDL follows a **spec-driven architecture** where specification files are the single source of truth. Code is auto-generated from specs to eliminate redundancy and ensure consistency.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   SPEC FILES (Source of Truth)                  │
+├─────────────────────────────────────────────────────────────────┤
+│ spec/schema.json        → Scenario YAML structure               │
+│ spec/ast-nodes.yaml     → Expression AST types + grammar mappings│
+│ spec/operators.yaml     → Operator metadata + SQL templates     │
+│ spec/grammar/*.lark     → Expression grammar (Lark)             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ python tools/codegen.py --all
+┌─────────────────────────────────────────────────────────────────┐
+│                    AUTO-GENERATED CODE                          │
+├─────────────────────────────────────────────────────────────────┤
+│ _generated/schema_types.py   ← schema.json (datamodel-codegen)  │
+│ _generated/ast_types.py      ← ast-nodes.yaml (Jinja2)          │
+│ _generated/transformer.py    ← ast-nodes.yaml grammar_mappings  │
+│ _generated/operators_meta.py ← operators.yaml (Jinja2)          │
+│ _generated/sql_templates.py  ← operators.yaml (Jinja2)          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    MANUAL CODE (Algorithms Only)                │
+├─────────────────────────────────────────────────────────────────┤
+│ operators.py          → Temporal operator implementations       │
+│ runtimes/             → Execution engines (single, cohort)      │
+│ adapters/             → Data source adapters (OMOP, FHIR)       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Regenerating Code
+
+```bash
+# Regenerate all code from specs
+python tools/codegen.py --all
+
+# Regenerate specific components
+python tools/codegen.py --types        # Python types from schema.json
+python tools/codegen.py --ast          # AST types from ast-nodes.yaml
+python tools/codegen.py --transformer  # Lark transformer from grammar_mappings
+python tools/codegen.py --operators    # Operator metadata
+python tools/codegen.py --sql          # SQL templates
+
+# Validate implementations against spec
+python tools/codegen.py --validate
+```
+
+### Why Spec-Driven?
+
+| Benefit | Description |
+|---------|-------------|
+| **Single Source of Truth** | Specs define types once; code is generated |
+| **Consistency** | No manual type mismatches or drift |
+| **Maintainability** | Change spec → regenerate → done |
+| **Auditability** | Clear traceability from spec to implementation |
 
 ## Running Tests
 
@@ -295,13 +385,14 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 284 Tests (All Passing)
+### Test Coverage: 424 Tests (All Passing)
 
 - **Unit Tests**: Parser, evaluator, operators, scenarios
 - **Integration Tests**: FHIR adapter, OMOP backend, PhysioNet adapter
 - **Validation**: SQL equivalence (100% match), KDIGO clinical guidelines
 - **Streaming Tests**: Window functions, logic evaluation, Flink compiler
 - **Cohort Tests**: SQL compilation, batch evaluation
+- **Compiler Tests**: ScenarioIR, DAG ordering, canonical hashing
 
 See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodology.
 
@@ -333,9 +424,9 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 | Phase | Status | Focus |
 |-------|--------|-------|
 | **Phase 1: Semantic Foundation** | ✅ Complete | Spec, parser, operators, OMOP/FHIR adapters |
-| **Phase 2: Enhanced Runtime** | ✅ Complete | Streaming, SQL generation, PhysioNet adapter, v0.3 architecture |
-| **Phase 3: Community** | 📋 Planned | Blog series, conferences, tooling ecosystem |
-| **Phase 4: Adoption** | 🔮 Future | Hospital pilots, standards engagement |
+| **Phase 2: v0.3 Architecture** | ✅ Complete | Signal/Trend/Logic/Output separation, PyPI publication |
+| **Phase 3: Production Readiness** | 🚧 Current | Output profiles, streaming, performance |
+| **Phase 4: Adoption & Scale** | 🔮 Future | Hospital pilots, standards engagement |
 
 📍 **[View Full Roadmap →](docs/ROADMAP.md)**
 

@@ -1,0 +1,757 @@
+{
+  "$schema": "./conformance-tests.schema.json",
+  "name": "PsdlDatasetConformanceTests",
+  "version": "0.3.0",
+  "description": "Tests for PSDL Dataset Specification documents. Validates that dataset specs correctly bind semantic references to physical data locations.",
+  "reference": "https://psdl-lang.org/spec/v0.3/dataset",
+  "conformanceLevel": "core",
+  "notes": "Dataset specs define WHERE to find data. Scenarios define WHAT to detect. Together they enable portable clinical logic.",
+
+  "groups": [
+    {
+      "name": "DocumentValidation",
+      "description": "Tests for dataset document structure validation",
+      "context": "dataset",
+      "tests": [
+        {
+          "id": "ds_001",
+          "name": "Valid minimal dataset spec",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": 3016723
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Minimal valid dataset spec with required fields"
+        },
+        {
+          "id": "ds_002",
+          "name": "Missing psdl_version",
+          "dataset": {
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "psdl_version is required"
+        },
+        {
+          "id": "ds_003",
+          "name": "Missing data_model",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "elements": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "data_model is required"
+        },
+        {
+          "id": "ds_004",
+          "name": "Invalid data_model value",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "invalid_model",
+            "elements": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "data_model must be 'omop', 'fhir', or 'custom'"
+        },
+        {
+          "id": "ds_005",
+          "name": "Missing elements",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop"
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "elements section is required"
+        },
+        {
+          "id": "ds_006",
+          "name": "Invalid dataset name (uppercase)",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "TestDataset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {}
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "Dataset name must be lowercase"
+        },
+        {
+          "id": "ds_007",
+          "name": "Invalid semantic ref (starts with number)",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "123creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "Semantic refs must start with lowercase letter"
+        }
+      ]
+    },
+    {
+      "name": "ElementDefinitions",
+      "description": "Tests for element definition structure",
+      "context": "dataset",
+      "tests": [
+        {
+          "id": "elem_001",
+          "name": "Valid element with all fields",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "complete_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "kind": "lab",
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "time_field": "measurement_datetime",
+                "patient_field": "person_id",
+                "filter": {
+                  "concept_id": 3016723
+                },
+                "unit": "mg/dL",
+                "value_type": "numeric",
+                "description": "Serum creatinine measurement"
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Element with all optional fields specified"
+        },
+        {
+          "id": "elem_002",
+          "name": "Element missing table field",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": 3016723
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "Element must have table field"
+        },
+        {
+          "id": "elem_003",
+          "name": "Element missing value_field",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "filter": {
+                  "concept_id": 3016723
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E002",
+          "explanation": "Element must have value_field"
+        },
+        {
+          "id": "elem_004",
+          "name": "Element with multiple concept_ids",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "multi_concept",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": [3016723, 3017501]
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid element with array of concept_ids"
+        },
+        {
+          "id": "elem_005",
+          "name": "Element with source_value filter",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "source_value_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "source_value": ["CREATININE", "Cr", "creat"]
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid element using source_value for unmapped data"
+        },
+        {
+          "id": "elem_006",
+          "name": "Invalid element kind",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "kind": "invalid_kind",
+                "table": "measurement",
+                "value_field": "value_as_number"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "Element kind must be one of: lab, vital, demographic, condition, drug, procedure, observation"
+        },
+        {
+          "id": "elem_007",
+          "name": "Invalid value_type",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "value_type": "invalid_type"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E003",
+          "explanation": "value_type must be one of: numeric, integer, string, boolean, datetime"
+        }
+      ]
+    },
+    {
+      "name": "FHIRDataModel",
+      "description": "Tests specific to FHIR data model bindings",
+      "context": "dataset",
+      "tests": [
+        {
+          "id": "fhir_001",
+          "name": "Valid FHIR element binding",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "fhir_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "fhir",
+            "elements": {
+              "creatinine": {
+                "kind": "lab",
+                "table": "Observation",
+                "value_field": "valueQuantity.value",
+                "time_field": "effectiveDateTime",
+                "patient_field": "subject.reference",
+                "filter": {
+                  "code": "2160-0",
+                  "code_system": "http://loinc.org"
+                },
+                "unit": "mg/dL"
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid FHIR element with LOINC code filter"
+        },
+        {
+          "id": "fhir_002",
+          "name": "FHIR element with FHIR path",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "fhir_path_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "fhir",
+            "elements": {
+              "heart_rate": {
+                "kind": "vital",
+                "table": "Observation",
+                "value_field": "valueQuantity.value",
+                "filter": {
+                  "code": "8867-4",
+                  "code_system": "http://loinc.org"
+                }
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid FHIR vital sign binding"
+        }
+      ]
+    },
+    {
+      "name": "ValuesetDefinitions",
+      "description": "Tests for valueset definition and reference",
+      "context": "dataset",
+      "tests": [
+        {
+          "id": "vs_001",
+          "name": "Inline valueset definition",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "valueset_dataset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": {"valueset": "creatinine_codes"}
+                }
+              }
+            },
+            "valuesets": {
+              "creatinine_codes": {
+                "description": "OMOP concept IDs for creatinine",
+                "code_system": "OMOP",
+                "codes": [3016723, 3017501, 3020564]
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid inline valueset with concept ID reference"
+        },
+        {
+          "id": "vs_002",
+          "name": "External valueset file reference",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "external_valueset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": {"valueset": "creatinine_codes"}
+                }
+              }
+            },
+            "valuesets": {
+              "creatinine_codes": {
+                "file": "./valuesets/creatinine.vs.json",
+                "sha256": "abc123def456789012345678901234567890123456789012345678901234abcd"
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid external valueset reference with SHA-256"
+        },
+        {
+          "id": "vs_003",
+          "name": "Valueset reference to undefined valueset",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": {"valueset": "undefined_valueset"}
+                }
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Valueset 'undefined_valueset' not defined"
+        },
+        {
+          "id": "vs_004",
+          "name": "Valueset with code entries",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "detailed_valueset",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {
+                  "concept_id": {"valueset": "creatinine_codes"}
+                }
+              }
+            },
+            "valuesets": {
+              "creatinine_codes": {
+                "description": "OMOP concept IDs for creatinine measurements",
+                "code_system": "OMOP",
+                "codes": [
+                  {"code": 3016723, "display": "Creatinine [Mass/volume] in Serum or Plasma"},
+                  {"code": 3017501, "display": "Creatinine [Mass/volume] in Blood"}
+                ]
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid valueset with detailed code entries"
+        }
+      ]
+    },
+    {
+      "name": "UnitConversions",
+      "description": "Tests for unit conversion declarations",
+      "context": "dataset",
+      "tests": [
+        {
+          "id": "uc_001",
+          "name": "Valid unit conversion",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "unit_conversion",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "conventions": {
+              "unit_strategy": "allow_declare"
+            },
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "unit": "umol/L",
+                "unit_conversions": [
+                  {"to": "mg/dL", "factor": 0.0113}
+                ]
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Valid unit conversion from umol/L to mg/dL"
+        },
+        {
+          "id": "uc_002",
+          "name": "Temperature conversion with offset",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "temp_conversion",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "conventions": {
+              "unit_strategy": "allow_declare"
+            },
+            "elements": {
+              "temperature": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "unit": "degF",
+                "unit_conversions": [
+                  {"to": "degC", "factor": 0.5556, "offset": -17.7778}
+                ]
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Temperature conversion requires offset"
+        },
+        {
+          "id": "uc_003",
+          "name": "Unit conversion without allow_declare strategy",
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "conventions": {
+              "unit_strategy": "strict"
+            },
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "unit": "umol/L",
+                "unit_conversions": [
+                  {"to": "mg/dL", "factor": 0.0113}
+                ]
+              }
+            }
+          },
+          "invalid": "semantic",
+          "explanation": "Unit conversions only allowed when unit_strategy is 'allow_declare'"
+        }
+      ]
+    },
+    {
+      "name": "ScenarioBinding",
+      "description": "Tests for scenario-to-dataset binding validation",
+      "context": "binding",
+      "tests": [
+        {
+          "id": "bind_001",
+          "name": "Valid scenario-dataset binding",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "aki_test",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test scenario-dataset binding",
+              "rationale": "Validates binding resolution",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine", "expected_unit": "mg/dL"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "test_omop",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "filter": {"concept_id": 3016723},
+                "unit": "mg/dL"
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Signal ref 'creatinine' successfully binds to dataset element"
+        },
+        {
+          "id": "bind_002",
+          "name": "Missing signal binding",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "missing_binding",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test missing binding detection",
+              "rationale": "Validates binding validation",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine"},
+              "Lact": {"ref": "lactate"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "incomplete",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E007",
+          "explanation": "Signal ref 'lactate' has no binding in dataset"
+        },
+        {
+          "id": "bind_003",
+          "name": "Unit mismatch warning",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "unit_mismatch",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test unit mismatch detection",
+              "rationale": "Validates unit validation",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine", "expected_unit": "mg/dL"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "unit_mismatch",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "conventions": {
+              "unit_strategy": "strict"
+            },
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "unit": "umol/L"
+              }
+            }
+          },
+          "invalid": "semantic",
+          "errorCode": "E008",
+          "explanation": "Signal expects mg/dL but dataset provides umol/L (strict mode)"
+        },
+        {
+          "id": "bind_004",
+          "name": "Unit mismatch with conversion available",
+          "scenario": {
+            "psdl_version": "0.3",
+            "scenario": {
+              "name": "unit_convert",
+              "version": "1.0.0"
+            },
+            "audit": {
+              "intent": "Test unit conversion resolution",
+              "rationale": "Validates conversion lookup",
+              "provenance": "PSDL Conformance Suite"
+            },
+            "signals": {
+              "Cr": {"ref": "creatinine", "expected_unit": "mg/dL"}
+            },
+            "logic": {
+              "elevated": {"when": "last(Cr) > 1.5"}
+            }
+          },
+          "dataset": {
+            "psdl_version": "0.3",
+            "dataset": {
+              "name": "with_conversion",
+              "version": "1.0.0"
+            },
+            "data_model": "omop",
+            "conventions": {
+              "unit_strategy": "allow_declare"
+            },
+            "elements": {
+              "creatinine": {
+                "table": "measurement",
+                "value_field": "value_as_number",
+                "unit": "umol/L",
+                "unit_conversions": [
+                  {"to": "mg/dL", "factor": 0.0113}
+                ]
+              }
+            }
+          },
+          "invalid": "false",
+          "explanation": "Unit mismatch resolved by declared conversion"
+        }
+      ]
+    }
+  ]
+}

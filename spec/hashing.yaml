@@ -1,0 +1,146 @@
+# PSDL Canonical Hashing Specification
+# Version: 0.3.0
+# Last Updated: 2025-12-15
+#
+# This file defines the canonical hashing algorithm for PSDL scenarios and IR.
+# Used for cache invalidation, reproducibility tracking, and audit trails.
+
+version: "0.3.0"
+
+# Hashing Algorithm
+algorithm:
+  name: sha256
+  description: "SHA-256 for all hash computations"
+  output_format: hex  # lowercase hexadecimal
+  output_length: 64   # 64 hex characters
+
+# Canonicalization Rules
+canonicalization:
+  description: "Rules for producing deterministic representations before hashing"
+
+  json:
+    # Rules for converting objects to canonical JSON before hashing
+    sort_keys: true
+    indent: null       # No indentation (compact)
+    separators: [",", ":"]  # No extra whitespace
+    ensure_ascii: false     # Allow Unicode
+
+  # Field exclusions - these fields are NOT included in hashes
+  excluded_fields:
+    - "description"    # Human-readable descriptions don't affect semantics
+    - "comments"       # Comments are documentation, not semantics
+    - "_metadata"      # Internal metadata
+    - "_generated_at"  # Generation timestamps
+
+  # Field ordering for deterministic hashing
+  field_order:
+    scenario:
+      - name
+      - version
+      - population
+      - signals
+      - trends
+      - logic
+    signal:
+      - name
+      - source
+      - concept_id
+      - unit
+      - domain
+    trend:
+      - name
+      - operator
+      - signal
+      - window
+      - expression
+    logic:
+      - name
+      - expression
+      - severity
+
+# Hash Types
+hash_types:
+  spec_hash:
+    description: "Hash of the canonical PSDL specification"
+    purpose: "Detect changes to scenario definition"
+    includes:
+      - scenario_name
+      - version
+      - signals (all fields except description)
+      - trends (operator, signal, window, expression)
+      - logic (expression, severity)
+      - population (include, exclude)
+    excludes:
+      - descriptions
+      - comments
+      - whitespace formatting
+
+  ir_hash:
+    description: "Hash of the normalized intermediate representation"
+    purpose: "Detect semantic changes after normalization"
+    includes:
+      - normalized_signals
+      - normalized_trends (with resolved references)
+      - dependency_dag (topologically sorted)
+      - logic_expressions (in canonical form)
+    excludes:
+      - source file location
+      - parse metadata
+
+  toolchain_hash:
+    description: "Hash of the compilation toolchain"
+    purpose: "Detect toolchain changes that might affect output"
+    includes:
+      - psdl_lang_version   # Package version
+      - python_version      # Python major.minor
+      - spec_version        # Specification version
+      - grammar_hash        # Hash of expression.lark
+    excludes:
+      - runtime environment
+      - optional dependencies
+
+# Reproducibility Contract
+reproducibility:
+  description: "Guarantees for hash-based reproducibility"
+
+  invariants:
+    - name: "spec_hash_stability"
+      description: "Same PSDL YAML produces same spec_hash regardless of formatting"
+
+    - name: "ir_hash_determinism"
+      description: "Same spec_hash produces same ir_hash across runs"
+
+    - name: "toolchain_hash_versioning"
+      description: "Different toolchain versions produce different toolchain_hashes"
+
+  cache_invalidation:
+    description: "When to invalidate cached compilation results"
+    invalidate_on:
+      - spec_hash_change
+      - toolchain_hash_change
+    retain_on:
+      - ir_hash_match  # Can reuse IR if spec and toolchain match
+
+# Implementation Notes
+implementation:
+  python:
+    module: "psdl.core.compile"
+    functions:
+      - compute_spec_hash(scenario: PSDLScenario) -> str
+      - compute_ir_hash(ir: ScenarioIR) -> str
+      - compute_toolchain_hash() -> str
+      - canonicalize_for_hashing(obj: Any) -> str
+
+    dependencies:
+      - hashlib (stdlib)
+      - json (stdlib)
+
+  canonical_json:
+    description: "Use json.dumps with specific parameters"
+    code: |
+      json.dumps(
+          obj,
+          sort_keys=True,
+          separators=(',', ':'),
+          ensure_ascii=False
+      )

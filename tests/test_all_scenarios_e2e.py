@@ -188,7 +188,7 @@ class TestAKIScenarioComplete:
     def test_scenario_metadata(self, scenario):
         """Verify scenario is parsed correctly."""
         assert scenario.name == "AKI_KDIGO_Detection"
-        assert scenario.version == "0.3.0"
+        assert scenario.version == "1.0.0"
         assert "Cr" in scenario.signals
         assert "aki_stage1" in scenario.logic
         assert "aki_stage3" in scenario.logic

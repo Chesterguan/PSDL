@@ -1,0 +1,281 @@
+# PSDL Dataset Specification: OMOP CDM v5.4
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# This Dataset Spec maps semantic signal references to physical
+# locations in an OMOP CDM v5.4 database.
+#
+# Use this as a starting point for your institution's dataset spec.
+# Customize concept_ids based on your local mappings.
+
+psdl_version: "0.3"
+
+dataset:
+  name: omop_cdm_v54
+  version: "1.0.0"
+  description: "Standard OMOP CDM v5.4 mappings for common clinical signals"
+
+data_model: omop
+
+conventions:
+  patient_id_field: person_id
+  default_time_field: measurement_datetime
+  timezone: UTC
+  schema: cdm
+  unit_strategy: strict
+
+# ── Element Bindings ─────────────────────────────
+# Maps semantic refs (used in scenarios) to physical locations
+
+elements:
+  # ─────────────────────────────────────────────────
+  # Lab Values
+  # ─────────────────────────────────────────────────
+
+  creatinine:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3016723]  # Creatinine serum/plasma
+    unit: mg/dL
+    value_type: numeric
+    description: "Serum creatinine"
+
+  creatinine_baseline:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3016723]
+    unit: mg/dL
+    value_type: numeric
+    description: "Baseline creatinine (same source, runtime uses window)"
+
+  blood_urea_nitrogen:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3013682]  # BUN
+    unit: mg/dL
+    value_type: numeric
+    description: "Blood urea nitrogen"
+
+  lactate:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3047181]  # Lactate blood
+    unit: mmol/L
+    value_type: numeric
+    description: "Blood lactate"
+
+  potassium:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3023103]  # Potassium serum/plasma
+    unit: mEq/L
+    value_type: numeric
+    description: "Serum potassium"
+
+  sodium:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3019550]  # Sodium serum/plasma
+    unit: mEq/L
+    value_type: numeric
+    description: "Serum sodium"
+
+  hemoglobin:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3000963]  # Hemoglobin
+    unit: g/dL
+    value_type: numeric
+    description: "Hemoglobin"
+
+  white_blood_cell_count:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3000905]  # WBC count
+    unit: 10^9/L
+    value_type: numeric
+    description: "White blood cell count"
+
+  platelets:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3024929]  # Platelet count
+    unit: 10^9/L
+    value_type: numeric
+    description: "Platelet count"
+
+  blood_ph:
+    kind: lab
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3019977]  # pH arterial
+    unit: ""
+    value_type: numeric
+    description: "Arterial blood pH"
+
+  # ─────────────────────────────────────────────────
+  # Vital Signs
+  # ─────────────────────────────────────────────────
+
+  heart_rate:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3027018]  # Heart rate
+    unit: bpm
+    value_type: numeric
+    description: "Heart rate"
+
+  systolic_bp:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3004249]  # Systolic BP
+    unit: mmHg
+    value_type: numeric
+    description: "Systolic blood pressure"
+
+  diastolic_bp:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3012888]  # Diastolic BP
+    unit: mmHg
+    value_type: numeric
+    description: "Diastolic blood pressure"
+
+  mean_arterial_pressure:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3027598]  # MAP
+    unit: mmHg
+    value_type: numeric
+    description: "Mean arterial pressure"
+
+  respiratory_rate:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3024171]  # Respiratory rate
+    unit: breaths/min
+    value_type: numeric
+    description: "Respiratory rate"
+
+  temperature:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3020891]  # Body temperature
+    unit: celsius
+    value_type: numeric
+    description: "Body temperature"
+
+  spo2:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3016502]  # SpO2
+    unit: "%"
+    value_type: numeric
+    description: "Oxygen saturation (SpO2)"
+
+  urine_output:
+    kind: vital
+    table: measurement
+    value_field: value_as_number
+    time_field: measurement_datetime
+    patient_field: person_id
+    filter:
+      concept_id: [3014315]  # Urine output
+    unit: mL/kg/hr
+    value_type: numeric
+    description: "Urine output rate"
+
+  # ─────────────────────────────────────────────────
+  # Demographics
+  # ─────────────────────────────────────────────────
+
+  age:
+    kind: demographic
+    table: person
+    value_field: year_of_birth
+    patient_field: person_id
+    value_type: integer
+    transform: current_year_minus_value
+    description: "Patient age (calculated from year of birth)"
+
+  gender:
+    kind: demographic
+    table: person
+    value_field: gender_concept_id
+    patient_field: person_id
+    value_type: string
+    description: "Patient gender"
+
+metadata:
+  source: "OHDSI OMOP CDM"
+  omop_version: "5.4"
+  created: "2025-12-14"
+  updated: "2025-12-14"
+  maintainer: "PSDL Team"
+  license: "Apache-2.0"

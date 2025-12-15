@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psdl-lang.org/schema/v0.3/conformance-tests.json",
+  "title": "PSDL Conformance Test Suite Schema",
+  "description": "JSON Schema for PSDL conformance test files. Based on CQL/FHIRPath test format (HL7) adapted for PSDL.",
+  "type": "object",
+  "required": ["name", "version", "groups"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema"
+    },
+    "name": {
+      "type": "string",
+      "description": "Computer-friendly name of the test suite",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "PSDL specification version these tests target",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the test suite"
+    },
+    "reference": {
+      "type": "string",
+      "format": "uri",
+      "description": "URI reference to the specification section under test"
+    },
+    "conformanceLevel": {
+      "type": "string",
+      "enum": ["core", "state", "population", "streaming", "full"],
+      "description": "PSDL conformance level required to run these tests"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the test suite"
+    },
+    "groups": {
+      "type": "array",
+      "description": "Test groups organized by feature/operator",
+      "items": { "$ref": "#/$defs/TestGroup" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "TestGroup": {
+      "type": "object",
+      "required": ["name", "tests"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Computer-friendly name of the test group",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of tests in this group"
+        },
+        "context": {
+          "type": "string",
+          "enum": ["trend", "logic", "scenario", "operator"],
+          "description": "Evaluation context for expressions in this group"
+        },
+        "reference": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI reference to the specification section"
+        },
+        "tests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Test" },
+          "minItems": 1
+        }
+      }
+    },
+    "Test": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique test identifier within the suite",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable test name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of what this test validates"
+        },
+        "expression": {
+          "type": "string",
+          "description": "The PSDL expression to evaluate"
+        },
+        "scenario": {
+          "type": "object",
+          "description": "Complete PSDL scenario document for scenario-level tests"
+        },
+        "input": {
+          "$ref": "#/$defs/TestInput",
+          "description": "Input data for operator/evaluation tests"
+        },
+        "expected": {
+          "description": "Expected output value (null, boolean, number, string, or object)"
+        },
+        "invalid": {
+          "type": "string",
+          "enum": ["false", "syntax", "semantic", "runtime"],
+          "description": "Expected error type. 'false' means test should succeed.",
+          "default": "false"
+        },
+        "errorCode": {
+          "type": "string",
+          "description": "Expected PSDL error code (e.g., E001, E002)",
+          "pattern": "^E\\d{3}$"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Human-readable explanation of expected behavior"
+        },
+        "version": {
+          "type": "string",
+          "description": "PSDL version when this test was introduced",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "versionRemoved": {
+          "type": "string",
+          "description": "PSDL version when this test became obsolete",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "oneOf": [
+        { "required": ["expression"], "not": { "anyOf": [{ "required": ["scenario"] }, { "required": ["input"] }] } },
+        { "required": ["scenario"], "not": { "required": ["expression"] } },
+        { "required": ["input"], "not": { "anyOf": [{ "required": ["expression"] }, { "required": ["scenario"] }] } }
+      ]
+    },
+    "TestInput": {
+      "type": "object",
+      "description": "Input data for operator/scenario evaluation tests",
+      "properties": {
+        "signal": {
+          "type": "string",
+          "description": "Signal name being tested"
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression to evaluate"
+        },
+        "evaluationTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for evaluation context"
+        },
+        "data": {
+          "oneOf": [
+            {
+              "type": "array",
+              "description": "Time-series data points (for operator tests)",
+              "items": { "$ref": "#/$defs/DataPoint" }
+            },
+            {
+              "type": "object",
+              "description": "Data organized by signal name (for scenario tests)",
+              "additionalProperties": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/DataPoint" }
+              }
+            }
+          ]
+        },
+        "patient_id": {
+          "type": "string",
+          "description": "Patient identifier for scenario tests"
+        },
+        "trends": {
+          "type": "object",
+          "description": "Pre-computed trend values (for boolean logic tests)",
+          "additionalProperties": { "type": "boolean" }
+        }
+      }
+    },
+    "DataPoint": {
+      "type": "object",
+      "required": ["timestamp"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "value": {
+          "description": "Measurement value (number or null)"
+        }
+      }
+    }
+  }
+}

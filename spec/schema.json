@@ -1,39 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://psdl-lang.org/schema/v0.3/scenario",
+  "$comment": "Schema version 0.3.0 (2025-12-14). Breaking change from v0.2: trends cannot contain comparison operators.",
   "title": "PSDL Scenario Schema v0.3",
-  "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.3 scenario documents. BREAKING CHANGE: Trends produce numeric values only; comparisons belong in Logic layer. See RFC-0005.",
-  "version": "0.3.0",
+  "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.3 scenario documents. Scenarios define WHAT to detect (clinical intent) using abstract signal references. Physical data bindings belong in Dataset Spec (see dataset_schema.json). See RFC-0004 and RFC-0005.",
+  "x-psdl-schema-version": "0.3.0",
+  "x-psdl-last-updated": "2025-12-14",
   "type": "object",
-  "required": ["scenario", "version", "signals", "logic", "audit"],
+  "required": ["psdl_version", "scenario", "signals", "logic", "audit", "outputs"],
   "additionalProperties": false,
 
   "properties": {
+    "psdl_version": {
+      "$ref": "#/$defs/PSDLVersion",
+      "description": "PSDL specification version. Determines parser behavior and supported features."
+    },
     "scenario": {
-      "$ref": "#/$defs/ScenarioName",
-      "description": "Unique identifier for this scenario"
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "description": "Scenario identification and versioning",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/ScenarioName",
+          "description": "Unique identifier for this scenario"
+        },
+        "version": {
+          "$ref": "#/$defs/SemanticVersion",
+          "description": "Scenario content version (tracks clinical logic changes)"
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Human-readable display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this scenario detects"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags for categorization and search",
+          "examples": [["aki", "nephrology", "kdigo"]]
+        }
+      }
     },
-    "name": {
-      "type": "string",
-      "description": "Human-readable display name (optional, defaults to scenario id)"
-    },
-    "version": {
-      "$ref": "#/$defs/SemanticVersion",
-      "description": "Semantic version of this scenario definition"
-    },
-    "description": {
-      "type": "string",
-      "description": "Human-readable description of what this scenario detects"
-    },
-    "author": {
-      "type": "string",
-      "description": "Author or organization that created this scenario"
-    },
-    "tags": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Tags for categorization and search",
-      "examples": [["aki", "nephrology", "kdigo"]]
+    "audit": {
+      "$ref": "#/$defs/AuditBlock",
+      "description": "Required audit information for regulatory compliance"
     },
     "population": {
       "$ref": "#/$defs/PopulationFilter",
@@ -41,11 +55,11 @@
     },
     "signals": {
       "$ref": "#/$defs/SignalDefinitions",
-      "description": "Map logical signal names to data sources"
+      "description": "Abstract signal references (semantic names only, NO physical bindings)"
     },
     "trends": {
       "$ref": "#/$defs/TrendDefinitions",
-      "description": "Define computed numeric trends over signals (NO boolean comparisons)"
+      "description": "Computed numeric trends over signals (NO boolean comparisons)"
     },
     "logic": {
       "$ref": "#/$defs/LogicDefinitions",
@@ -59,21 +73,20 @@
       "$ref": "#/$defs/OutputDefinitions",
       "description": "Define what the scenario outputs (decision, features, evidence)"
     },
-    "mapping": {
-      "$ref": "#/$defs/MappingConfig",
-      "description": "Site-specific mappings for portability"
-    },
     "metadata": {
       "$ref": "#/$defs/ScenarioMetadata",
       "description": "Additional metadata for documentation and tooling"
-    },
-    "audit": {
-      "$ref": "#/$defs/AuditBlock",
-      "description": "Required audit information for regulatory compliance"
     }
   },
 
   "$defs": {
+    "PSDLVersion": {
+      "type": "string",
+      "pattern": "^0\\.3(\\.\\d+)?$",
+      "description": "PSDL specification version (currently 0.3.x)",
+      "examples": ["0.3", "0.3.0", "0.3.1"]
+    },
+
     "ScenarioName": {
       "type": "string",
       "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
@@ -87,7 +100,7 @@
       "type": "string",
       "pattern": "^\\d+\\.\\d+(\\.\\d+)?(-[a-zA-Z0-9]+)?$",
       "description": "Semantic version with optional prerelease suffix",
-      "examples": ["0.3", "1.0.0", "2.1.3", "1.0.0-beta"]
+      "examples": ["1.0.0", "2.1.3", "1.0.0-beta"]
     },
 
     "Identifier": {
@@ -95,32 +108,60 @@
       "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
       "minLength": 1,
       "maxLength": 64,
-      "description": "Valid identifier for signals, trends, and logic (starts with letter)"
+      "description": "Internal identifier for signals, trends, and logic. Mixed case allowed for readability in expressions (e.g., 'Cr', 'MAP'). These are local aliases within the scenario.",
+      "$comment": "Design decision: Identifiers are local aliases, so mixed case is allowed for readability in trend/logic expressions"
+    },
+
+    "SemanticRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Semantic reference name. MUST be lowercase for cross-scenario/cross-dataset standardization. Resolved by Dataset Spec to physical data location.",
+      "$comment": "CORE-022: Signal 'ref' values MUST be lowercase alphanumeric with underscores for portability",
+      "examples": ["creatinine", "heart_rate", "systolic_bp", "lactate"]
     },
 
     "PopulationFilter": {
       "type": "object",
-      "description": "Criteria defining which patients a scenario applies to",
+      "description": "Criteria defining which patients a scenario applies to. Population filter is evaluated BEFORE any trend/logic evaluation (see POP-003). A patient is included if ALL include criteria are true AND NONE of the exclude criteria are true.",
       "additionalProperties": false,
       "properties": {
         "include": {
           "type": "array",
-          "description": "Inclusion criteria - ALL must be true (AND logic)",
-          "items": { "type": "string" },
+          "description": "Inclusion criteria - ALL must be true (AND logic). Patient must satisfy every criterion to be included.",
+          "items": { "$ref": "#/$defs/PopulationExpression" },
           "examples": [["age >= 18", "unit == 'ICU'", "admission_type == 'emergency'"]]
         },
         "exclude": {
           "type": "array",
-          "description": "Exclusion criteria - ANY excludes patient (OR logic)",
-          "items": { "type": "string" },
+          "description": "Exclusion criteria - ANY excludes patient (OR logic). If patient matches any exclusion criterion, they are excluded.",
+          "items": { "$ref": "#/$defs/PopulationExpression" },
           "examples": [["status == 'comfort_care_only'", "dnr == true"]]
         }
-      }
+      },
+      "$comment": "POP-001: include uses AND logic; POP-002: exclude uses OR logic; POP-003: evaluated before trend/logic"
+    },
+
+    "PopulationExpression": {
+      "type": "string",
+      "description": "Population filter expression. Uses demographic/admission attributes (not signal data). Syntax: <attribute> <operator> <value>. Attributes are resolved by Dataset Spec to patient-level data.",
+      "minLength": 1,
+      "examples": [
+        "age >= 18",
+        "age < 65",
+        "unit == 'ICU'",
+        "admission_type == 'emergency'",
+        "status != 'comfort_care_only'",
+        "dnr == false",
+        "gender == 'F'"
+      ],
+      "$comment": "Population expressions operate on patient attributes, not time-series signals. Attributes like 'age', 'unit', 'admission_type' are defined in Dataset Spec."
     },
 
     "SignalDefinitions": {
       "type": "object",
-      "description": "Map of signal names to their definitions",
+      "description": "Map of signal names to their abstract definitions. Signals use semantic refs only - physical bindings are in Dataset Spec.",
       "minProperties": 1,
       "additionalProperties": {
         "$ref": "#/$defs/SignalSpec"
@@ -133,8 +174,8 @@
     "SignalSpec": {
       "oneOf": [
         {
-          "type": "string",
-          "description": "Shorthand: ref identifier only (e.g., 'creatinine')"
+          "$ref": "#/$defs/SemanticRef",
+          "description": "Shorthand: semantic ref only (e.g., 'creatinine')"
         },
         {
           "type": "object",
@@ -142,27 +183,18 @@
           "additionalProperties": false,
           "properties": {
             "ref": {
-              "type": "string",
-              "description": "Reference identifier (concept name, OMOP concept_id, LOINC code)",
-              "examples": ["creatinine", "3016723", "LOINC:2160-0"]
+              "$ref": "#/$defs/SemanticRef",
+              "description": "Semantic reference name (resolved by Dataset Spec at runtime)"
             },
-            "type": {
+            "expected_type": {
               "$ref": "#/$defs/SignalType",
-              "default": "numeric"
+              "default": "numeric",
+              "description": "Expected data type (validated against Dataset Spec)"
             },
-            "concept_id": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "OMOP concept_id for portable scenarios"
-            },
-            "unit": {
+            "expected_unit": {
               "type": "string",
-              "description": "Expected unit of measurement",
+              "description": "Expected unit of measurement (validated against Dataset Spec in strict mode)",
               "examples": ["mg/dL", "mmol/L", "mmHg", "bpm", "celsius", "%"]
-            },
-            "domain": {
-              "$ref": "#/$defs/OMOPDomain",
-              "default": "measurement"
             },
             "description": {
               "type": "string",
@@ -176,15 +208,8 @@
     "SignalType": {
       "type": "string",
       "enum": ["numeric", "categorical", "boolean", "datetime"],
-      "description": "Data type of signal values",
+      "description": "Expected data type of signal values",
       "default": "numeric"
-    },
-
-    "OMOPDomain": {
-      "type": "string",
-      "enum": ["measurement", "condition", "drug", "procedure", "observation", "device", "specimen"],
-      "description": "OMOP CDM domain for this signal",
-      "default": "measurement"
     },
 
     "TrendDefinitions": {
@@ -239,8 +264,11 @@
 
     "TrendExpression": {
       "type": "string",
-      "description": "Trend expression using PSDL operators. Must return numeric value - NO comparison operators (>=, <=, etc.). See spec/grammar/expression.lark",
+      "description": "Trend expression using PSDL operators. MUST return numeric value - NO comparison operators allowed. See spec/grammar/expression.lark",
       "minLength": 1,
+      "not": {
+        "pattern": "(>=|<=|>(?!=)|<(?!=)|==|!=)"
+      },
       "examples": [
         "delta(Cr, 48h)",
         "slope(Lact, 3h)",
@@ -251,7 +279,8 @@
         "min(SpO2, 1h)",
         "last(Cr) / min(Cr, 7d)",
         "sma(HR, 6h)"
-      ]
+      ],
+      "$comment": "CORE-031: Parser MUST reject trend expressions containing comparison operators"
     },
 
     "LogicDefinitions": {
@@ -274,15 +303,12 @@
         },
         {
           "type": "object",
+          "required": ["when"],
           "additionalProperties": false,
           "properties": {
             "when": {
               "$ref": "#/$defs/LogicExpression",
-              "description": "Boolean condition (v0.3 preferred syntax)"
-            },
-            "expr": {
-              "$ref": "#/$defs/LogicExpression",
-              "description": "Boolean expression (v0.2 compatibility)"
+              "description": "Boolean condition (v0.3 syntax)"
             },
             "severity": {
               "$ref": "#/$defs/SeverityLevel"
@@ -295,18 +321,14 @@
               "type": "string",
               "description": "Suggested clinical action when triggered"
             }
-          },
-          "oneOf": [
-            { "required": ["when"] },
-            { "required": ["expr"] }
-          ]
+          }
         }
       ]
     },
 
     "LogicExpression": {
       "type": "string",
-      "description": "Boolean expression combining trends and comparisons using AND, OR, NOT operators",
+      "description": "Boolean expression combining trends and comparisons using AND, OR, NOT operators. Disambiguation: A simple identifier (e.g., 'aki_stage1') is parsed as a reference to another logic rule if it exists, otherwise as an undefined reference error. To avoid ambiguity, use explicit comparison operators or boolean operators.",
       "minLength": 1,
       "examples": [
         "cr_delta_48h >= 0.3",
@@ -315,7 +337,8 @@
         "NOT recovering AND deteriorating",
         "(fever OR hypothermia) AND tachycardia",
         "last(Cr) >= 4.0"
-      ]
+      ],
+      "$comment": "CORE-044: Logic expressions MAY reference other logic rules by name. Parser resolves identifiers: first check logic rules, then trends, then signals."
     },
 
     "SeverityLevel": {
@@ -356,6 +379,7 @@
     "DecisionOutput": {
       "type": "object",
       "description": "Boolean decision output",
+      "required": ["type", "from"],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -366,21 +390,25 @@
         "values": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Valid values for enum type"
+          "description": "Valid values for enum type (required when type='enum')"
         },
         "from": {
           "type": "string",
-          "description": "Source reference (e.g., 'logic.aki_stage1', 'state.current')"
+          "pattern": "^(logic|state)\\.[A-Za-z][A-Za-z0-9_]*$",
+          "description": "Source reference (must be 'logic.<name>' or 'state.<property>')",
+          "examples": ["logic.aki_stage1", "state.current"]
         },
         "description": {
           "type": "string"
         }
-      }
+      },
+      "$comment": "DecisionOutput always requires a source reference; it cannot have computed expressions"
     },
 
     "FeatureOutput": {
       "type": "object",
       "description": "Numeric feature output for ML/stats",
+      "required": ["type"],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -394,21 +422,29 @@
         },
         "from": {
           "type": "string",
-          "description": "Source reference (e.g., 'trends.cr_delta_48h')"
+          "pattern": "^trends\\.[A-Za-z][A-Za-z0-9_]*$",
+          "description": "Source reference (must be 'trends.<name>')",
+          "examples": ["trends.cr_delta_48h", "trends.lactate_slope"]
         },
         "expr": {
           "type": "string",
-          "description": "Expression to compute the feature"
+          "description": "Expression to compute the feature (use when 'from' is not sufficient)"
         },
         "description": {
           "type": "string"
         }
-      }
+      },
+      "oneOf": [
+        { "required": ["from"] },
+        { "required": ["expr"] }
+      ],
+      "$comment": "FeatureOutput requires either 'from' or 'expr' to define the value source"
     },
 
     "EvidenceOutput": {
       "type": "object",
       "description": "Evidence output for audit trail",
+      "required": ["type"],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -418,7 +454,7 @@
         },
         "expr": {
           "type": "string",
-          "description": "Expression to compute the evidence"
+          "description": "Expression to compute the evidence (e.g., 'rules_fired()', 'index_time()')"
         },
         "from": {
           "type": "string",
@@ -427,51 +463,12 @@
         "description": {
           "type": "string"
         }
-      }
-    },
-
-    "MappingConfig": {
-      "type": "object",
-      "description": "Site-specific concept mappings for portability across institutions",
-      "additionalProperties": false,
-      "properties": {
-        "source": {
-          "type": "string",
-          "description": "Reference to external mapping file (relative path or URL)",
-          "examples": ["mappings/hospital_a.yaml", "https://example.org/mappings/omop_v5.yaml"]
-        },
-        "inline": {
-          "type": "object",
-          "description": "Inline concept mappings (signal_name -> mapping)",
-          "additionalProperties": {
-            "$ref": "#/$defs/ConceptMapping"
-          }
-        }
-      }
-    },
-
-    "ConceptMapping": {
-      "type": "object",
-      "description": "Mapping from signal to physical data location",
-      "additionalProperties": false,
-      "properties": {
-        "concept_id": {
-          "type": "integer",
-          "description": "Target OMOP concept_id"
-        },
-        "table": {
-          "type": "string",
-          "description": "Database table name"
-        },
-        "value_column": {
-          "type": "string",
-          "description": "Column containing the signal value"
-        },
-        "datetime_column": {
-          "type": "string",
-          "description": "Column containing the timestamp"
-        }
-      }
+      },
+      "oneOf": [
+        { "required": ["from"] },
+        { "required": ["expr"] }
+      ],
+      "$comment": "EvidenceOutput requires either 'from' or 'expr' to define the value source"
     },
 
     "ScenarioMetadata": {
@@ -489,26 +486,24 @@
           "format": "date",
           "description": "Date scenario was last updated"
         },
-        "references": {
+        "author": {
+          "type": "string",
+          "description": "Author or organization"
+        },
+        "reviewers": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Clinical references or citations",
-          "examples": [["KDIGO 2012 Clinical Practice Guideline for AKI"]]
+          "description": "Reviewers who approved this scenario"
         },
         "validation_status": {
           "type": "string",
           "enum": ["draft", "validated", "clinical_review", "production"],
           "description": "Current validation status of the scenario"
         },
-        "icd10_codes": {
+        "references": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Related ICD-10 diagnosis codes"
-        },
-        "snomed_codes": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Related SNOMED CT codes"
+          "description": "Clinical references or citations"
         }
       }
     },
@@ -546,26 +541,88 @@
 
     "AuditBlock": {
       "type": "object",
-      "description": "Required audit information for regulatory compliance and traceability",
+      "description": "Required audit information for regulatory compliance and traceability. Core fields are MUST, extended fields are SHOULD for regulated contexts.",
       "required": ["intent", "rationale", "provenance"],
       "additionalProperties": false,
       "properties": {
         "intent": {
           "type": "string",
-          "description": "What this scenario is designed to detect",
-          "examples": ["Detect AKI using KDIGO criteria", "Early sepsis screening"]
+          "minLength": 10,
+          "description": "MUST: What this scenario is designed to detect",
+          "examples": ["Detect AKI Stage 1 using KDIGO criteria", "Early sepsis screening using qSOFA"]
         },
         "rationale": {
           "type": "string",
-          "description": "Clinical rationale for why this detection matters",
-          "examples": ["Early detection enables intervention before irreversible damage"]
+          "minLength": 10,
+          "description": "MUST: Clinical rationale for why this detection matters",
+          "examples": ["Early detection enables intervention before irreversible kidney damage"]
         },
         "provenance": {
+          "$ref": "#/$defs/ProvenanceSpec",
+          "description": "MUST: Source of clinical logic"
+        },
+        "author": {
           "type": "string",
-          "description": "Source of clinical logic (guidelines, literature, institutional)",
-          "examples": ["KDIGO 2012 Clinical Practice Guideline for AKI", "Sepsis-3 Consensus Definition"]
+          "description": "SHOULD: Author or organization that created this scenario"
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "description": "SHOULD: Date scenario was created"
+        },
+        "risk_class": {
+          "type": "string",
+          "description": "SHOULD (regulated): Regulatory risk classification (e.g., 'IIa' for EU MDR, 'Class II' for FDA)"
+        },
+        "evidence_level": {
+          "type": "string",
+          "description": "SHOULD: Evidence level using GRADE or similar (e.g., '1A', 'moderate')"
+        },
+        "approved_by": {
+          "type": "string",
+          "description": "SHOULD (regulated): Approver for clinical use"
+        },
+        "approval_id": {
+          "type": "string",
+          "description": "SHOULD (regulated): Approval tracking identifier"
         }
       }
+    },
+
+    "ProvenanceSpec": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Simple provenance string (legacy compatibility)",
+          "examples": ["KDIGO 2012 Guidelines", "Sepsis-3 Consensus Definition"]
+        },
+        {
+          "type": "object",
+          "required": ["type", "reference"],
+          "additionalProperties": false,
+          "description": "Structured provenance (recommended)",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["guideline", "publication", "sop", "regulatory", "expert"],
+              "description": "Type of provenance source"
+            },
+            "reference": {
+              "type": "string",
+              "description": "Reference name or title"
+            },
+            "uri": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL or DOI"
+            },
+            "version": {
+              "type": "string",
+              "description": "Version or year of the source"
+            }
+          }
+        }
+      ]
     },
 
     "StateMachine": {
@@ -600,17 +657,27 @@
       "properties": {
         "from": {
           "type": "string",
-          "description": "Source state"
+          "description": "Source state (must be declared in states array)"
         },
         "to": {
           "type": "string",
-          "description": "Target state"
+          "description": "Target state (must be declared in states array)"
         },
         "when": {
-          "type": "string",
-          "description": "Logic condition that triggers this transition (must reference a logic rule)"
+          "$ref": "#/$defs/LogicRef",
+          "description": "Logic rule reference that triggers this transition"
         }
-      }
+      },
+      "$comment": "STATE-003: Transition 'when' MUST reference a logic rule name (not an inline expression)"
+    },
+
+    "LogicRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Reference to a logic rule by name. MUST match a key in the logic definitions.",
+      "examples": ["aki_stage1", "sepsis_alert", "deteriorating"]
     }
   }
 }

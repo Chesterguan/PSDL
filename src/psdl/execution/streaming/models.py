@@ -6,17 +6,10 @@ Defines the event schema and result types used throughout the streaming pipeline
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
-
-class Severity(Enum):
-    """Alert severity levels."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+# Import Severity from core IR (single source of truth)
+from psdl.core.ir import Severity
 
 
 @dataclass
@@ -193,10 +186,11 @@ class Alert:
 
 
 @dataclass
-class WindowSpec:
+class StreamingWindowSpec:
     """
-    Window specification for temporal operators.
+    Window specification for Flink streaming operators.
 
+    Different from AST WindowSpec - this is for Flink window configuration.
     Parsed from PSDL expressions like delta(HR, 1h, 30s).
     """
 
@@ -204,7 +198,7 @@ class WindowSpec:
     slide_ms: int  # Slide interval in milliseconds
 
     @classmethod
-    def from_psdl(cls, window_str: str, slide_str: Optional[str] = None) -> "WindowSpec":
+    def from_psdl(cls, window_str: str, slide_str: Optional[str] = None) -> "StreamingWindowSpec":
         """
         Parse window specification from PSDL syntax.
 

@@ -2,7 +2,14 @@
 PSDL Expression Parser - Lark-based parser for trend and logic expressions.
 
 This module provides spec-driven parsing of PSDL expressions using the
-formal grammar defined in spec/formal/psdl-expression.lark.
+formal grammar defined in spec/grammar/expression.lark.
+
+v0.3 Changes:
+- Grammar loaded from spec/grammar/expression.lark (not embedded)
+- Trend expressions produce NUMERIC values only (no comparisons)
+- Comparisons only allowed in logic layer
+- AST types generated from spec/ast-nodes.yaml
+- Transformer auto-generated from spec/ast-nodes.yaml grammar_mappings
 
 Key Advantages over regex-based parsing:
 - Proper precedence handling for boolean logic (NOT > AND > OR)
@@ -11,70 +18,119 @@ Key Advantages over regex-based parsing:
 - Handles nested parentheses correctly
 """
 
-from dataclasses import dataclass
-from typing import List, Optional, Union
+from pathlib import Path
+from typing import List
 
-from lark import Lark, Transformer, v_args
+from lark import Lark
 from lark.exceptions import LarkError
 
-# Grammar embedded from spec/formal/psdl-expression.lark
-# This ensures the parser is always in sync with the grammar definition
-PSDL_GRAMMAR = r"""
-// PSDL Expression Grammar for Lark Parser Generator
-// Patient Scenario Definition Language v0.2
-//
-// Entry points:
-//   - trend_expr: For parsing trend expressions (e.g., "delta(Cr, 6h) > 0.3")
-//   - logic_expr: For parsing logic expressions (e.g., "aki_stage1 AND NOT recovering")
+# Import AST types from generated code (re-exported for public API)
+# NOTE: Comparison class removed in v0.3 - comparisons only in Logic layer (ComparisonExpr)
+from psdl._generated.ast_types import (
+    AndExpr,
+    ArithExpr,
+    ComparisonExpr,
+    LogicNode,
+    NotExpr,
+    NumberLiteral,
+    OrExpr,
+    TemporalCall,
+    TermRef,
+    TrendExpression,
+    WindowSpec,
+)
 
-// ============================================================
-// TOP-LEVEL EXPRESSIONS
-// ============================================================
+# Import auto-generated transformer from spec
+from psdl._generated.transformer import PSDLExprTransformer
 
-// Entry point for trend expressions (e.g., "delta(Cr, 6h) > 0.3")
-?trend_expr: temporal_expr comparison?
+# Re-export AST types for public API
+# NOTE: Comparison class removed in v0.3 - use ComparisonExpr in Logic layer
+__all__ = [
+    "PSDLExpressionParser",
+    "PSDLExpressionError",
+    "parse_trend_expression",
+    "parse_logic_expression",
+    "extract_terms",
+    "extract_operators",
+    # AST types (v0.3: NO Comparison - use ComparisonExpr)
+    "AndExpr",
+    "ArithExpr",
+    "ComparisonExpr",
+    "LogicNode",
+    "NotExpr",
+    "NumberLiteral",
+    "OrExpr",
+    "TemporalCall",
+    "TermRef",
+    "TrendExpression",
+    "WindowSpec",
+]
 
-// Entry point for logic expressions (e.g., "aki_stage1 AND NOT recovering")
+
+def _load_grammar() -> str:
+    """Load grammar from spec/grammar/expression.lark."""
+    # Try multiple paths to find the grammar file
+    possible_paths = [
+        Path(__file__).parent.parent.parent.parent / "spec" / "grammar" / "expression.lark",
+        Path(__file__).parent.parent.parent / "spec" / "grammar" / "expression.lark",
+        Path("spec/grammar/expression.lark"),
+    ]
+
+    for path in possible_paths:
+        if path.exists():
+            return path.read_text()
+
+    # Fallback: embedded v0.3 grammar for standalone use
+    return _FALLBACK_GRAMMAR
+
+
+# Fallback grammar (v0.3 STRICT) for when spec file is not available
+_FALLBACK_GRAMMAR = r"""
+// PSDL Expression Grammar v0.3 STRICT (fallback)
+// See spec/grammar/expression.lark for authoritative version
+// v0.3: Trends produce numeric ONLY. Comparisons ONLY in Logic layer.
+
+// Terminals (define first for lexer)
+WINDOWED_OP: "delta" | "slope" | "ema" | "sma" | "min" | "max" | "count" | "first" | "std" | "stddev"
+POINTWISE_OP: "last" | "exists" | "missing"
+ARITH_OP: "+" | "-" | "*" | "/"
+COMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
+WINDOW_UNIT: "s" | "m" | "h" | "d" | "w"
+// Keywords have higher priority (2) than IDENTIFIER (default 1)
+AND.2: /AND/i
+OR.2: /OR/i
+NOT.2: /NOT/i
+IDENTIFIER: /[A-Za-z][A-Za-z0-9_]*/
+INTEGER: /[0-9]+/
+
+// v0.3 STRICT: trend_expr is numeric ONLY - NO comparisons
+?trend_expr: numeric_expr -> trend_with_optional_comparison
+
+// NOTE: trend_comparison REMOVED in v0.3 - comparisons ONLY in logic layer
+
 ?logic_expr: or_expr
 
-// ============================================================
-// TEMPORAL EXPRESSIONS
-// ============================================================
+?numeric_expr: temporal_expr
+             | numeric_expr arith_op numeric_expr -> arith_expr
+             | "(" numeric_expr ")"
+             | number
 
 ?temporal_expr: windowed_call
+              | percentile_call
               | pointwise_call
 
-// Operators requiring a time window
 windowed_call: WINDOWED_OP "(" IDENTIFIER "," window ")"
 
-WINDOWED_OP: "delta" | "slope" | "ema" | "sma" | "min" | "max" | "count" | "first" | "stddev"
+percentile_call: "percentile" "(" IDENTIFIER "," window "," number ")"
 
-// Operators on current/recent values
 pointwise_call: POINTWISE_OP "(" IDENTIFIER ")"
 
-POINTWISE_OP: "last" | "exists" | "missing"
-
-// ============================================================
-// TIME WINDOWS
-// ============================================================
+arith_op: ARITH_OP
 
 window: INTEGER WINDOW_UNIT
 
-WINDOW_UNIT: "s" | "m" | "h" | "d" | "w"
+number: SIGNED_NUMBER
 
-// ============================================================
-// COMPARISONS
-// ============================================================
-
-comparison: COMP_OP number
-
-COMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
-
-// ============================================================
-// BOOLEAN LOGIC EXPRESSIONS
-// ============================================================
-
-// Precedence: OR (lowest) -> AND -> NOT (highest)
 ?or_expr: and_expr (OR and_expr)*
 
 ?and_expr: not_expr (AND not_expr)*
@@ -83,196 +139,21 @@ COMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
          | primary_expr
 
 ?primary_expr: "(" logic_expr ")"
-             | trend_expr
+             | comparison_expr
              | IDENTIFIER -> term_ref
 
-// ============================================================
-// LITERALS AND IDENTIFIERS
-// ============================================================
+comparison_expr: numeric_value COMP_OP numeric_value
 
-number: SIGNED_NUMBER
-
-// Keywords must be defined BEFORE IDENTIFIER to take precedence
-AND: /AND/i
-OR: /OR/i
-NOT: /NOT/i
-
-IDENTIFIER: /(?!(?:AND|OR|NOT)\b)[A-Za-z][A-Za-z0-9_]*/i
-
-INTEGER: /[0-9]+/
-
-// ============================================================
-// WHITESPACE AND COMMENTS
-// ============================================================
+?numeric_value: numeric_expr
+              | IDENTIFIER -> trend_ref_in_comparison
 
 %import common.SIGNED_NUMBER
 %import common.WS
 %ignore WS
 """
 
-
-@dataclass
-class WindowSpec:
-    """Time window specification."""
-
-    value: int
-    unit: str  # s, m, h, d, w
-
-    @property
-    def seconds(self) -> int:
-        """Convert window to seconds."""
-        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
-        return self.value * multipliers.get(self.unit, 1)
-
-    def __str__(self) -> str:
-        return f"{self.value}{self.unit}"
-
-
-@dataclass
-class TemporalCall:
-    """A parsed temporal operator call."""
-
-    operator: str  # delta, slope, ema, sma, min, max, count, last, first, exists, missing
-    signal: str
-    window: Optional[WindowSpec] = None
-
-
-@dataclass
-class Comparison:
-    """A comparison operation."""
-
-    operator: str  # <, <=, >, >=, ==, !=
-    threshold: float
-
-
-@dataclass
-class TrendExpression:
-    """A complete trend expression (temporal call + optional comparison)."""
-
-    temporal: TemporalCall
-    comparison: Optional[Comparison] = None
-
-    @property
-    def operator(self) -> str:
-        return self.temporal.operator
-
-    @property
-    def signal(self) -> str:
-        return self.temporal.signal
-
-    @property
-    def window(self) -> Optional[WindowSpec]:
-        return self.temporal.window
-
-    @property
-    def comparator(self) -> Optional[str]:
-        return self.comparison.operator if self.comparison else None
-
-    @property
-    def threshold(self) -> Optional[float]:
-        return self.comparison.threshold if self.comparison else None
-
-
-@dataclass
-class TermRef:
-    """Reference to a named term (trend or logic)."""
-
-    name: str
-
-
-@dataclass
-class NotExpr:
-    """Logical NOT expression."""
-
-    operand: "LogicNode"
-
-
-@dataclass
-class AndExpr:
-    """Logical AND expression."""
-
-    operands: List["LogicNode"]
-
-
-@dataclass
-class OrExpr:
-    """Logical OR expression."""
-
-    operands: List["LogicNode"]
-
-
-# Union type for logic AST nodes
-LogicNode = Union[TrendExpression, TermRef, NotExpr, AndExpr, OrExpr]
-
-
-class PSDLExprTransformer(Transformer):
-    """Transform Lark parse tree into PSDL AST objects."""
-
-    @v_args(inline=True)
-    def window(self, value, unit):
-        return WindowSpec(value=int(value), unit=str(unit))
-
-    @v_args(inline=True)
-    def windowed_call(self, op, identifier, window):
-        temporal = TemporalCall(operator=str(op), signal=str(identifier), window=window)
-        return TrendExpression(temporal=temporal, comparison=None)
-
-    @v_args(inline=True)
-    def pointwise_call(self, op, identifier):
-        temporal = TemporalCall(operator=str(op), signal=str(identifier), window=None)
-        return TrendExpression(temporal=temporal, comparison=None)
-
-    @v_args(inline=True)
-    def comparison(self, op, number):
-        return Comparison(operator=str(op), threshold=number)
-
-    @v_args(inline=True)
-    def number(self, value):
-        return float(value)
-
-    def trend_expr(self, items):
-        # Handle case where temporal_expr already returns TrendExpression
-        if len(items) == 1:
-            item = items[0]
-            # Already a TrendExpression from windowed_call/pointwise_call
-            if isinstance(item, TrendExpression):
-                return item
-            # Wrap TemporalCall in TrendExpression if needed (shouldn't happen now)
-            if isinstance(item, TemporalCall):
-                return TrendExpression(temporal=item, comparison=None)
-            return item
-        else:
-            # First item is TrendExpression, second is Comparison
-            trend_expr = items[0]
-            comparison = items[1]
-            if isinstance(trend_expr, TrendExpression):
-                # Update the comparison
-                return TrendExpression(temporal=trend_expr.temporal, comparison=comparison)
-            return TrendExpression(temporal=trend_expr, comparison=comparison)
-
-    @v_args(inline=True)
-    def term_ref(self, identifier):
-        return TermRef(name=str(identifier))
-
-    def not_term(self, items):
-        # Grammar: NOT not_expr -> not_term
-        # items contains [NOT token, operand]
-        operand = items[-1]  # Last item is the actual operand
-        return NotExpr(operand=operand)
-
-    def and_expr(self, items):
-        # Filter out AND tokens
-        operands = [x for x in items if not hasattr(x, "type") or x.type != "AND"]
-        if len(operands) == 1:
-            return operands[0]
-        return AndExpr(operands=operands)
-
-    def or_expr(self, items):
-        # Filter out OR tokens
-        operands = [x for x in items if not hasattr(x, "type") or x.type != "OR"]
-        if len(operands) == 1:
-            return operands[0]
-        return OrExpr(operands=operands)
+# Load grammar once at module import
+PSDL_GRAMMAR = _load_grammar()
 
 
 class PSDLExpressionParser:
@@ -291,10 +172,16 @@ class PSDLExpressionParser:
     def __init__(self):
         # Create parsers with different start rules
         self._trend_parser = Lark(
-            PSDL_GRAMMAR, start="trend_expr", parser="lalr", transformer=PSDLExprTransformer()
+            PSDL_GRAMMAR,
+            start="trend_expr",
+            parser="lalr",
+            transformer=PSDLExprTransformer(),
         )
         self._logic_parser = Lark(
-            PSDL_GRAMMAR, start="logic_expr", parser="lalr", transformer=PSDLExprTransformer()
+            PSDL_GRAMMAR,
+            start="logic_expr",
+            parser="lalr",
+            transformer=PSDLExprTransformer(),
         )
 
     def parse_trend(self, expr: str) -> TrendExpression:
@@ -360,6 +247,10 @@ def extract_terms(node: LogicNode) -> List[str]:
         elif isinstance(n, TrendExpression):
             # Trend expressions reference signals, not terms
             pass
+        elif isinstance(n, ComparisonExpr):
+            # v0.3: Extract terms from comparison operands
+            visit(n.left)
+            visit(n.right)
         elif isinstance(n, NotExpr):
             visit(n.operand)
         elif isinstance(n, AndExpr):
@@ -368,6 +259,7 @@ def extract_terms(node: LogicNode) -> List[str]:
         elif isinstance(n, OrExpr):
             for op in n.operands:
                 visit(op)
+        # Skip float/int literals - they're not terms
 
     visit(node)
     return terms
@@ -375,7 +267,7 @@ def extract_terms(node: LogicNode) -> List[str]:
 
 def extract_operators(node: LogicNode) -> List[str]:
     """
-    Extract all boolean operators from a logic expression AST.
+    Extract all boolean and comparison operators from a logic expression AST.
 
     Returns operators in depth-first, left-to-right order to match
     how they appear in the expression.
@@ -384,7 +276,7 @@ def extract_operators(node: LogicNode) -> List[str]:
         node: Root of the logic AST
 
     Returns:
-        List of operators used (AND, OR, NOT)
+        List of operators used (AND, OR, NOT, plus comparison operators)
     """
     operators = []
 
@@ -404,6 +296,9 @@ def extract_operators(node: LogicNode) -> List[str]:
                 visit(op)
                 if i < len(n.operands) - 1:
                     operators.append("OR")
+        elif isinstance(n, ComparisonExpr):
+            # v0.3: Include comparison operators
+            operators.append(n.operator)
 
     visit(node)
     return operators

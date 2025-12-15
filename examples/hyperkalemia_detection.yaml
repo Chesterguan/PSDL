@@ -57,58 +57,108 @@ signals:
     unit: mg/dL
     domain: measurement
 
-# ── Trend Computations ───────────────────────────
+# ── Trend Computations (v0.3: NUMERIC VALUES ONLY) ─────
 trends:
+  # Potassium values
+  k_current:
+    expr: last(K)
+    type: float
+    unit: mEq/L
+    description: "Current potassium level"
+
+  k_slope_24h:
+    expr: slope(K, 24h)
+    type: float
+    description: "Potassium trend over 24 hours"
+
+  k_slope_12h:
+    expr: slope(K, 12h)
+    type: float
+    description: "Potassium trend over 12 hours"
+
+  k_delta_12h:
+    expr: delta(K, 12h)
+    type: float
+    unit: mEq/L
+    description: "Potassium change over 12 hours"
+
+  k_delta_6h:
+    expr: delta(K, 6h)
+    type: float
+    unit: mEq/L
+    description: "Potassium change over 6 hours"
+
+  # Creatinine for AKI detection
+  cr_delta_48h:
+    expr: delta(Cr, 48h)
+    type: float
+    unit: mg/dL
+    description: "Creatinine change over 48 hours"
+
+  # pH value
+  ph_current:
+    expr: last(pH)
+    type: float
+    unit: pH
+    description: "Current blood pH"
+
+  # Glucose value
+  glucose_current:
+    expr: last(Glucose)
+    type: float
+    unit: mg/dL
+    description: "Current glucose level"
+
+# ── Logic Layer (v0.3: ALL COMPARISONS HERE) ─────
+logic:
   # Absolute potassium levels
   k_elevated_mild:
-    expr: last(K) > 5.5
+    when: k_current > 5.5
     description: "Potassium > 5.5 mEq/L (mild hyperkalemia)"
 
   k_elevated_moderate:
-    expr: last(K) > 6.0
+    when: k_current > 6.0
     description: "Potassium > 6.0 mEq/L (moderate - ECG changes likely)"
 
   k_elevated_severe:
-    expr: last(K) > 6.5
+    when: k_current > 6.5
     description: "Potassium > 6.5 mEq/L (severe - cardiac arrest risk)"
 
   k_critical:
-    expr: last(K) > 7.0
+    when: k_current > 7.0
     description: "Potassium > 7.0 mEq/L (critical emergency)"
 
   # Potassium trajectory
   k_rising:
-    expr: slope(K, 24h) > 0
+    when: k_slope_24h > 0
     description: "Potassium trending upward"
 
   k_rising_fast:
-    expr: delta(K, 12h) > 0.5
+    when: k_delta_12h > 0.5
     description: "Rapid potassium rise (>0.5 mEq/L in 12h)"
 
   k_rising_very_fast:
-    expr: delta(K, 6h) > 0.5
+    when: k_delta_6h > 0.5
     description: "Very rapid potassium rise (>0.5 mEq/L in 6h)"
 
   # Recovery pattern
   k_falling:
-    expr: slope(K, 12h) < 0
+    when: k_slope_12h < 0
     description: "Potassium trending downward (treatment response)"
 
   # Contributing factors
   aki_present:
-    expr: delta(Cr, 48h) >= 0.3
+    when: cr_delta_48h >= 0.3
     description: "AKI present (impaired K excretion)"
 
   acidosis_present:
-    expr: last(pH) < 7.35
+    when: ph_current < 7.35
     description: "Acidosis (shifts K extracellular)"
 
   hyperglycemia:
-    expr: last(Glucose) > 250
+    when: glucose_current > 250
     description: "Severe hyperglycemia (osmotic K shift)"
 
-# ── Logic Layer ──────────────────────────────────
-logic:
   # Staging
   hyperkalemia_mild:
     when: k_elevated_mild AND NOT k_elevated_moderate

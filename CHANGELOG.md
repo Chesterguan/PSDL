@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### RFC-0006: Spec-Driven Compilation
+- **ScenarioIR**: Compiled intermediate representation with pre-computed analysis
+- **compile_scenario()**: Single entry point for production compilation
+- **Canonical Hashing**: SHA-256 hashes for audit trails (`spec_hash`, `ir_hash`, `toolchain_hash`)
+- **DAG Ordering**: Dependency-based evaluation order computed at compile time
+- **CompilationDiagnostics**: Warnings for unused signals/trends, type analysis
+- **SinglePatientEvaluator.from_ir()**: Create evaluator from compiled IR
+- **spec/hashing.yaml**: Canonical hashing specification
+
+#### Testing
+- Added 54 compiler tests (test_compile.py)
+- Total test count: 424 tests (all passing)
+
+#### Documentation
+- Updated notebooks to v0.3 syntax (MIMIC, Synthea, PhysioNet demos)
+- Added compile_scenario usage to README
+- Updated GLOSSARY.md with ScenarioIR documentation
+
 ## [0.3.0] - 2025-12-12
 
 ### Added

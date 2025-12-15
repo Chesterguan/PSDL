@@ -4,7 +4,7 @@
 
 <h1 align="center">PSDL Whitepaper</h1>
 <h3 align="center">Patient Scenario Definition Language</h3>
-<h4 align="center">Version 0.2 | December 2025</h4>
+<h4 align="center">Version 0.3 | December 2025</h4>
 
 <p align="center">
   <em>An Open Standard for Clinical Logic in Healthcare AI</em>
@@ -753,7 +753,7 @@ flowchart LR
 - YAML schema definition
 - Python reference implementation
 - OMOP CDM and FHIR R4 backends
-- Clinical validation test suite (284 tests)
+- Clinical validation test suite (424 tests)
 
 ### Phase 2: Enhanced Runtime ✓
 - **v0.3 Architecture** — RFC-0005 (Signal/Trend/Logic/Output separation)

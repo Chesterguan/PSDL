@@ -1,0 +1,77 @@
+"""
+Auto-generated Lark Transformer from spec/ast-nodes.yaml grammar_mappings
+Generated: {{ timestamp }}
+
+DO NOT EDIT - Regenerate with: python tools/codegen.py --transformer
+"""
+
+from __future__ import annotations
+
+from typing import Any, List, Union
+
+from lark import Transformer, v_args
+
+# Import AST types from generated code
+# NOTE: Comparison class removed in v0.3 - comparisons only in Logic layer (ComparisonExpr)
+from psdl._generated.ast_types import (
+    AndExpr,
+    ArithExpr,
+    ComparisonExpr,
+    NotExpr,
+    NumberLiteral,
+    OrExpr,
+    TemporalCall,
+    TermRef,
+    TrendExpression,
+    WindowSpec,
+)
+
+
+class PSDLExprTransformer(Transformer):
+    """
+    Transform Lark parse tree into PSDL AST objects.
+
+    Auto-generated from spec/ast-nodes.yaml grammar_mappings.
+    Version: {{ version }}
+    """
+
+{% for rule_name, mapping in grammar_mappings.items() %}
+{% set code = mapping.code | trim %}
+{% set has_return = code.startswith('return ') or '\nreturn ' in code or '\n        return ' in code %}
+{% if mapping.inline is defined and mapping.inline %}
+    @v_args(inline=True)
+    def {{ rule_name }}(self, *args) -> {{ mapping.returns }}:
+        """Transform '{{ rule_name }}' grammar rule."""
+{% if '\n' in code %}
+{{ code | indent(8, first=True) }}
+{% else %}
+{% if has_return %}
+        {{ code }}
+{% else %}
+        return {{ code }}
+{% endif %}
+{% endif %}
+{% elif mapping.mode is defined and mapping.mode == 'variadic' %}
+    def {{ rule_name }}(self, items: List[Any]) -> Union[{{ mapping.returns }}, Any]:
+        """
+        Transform '{{ rule_name }}' grammar rule (variadic mode).
+{% if mapping.filter_tokens is defined %}
+        Filters out tokens: {{ mapping.filter_tokens | join(', ') }}
+{% endif %}
+{% if mapping.collapse_single is defined and mapping.collapse_single %}
+        Returns single item unwrapped if only one operand.
+{% endif %}
+        """
+{{ code | indent(8, first=True) }}
+{% elif mapping.mode is defined and mapping.mode == 'conditional' %}
+{% set return_type = mapping.returns | replace(' | ', ', ') %}
+    def {{ rule_name }}(self, items: List[Any]) -> Union[{{ return_type }}]:
+        """Transform '{{ rule_name }}' grammar rule (conditional mode)."""
+{{ code | indent(8, first=True) }}
+{% else %}
+    def {{ rule_name }}(self, items: List[Any]) -> {{ mapping.returns }}:
+        """Transform '{{ rule_name }}' grammar rule."""
+{{ code | indent(8, first=True) }}
+{% endif %}
+
+{% endfor %}

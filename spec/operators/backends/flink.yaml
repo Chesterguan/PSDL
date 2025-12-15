@@ -1,0 +1,155 @@
+# PSDL Flink SQL Backend
+# Version: 0.3.0
+# Last Updated: 2025-12-15
+#
+# SQL templates for Apache Flink SQL dialect.
+# These implement the operator signatures defined in ../signatures.yaml
+
+$schema: "https://psdl-lang.org/schema/v0.3/operators/backend"
+version: "0.3.0"
+dialect: flink_sql
+min_version: "1.17"
+
+# Template variables available:
+#   {trend_name}     - Name of the trend
+#   {table}          - Source table
+#   {filter_cond}    - WHERE clause conditions
+#   {value_col}      - Column containing values
+#   {datetime_col}   - Column containing timestamps
+#   {window_seconds} - Window duration in seconds
+#   {alpha}          - EMA smoothing factor
+
+templates:
+  # ===========================================================================
+  # Windowed Operators
+  # ===========================================================================
+
+  delta: |
+    -- Flink SQL for delta computation using OVER window
+    SELECT
+        patient_id,
+        LAST_VALUE({value_col}) OVER w - FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  slope: null  # Flink SQL does not have built-in REGR_SLOPE - requires UDF
+
+  sma: |
+    SELECT
+        patient_id,
+        AVG({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  ema: |
+    -- Flink can compute EMA using stateful UDF
+    -- Requires custom AggregateFunction implementation
+    SELECT
+        patient_id,
+        EMA_UDF({value_col}, {alpha}) OVER w AS {trend_name}_value
+    FROM {table}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+    )
+
+  min: |
+    SELECT
+        patient_id,
+        MIN({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  max: |
+    SELECT
+        patient_id,
+        MAX({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  count: |
+    SELECT
+        patient_id,
+        COUNT(*) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  first: |
+    SELECT
+        patient_id,
+        FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  std: |
+    SELECT
+        patient_id,
+        STDDEV_SAMP({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  percentile: null  # Flink does not support PERCENTILE_CONT in OVER windows
+
+  # ===========================================================================
+  # Pointwise Operators
+  # ===========================================================================
+
+  last: |
+    SELECT
+        patient_id,
+        LAST_VALUE({value_col}) AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+
+  exists: |
+    SELECT
+        patient_id,
+        CASE WHEN COUNT(*) > 0 THEN true ELSE false END AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    GROUP BY patient_id
+
+  missing: |
+    -- Requires outer join pattern in Flink SQL
+    SELECT
+        p.patient_id,
+        CASE WHEN s.patient_id IS NULL THEN true ELSE false END AS {trend_name}_value
+    FROM patients p
+    LEFT JOIN (
+        SELECT DISTINCT patient_id FROM {table} WHERE {filter_cond}
+    ) s ON p.patient_id = s.patient_id

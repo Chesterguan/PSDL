@@ -173,10 +173,10 @@ class TestDynamicScenarioCreation:
     """Test creating and evaluating scenarios dynamically."""
 
     def test_scenario_from_string(self):
-        """Test parsing scenario from YAML string."""
+        """Test parsing scenario from YAML string (v0.3 syntax)."""
         yaml_content = """
 scenario: Dynamic_Test
-version: "0.1.0"
+version: "0.3.0"
 description: "Dynamically created scenario"
 
 signals:
@@ -185,11 +185,14 @@ signals:
     unit: units
 
 trends:
-  high_value:
-    expr: last(TestSignal) > 100
-    description: "Value is high"
+  signal_value:
+    expr: last(TestSignal)
+    description: "Current signal value"
 
 logic:
+  high_value:
+    when: signal_value > 100
+    description: "Value is high"
   alert_high:
     when: high_value
     severity: medium

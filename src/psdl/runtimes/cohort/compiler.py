@@ -10,6 +10,12 @@ Architecture:
     2. Generate CTEs for each trend using templates from operators.yaml
     3. Combine CTEs into a single query with logic evaluation
 
+Features:
+    - Batch processing for large datasets
+    - Population pre-filtering optimization
+    - Query cost estimation
+    - Parallel query hints (PostgreSQL)
+
 Usage:
     from psdl.core import parse_scenario
     from psdl.runtimes.cohort import CohortCompiler
@@ -18,11 +24,19 @@ Usage:
     compiler = CohortCompiler(schema="public", use_source_values=True)
     sql = compiler.compile(scenario)
     print(sql.sql)
+
+    # For large datasets, use batch processing:
+    for batch_sql in compiler.compile_batched(scenario, batch_size=10000):
+        execute(batch_sql.sql)
 """
 
+import logging
 import re
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, Generator, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 try:
     from ..._generated.sql_templates import (
@@ -57,6 +71,70 @@ WINDOW_UNITS = {
 }
 
 
+class QueryComplexity(Enum):
+    """Estimated query complexity level."""
+
+    LOW = "low"  # < 10 signals, small windows
+    MEDIUM = "medium"  # 10-50 signals, moderate windows
+    HIGH = "high"  # > 50 signals, large windows, complex logic
+    VERY_HIGH = "very_high"  # Requires batching
+
+
+@dataclass
+class QueryCostEstimate:
+    """Estimated query cost for optimization decisions."""
+
+    complexity: QueryComplexity
+    estimated_cte_count: int
+    estimated_join_count: int
+    largest_window_seconds: int
+    logic_depth: int
+    recommendations: List[str] = field(default_factory=list)
+
+    def should_batch(self, cohort_size: int = 0) -> bool:
+        """Determine if batching is recommended."""
+        if cohort_size > 100000:
+            return True
+        if self.complexity in (QueryComplexity.HIGH, QueryComplexity.VERY_HIGH):
+            return True
+        if self.estimated_cte_count > 10 and cohort_size > 10000:
+            return True
+        return False
+
+    def recommended_batch_size(self, cohort_size: int = 0) -> int:
+        """Get recommended batch size for the query."""
+        if self.complexity == QueryComplexity.VERY_HIGH:
+            return 1000
+        elif self.complexity == QueryComplexity.HIGH:
+            return 5000
+        elif self.complexity == QueryComplexity.MEDIUM:
+            return 10000
+        else:
+            return 50000
+
+
+@dataclass
+class QueryOptimizationConfig:
+    """Configuration for query optimization."""
+
+    # Batch processing
+    enable_batching: bool = False
+    batch_size: int = 10000
+
+    # Population pre-filtering
+    apply_population_filter_early: bool = True
+
+    # PostgreSQL-specific optimizations
+    enable_parallel_query: bool = True
+    parallel_workers_per_gather: int = 4
+
+    # Index hints
+    include_index_hints: bool = False
+
+    # Query cost estimation
+    estimate_cost: bool = True
+
+
 @dataclass
 class CompiledSQL:
     """Result of SQL compilation."""
@@ -65,6 +143,8 @@ class CompiledSQL:
     parameters: Dict[str, Any]
     trend_columns: List[str]
     logic_columns: List[str]
+    cost_estimate: Optional[QueryCostEstimate] = None
+    batch_info: Optional[Dict[str, Any]] = None  # batch_number, total_batches, offset, limit
 
 
 def parse_window(window_str: str) -> int:
@@ -77,7 +157,9 @@ def parse_window(window_str: str) -> int:
     return value * WINDOW_UNITS[unit]
 
 
-def parse_trend_expression(expr: str) -> Tuple[str, str, Optional[str], Optional[float], str]:
+def parse_trend_expression(
+    expr: str,
+) -> Tuple[str, str, Optional[str], Optional[float], str]:
     """
     Parse a trend expression into components.
 
@@ -139,6 +221,12 @@ class CohortCompiler:
 
     The compiler generates PostgreSQL CTEs using templates from the
     specification, ensuring consistency across runtimes.
+
+    Features:
+        - Batch processing for large datasets
+        - Population pre-filtering optimization
+        - Query cost estimation
+        - Parallel query hints (PostgreSQL)
     """
 
     def __init__(
@@ -147,6 +235,7 @@ class CohortCompiler:
         use_source_values: bool = False,
         source_value_mappings: Optional[Dict[str, str]] = None,
         dialect: str = "postgresql",
+        optimization: Optional[QueryOptimizationConfig] = None,
     ):
         """
         Initialize SQL compiler.
@@ -156,11 +245,13 @@ class CohortCompiler:
             use_source_values: Use source_value instead of concept_id
             source_value_mappings: Map signal names to source values
             dialect: SQL dialect (currently only "postgresql" supported)
+            optimization: Query optimization configuration
         """
         self.schema = schema
         self.use_source_values = use_source_values
         self.source_value_mappings = source_value_mappings or {}
         self.dialect = dialect
+        self.optimization = optimization or QueryOptimizationConfig()
 
     def _get_table(self, domain: str = "measurement") -> str:
         """Get fully qualified table name."""
@@ -285,7 +376,9 @@ class CohortCompiler:
             else:
                 # Just check if value exists (not null)
                 sql_expr = re.sub(
-                    rf"\b{trend_name}\b", f"({trend_name}.{trend_name}_value IS NOT NULL)", sql_expr
+                    rf"\b{trend_name}\b",
+                    f"({trend_name}.{trend_name}_value IS NOT NULL)",
+                    sql_expr,
                 )
 
         return f"CASE WHEN {sql_expr} THEN TRUE ELSE FALSE END AS {logic_name}"
@@ -385,6 +478,272 @@ FROM {from_clause}{trend_joins}
         """Compile scenario to SQL string."""
         result = self.compile(scenario)
         return result.sql
+
+    def estimate_cost(self, scenario: Any) -> QueryCostEstimate:
+        """
+        Estimate query cost for a PSDL scenario.
+
+        This helps users understand query complexity and decide on
+        optimization strategies like batching.
+
+        Args:
+            scenario: Parsed PSDL scenario object
+
+        Returns:
+            QueryCostEstimate with complexity analysis and recommendations
+        """
+        # Count trends and extract window sizes
+        trend_count = len(scenario.trends) if hasattr(scenario, "trends") and scenario.trends else 0
+        logic_count = len(scenario.logic) if hasattr(scenario, "logic") and scenario.logic else 0
+
+        # Analyze windows
+        largest_window = 0
+        for trend_name, trend_def in (scenario.trends or {}).items():
+            if hasattr(trend_def, "raw_expr"):
+                expr = trend_def.raw_expr
+            elif hasattr(trend_def, "expr"):
+                expr = trend_def.expr
+            else:
+                continue
+
+            try:
+                _, _, window_str, _, _ = parse_trend_expression(expr)
+                if window_str:
+                    window_seconds = parse_window(window_str)
+                    largest_window = max(largest_window, window_seconds)
+            except ValueError:
+                pass
+
+        # Estimate logic depth (nested AND/OR)
+        logic_depth = 0
+        for logic_def in (scenario.logic or {}).values():
+            if hasattr(logic_def, "expr"):
+                expr = logic_def.expr
+            elif isinstance(logic_def, str):
+                expr = logic_def
+            else:
+                continue
+
+            # Count parentheses depth as proxy for complexity
+            depth = max(expr.count("("), 1)
+            logic_depth = max(logic_depth, depth)
+
+        # Determine complexity
+        if trend_count > 50 or logic_depth > 5:
+            complexity = QueryComplexity.VERY_HIGH
+        elif trend_count > 20 or logic_depth > 3 or largest_window > 604800:  # > 1 week
+            complexity = QueryComplexity.HIGH
+        elif trend_count > 10 or logic_depth > 2 or largest_window > 86400:  # > 1 day
+            complexity = QueryComplexity.MEDIUM
+        else:
+            complexity = QueryComplexity.LOW
+
+        # Build recommendations
+        recommendations = []
+        if complexity in (QueryComplexity.HIGH, QueryComplexity.VERY_HIGH):
+            recommendations.append("Consider using batch processing for large cohorts")
+        if largest_window > 604800:
+            recommendations.append(
+                f"Large window ({largest_window // 86400} days) may impact performance"
+            )
+        if trend_count > 20:
+            recommendations.append(
+                f"High trend count ({trend_count}) - consider splitting into multiple queries"
+            )
+        if logic_depth > 3:
+            recommendations.append("Complex logic expression - verify query plan")
+
+        return QueryCostEstimate(
+            complexity=complexity,
+            estimated_cte_count=trend_count,
+            estimated_join_count=max(0, trend_count - 1),
+            largest_window_seconds=largest_window,
+            logic_depth=logic_depth,
+            recommendations=recommendations,
+        )
+
+    def compile_batched(
+        self,
+        scenario: Any,
+        batch_size: Optional[int] = None,
+        total_patients: Optional[int] = None,
+    ) -> Generator[CompiledSQL, None, None]:
+        """
+        Compile scenario to batched SQL queries for large datasets.
+
+        Generates multiple queries, each processing a subset of patients.
+        This is useful for cohorts with millions of patients where a
+        single query would be too expensive.
+
+        Args:
+            scenario: Parsed PSDL scenario object
+            batch_size: Number of patients per batch (default from config)
+            total_patients: Total number of patients (for batch count calculation)
+
+        Yields:
+            CompiledSQL for each batch with batch_info populated
+        """
+        batch_size = batch_size or self.optimization.batch_size
+        cost_estimate = self.estimate_cost(scenario) if self.optimization.estimate_cost else None
+
+        # If total_patients is not provided, yield a single parameterized query
+        if total_patients is None:
+            base_sql = self.compile(scenario)
+            # Add OFFSET/LIMIT parameters for manual batching
+            batched_sql = base_sql.sql + "\nOFFSET :batch_offset LIMIT :batch_limit"
+            yield CompiledSQL(
+                sql=batched_sql,
+                parameters={
+                    **base_sql.parameters,
+                    "batch_offset": 0,
+                    "batch_limit": batch_size,
+                },
+                trend_columns=base_sql.trend_columns,
+                logic_columns=base_sql.logic_columns,
+                cost_estimate=cost_estimate,
+                batch_info={
+                    "batch_number": 0,
+                    "total_batches": None,  # Unknown
+                    "offset": 0,
+                    "limit": batch_size,
+                    "parameterized": True,
+                },
+            )
+            return
+
+        # Calculate number of batches
+        total_batches = (total_patients + batch_size - 1) // batch_size
+        logger.info(
+            f"Compiling {total_batches} batches for {total_patients} patients "
+            f"(batch_size={batch_size})"
+        )
+
+        for batch_num in range(total_batches):
+            offset = batch_num * batch_size
+            limit = min(batch_size, total_patients - offset)
+
+            base_sql = self.compile(scenario)
+            batched_sql = base_sql.sql + f"\nOFFSET {offset} LIMIT {limit}"
+
+            yield CompiledSQL(
+                sql=batched_sql,
+                parameters=base_sql.parameters,
+                trend_columns=base_sql.trend_columns,
+                logic_columns=base_sql.logic_columns,
+                cost_estimate=cost_estimate,
+                batch_info={
+                    "batch_number": batch_num,
+                    "total_batches": total_batches,
+                    "offset": offset,
+                    "limit": limit,
+                    "parameterized": False,
+                },
+            )
+
+    def compile_with_population_filter(
+        self,
+        scenario: Any,
+        population_cte: Optional[str] = None,
+    ) -> CompiledSQL:
+        """
+        Compile scenario with population pre-filtering.
+
+        This optimizes queries by filtering patients early in the query
+        plan, reducing the amount of data processed by trend CTEs.
+
+        Args:
+            scenario: Parsed PSDL scenario object
+            population_cte: Optional custom CTE for population filtering
+
+        Returns:
+            CompiledSQL with population filter applied early
+        """
+        # Build population filter from scenario.population if present
+        if population_cte is None and hasattr(scenario, "population") and scenario.population:
+            pop = scenario.population
+            conditions = []
+
+            # Handle include conditions
+            if hasattr(pop, "include") and pop.include:
+                for cond in pop.include:
+                    conditions.append(f"({cond})")
+
+            # Handle exclude conditions
+            if hasattr(pop, "exclude") and pop.exclude:
+                for cond in pop.exclude:
+                    conditions.append(f"NOT ({cond})")
+
+            if conditions:
+                where_clause = " AND ".join(conditions)
+                population_cte = f"""eligible_population AS (
+    SELECT DISTINCT person_id
+    FROM {self.schema}.person
+    WHERE {where_clause}
+)"""
+
+        # Compile base query
+        base_result = self.compile(scenario)
+
+        if population_cte:
+            # Prepend population CTE and add filter to main query
+            sql_with_filter = f"WITH {population_cte},\n{base_result.sql[5:]}"  # Skip 'WITH '
+
+            # Add population filter to FROM clause
+            # This is a simplified approach - more sophisticated would require
+            # parsing and modifying the SQL AST
+            sql_with_filter = sql_with_filter.replace(
+                "FROM ",
+                "FROM eligible_population ep\nINNER JOIN ",
+                1,
+            )
+            # Add join condition (simplified - assumes first CTE has person_id)
+            lines = sql_with_filter.split("\n")
+            for i, line in enumerate(lines):
+                if "INNER JOIN" in line and i + 1 < len(lines):
+                    # Find the table/CTE being joined
+                    parts = line.split("INNER JOIN")
+                    if len(parts) > 1:
+                        joined_table = parts[1].strip().split()[0]
+                        lines[i] = f"{line} ON ep.person_id = {joined_table}.person_id"
+                        break
+            sql_with_filter = "\n".join(lines)
+
+            return CompiledSQL(
+                sql=sql_with_filter,
+                parameters=base_result.parameters,
+                trend_columns=base_result.trend_columns,
+                logic_columns=base_result.logic_columns,
+                cost_estimate=(
+                    self.estimate_cost(scenario) if self.optimization.estimate_cost else None
+                ),
+            )
+
+        return base_result
+
+    def add_parallel_hints(self, sql: str, workers: Optional[int] = None) -> str:
+        """
+        Add PostgreSQL parallel query hints to SQL.
+
+        Args:
+            sql: Base SQL query
+            workers: Number of parallel workers (default from config)
+
+        Returns:
+            SQL with parallel query hints
+        """
+        if self.dialect != "postgresql":
+            return sql
+
+        workers = workers or self.optimization.parallel_workers_per_gather
+
+        # Add SET statements for parallel query configuration
+        hints = f"""-- Parallel query hints for large cohort processing
+SET max_parallel_workers_per_gather = {workers};
+SET parallel_tuple_cost = 0.001;
+SET parallel_setup_cost = 100;
+
+"""
+        return hints + sql
 
 
 # Legacy alias

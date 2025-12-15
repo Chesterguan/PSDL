@@ -1,27 +1,42 @@
 (* ============================================================== *)
-(* PSDL Expression Grammar v0.1                                   *)
+(* PSDL Expression Grammar v0.3                                   *)
 (* Patient Scenario Definition Language                           *)
 (* Extended Backus-Naur Form (ISO/IEC 14977)                      *)
+(* ============================================================== *)
+(*                                                                 *)
+(* BREAKING CHANGE in v0.3:                                        *)
+(*   - Trend expressions produce NUMERIC values only               *)
+(*   - Comparison operators belong in LOGIC expressions only       *)
+(*   - This enforces clean separation: Trend=numeric, Logic=bool   *)
+(*                                                                 *)
 (* ============================================================== *)
 
 (* ============================================================== *)
 (* TOP-LEVEL EXPRESSIONS                                          *)
 (* ============================================================== *)
 
-(* A trend expression computes a value and optionally compares it *)
-trend_expression = temporal_expression, [ comparison ] ;
+(* A trend expression computes a NUMERIC value (no comparisons) *)
+(* v0.3 BREAKING: Removed optional comparison from trend_expression *)
+trend_expression = numeric_expression ;
 
-(* A logic expression combines boolean terms *)
+(* A logic expression computes a BOOLEAN value *)
 logic_expression = or_expression ;
 
 (* ============================================================== *)
-(* TEMPORAL EXPRESSIONS                                           *)
+(* NUMERIC EXPRESSIONS (for Trends layer)                         *)
 (* ============================================================== *)
+
+(* Numeric expressions can be temporal operators or arithmetic *)
+numeric_expression = temporal_expression
+                   | numeric_expression, arith_op, numeric_expression
+                   | "(", numeric_expression, ")"
+                   | numeric_literal ;
 
 temporal_expression = windowed_operator | pointwise_operator ;
 
 (* Operators that require a time window *)
-windowed_operator = windowed_op_name, "(", signal_ref, ",", window, ")" ;
+windowed_operator = windowed_op_name, "(", signal_ref, ",", window, ")"
+                  | percentile_call ;
 
 windowed_op_name = "delta"    (* change over window *)
                  | "slope"    (* linear regression slope *)
@@ -31,15 +46,21 @@ windowed_op_name = "delta"    (* change over window *)
                  | "max"      (* maximum in window *)
                  | "count"    (* observation count in window *)
                  | "first"    (* first value in window *)
-                 | "stddev"   (* standard deviation in window *)
-                 | "percentile" ; (* percentile in window - requires additional arg *)
+                 | "std"      (* standard deviation in window *)
+                 | "stddev" ; (* alias for std *)
+
+(* Percentile requires additional p argument *)
+percentile_call = "percentile", "(", signal_ref, ",", window, ",", numeric_literal, ")" ;
 
 (* Operators that work on current/recent values *)
 pointwise_operator = pointwise_op_name, "(", signal_ref, ")" ;
 
 pointwise_op_name = "last"    (* most recent value *)
-                  | "exists"  (* has any value *)
-                  | "missing" ; (* no value available *)
+                  | "exists"  (* has any value - returns bool but used in numeric context *)
+                  | "missing" ; (* no value available - returns bool but used in numeric context *)
+
+(* Arithmetic operators for combining numeric expressions *)
+arith_op = "+" | "-" | "*" | "/" ;
 
 (* ============================================================== *)
 (* SIGNAL REFERENCES                                              *)
@@ -73,22 +94,7 @@ window_unit = "s"   (* seconds *)
 integer = digit, { digit } ;
 
 (* ============================================================== *)
-(* COMPARISONS                                                    *)
-(* ============================================================== *)
-
-comparison = comparison_op, numeric_literal ;
-
-comparison_op = "=="   (* equal *)
-              | "!="   (* not equal *)
-              | "<"    (* less than *)
-              | "<="   (* less than or equal *)
-              | ">"    (* greater than *)
-              | ">=" ; (* greater than or equal *)
-
-numeric_literal = [ "-" ], integer, [ ".", integer ] ;
-
-(* ============================================================== *)
-(* BOOLEAN LOGIC EXPRESSIONS                                      *)
+(* BOOLEAN LOGIC EXPRESSIONS (for Logic layer)                    *)
 (* ============================================================== *)
 
 (* Precedence (lowest to highest): OR, AND, NOT *)
@@ -101,11 +107,33 @@ not_expression = "NOT", not_expression
                | primary_expression ;
 
 primary_expression = "(", logic_expression, ")"
-                   | term_ref
-                   | trend_expression ;
+                   | comparison_expression
+                   | logic_ref ;
 
-(* Reference to a defined trend or logic rule *)
-term_ref = identifier ;
+(* Reference to a defined logic rule *)
+logic_ref = identifier ;
+
+(* ============================================================== *)
+(* COMPARISON EXPRESSIONS (Logic layer only)                      *)
+(* ============================================================== *)
+
+(* v0.3: Comparisons are ONLY allowed in logic expressions *)
+comparison_expression = numeric_value, comparison_op, numeric_value ;
+
+(* Numeric value can be a trend reference, numeric expression, or literal *)
+numeric_value = trend_ref | numeric_expression | numeric_literal ;
+
+(* Reference to a defined trend (produces numeric value) *)
+trend_ref = identifier ;
+
+comparison_op = "=="   (* equal *)
+              | "!="   (* not equal *)
+              | "<"    (* less than *)
+              | "<="   (* less than or equal *)
+              | ">"    (* greater than *)
+              | ">=" ; (* greater than or equal *)
+
+numeric_literal = [ "-" ], integer, [ ".", integer ] ;
 
 (* ============================================================== *)
 (* WHITESPACE (implicit - implementations should skip)            *)
@@ -115,22 +143,29 @@ term_ref = identifier ;
 (* Whitespace is allowed between any tokens *)
 
 (* ============================================================== *)
-(* EXAMPLES                                                       *)
+(* v0.3 EXAMPLES                                                  *)
 (* ============================================================== *)
 
 (*
-Valid trend expressions:
-  delta(Cr, 6h) > 0.3
-  slope(Lact, 3h) > 0
-  ema(MAP, 30m) < 65
-  last(HR) > 100
-  max(Temp, 24h) >= 38.5
-  count(Cr, 48h) >= 2
+Valid TREND expressions (numeric only - NO comparisons):
+  delta(Cr, 6h)                  - Numeric result
+  slope(Lact, 3h)                - Numeric result
+  last(HR)                       - Numeric result
+  max(Temp, 24h)                 - Numeric result
+  count(Cr, 48h)                 - Numeric result
+  percentile(SpO2, 1h, 50)       - Numeric result (median)
+  delta(Cr, 48h) / 0.3           - Arithmetic on numeric
 
-Valid logic expressions:
-  cr_rising AND lactate_elevated
-  aki_stage1 OR aki_stage2 OR aki_stage3
-  NOT recovering AND deteriorating
+INVALID TREND expressions (comparisons NOT allowed):
+  delta(Cr, 6h) > 0.3            - ERROR: comparison in trend
+  slope(Lact, 3h) > 0            - ERROR: comparison in trend
+  last(HR) > 100                 - ERROR: comparison in trend
+
+Valid LOGIC expressions (boolean with comparisons):
+  cr_delta_48h >= 0.3            - Compare trend ref to literal
+  cr_rising AND lactate_elevated - Combine logic refs
+  aki_stage1 OR aki_stage2       - OR logic refs
+  NOT recovering                 - Negate logic ref
   (fever OR hypothermia) AND (tachycardia OR hypotension)
-  sirs_criteria AND (lactate_elevated OR organ_dysfunction)
+  delta(Cr, 48h) >= 0.3          - Inline temporal + comparison OK in logic
 *)

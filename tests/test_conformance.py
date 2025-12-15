@@ -20,9 +20,20 @@ import pytest
 # Import the implementation to test
 from psdl.operators import DataPoint, TemporalOperators
 
+# Optional: JSON Schema validation
+try:
+    import jsonschema
+
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
+
 # Path to conformance tests
 CONFORMANCE_TESTS_PATH = (
     Path(__file__).parent.parent / "spec" / "conformance" / "operator_tests.json"
+)
+CONFORMANCE_SCHEMA_PATH = (
+    Path(__file__).parent.parent / "spec" / "conformance" / "conformance-tests.schema.json"
 )
 
 # Window unit to seconds mapping
@@ -70,11 +81,23 @@ def create_all_datapoints(data: List[Dict]) -> List[DataPoint]:
     return create_datapoints(data)
 
 
-def parse_simple_expression(expression: str) -> Tuple[str, Optional[str], str]:
+def parse_simple_expression(
+    expression: str,
+) -> Tuple[str, Optional[str], str, Optional[int]]:
     """
-    Parse simple expression like 'delta(Cr, 6h)' or 'last(HR)'.
-    Returns (operator_name, window_str or None, signal_name)
+    Parse simple expression like 'delta(Cr, 6h)' or 'last(HR)' or 'percentile(HR, 1h, 50)'.
+    Returns (operator_name, window_str or None, signal_name, extra_arg or None)
     """
+    # Try percentile pattern first (3 arguments)
+    percentile_match = re.match(r"(\w+)\((\w+),\s*(\d+[smhdw]),\s*(\d+)\)", expression)
+    if percentile_match:
+        operator = percentile_match.group(1)
+        signal = percentile_match.group(2)
+        window = percentile_match.group(3)
+        extra = int(percentile_match.group(4))
+        return operator, window, signal, extra
+
+    # Standard pattern (1 or 2 arguments)
     match = re.match(r"(\w+)\((\w+)(?:,\s*(\d+[smhdw]))?\)", expression)
     if not match:
         raise ValueError(f"Cannot parse expression: {expression}")
@@ -83,7 +106,7 @@ def parse_simple_expression(expression: str) -> Tuple[str, Optional[str], str]:
     signal = match.group(2)
     window = match.group(3)
 
-    return operator, window, signal
+    return operator, window, signal, None
 
 
 def parse_comparison_expression(expression: str) -> Tuple[str, str, float]:
@@ -104,6 +127,7 @@ def execute_operator(
     window_seconds: Optional[int],
     eval_time: datetime,
     has_null_values: bool = False,
+    extra_arg: Optional[int] = None,
 ) -> Optional[Union[float, int, bool]]:
     """Execute a single operator and return the result."""
     if operator == "delta":
@@ -125,6 +149,12 @@ def execute_operator(
         return TemporalOperators.ema(datapoints, window_seconds, eval_time)
     elif operator == "first":
         return TemporalOperators.first(datapoints, window_seconds, eval_time)
+    elif operator in ("std", "stddev"):
+        return TemporalOperators.std(datapoints, window_seconds, eval_time)
+    elif operator == "percentile":
+        if extra_arg is None:
+            raise ValueError("percentile requires a percentile value argument")
+        return TemporalOperators.percentile(datapoints, window_seconds, extra_arg, eval_time)
     elif operator == "exists":
         return len(datapoints) > 0 or has_null_values
     elif operator == "missing":
@@ -203,6 +233,19 @@ def compare_results(actual: Any, expected: Any, tolerance: float = 1e-6) -> Tupl
 
             return True, ""
 
+        # Handle range expected format ({"type": "range", "min": X, "max": Y})
+        if expected.get("type") == "range" and "min" in expected and "max" in expected:
+            min_val = expected["min"]
+            max_val = expected["max"]
+            if actual is None:
+                return False, f"Expected range [{min_val}, {max_val}], got None"
+            if min_val <= actual <= max_val:
+                return True, ""
+            return (
+                False,
+                f"Value {actual} outside expected range [{min_val}, {max_val}]",
+            )
+
     # Handle booleans
     if isinstance(expected, bool):
         return (
@@ -217,7 +260,10 @@ def compare_results(actual: Any, expected: Any, tolerance: float = 1e-6) -> Tupl
         return False, f"Value mismatch: expected {expected}, got {actual}"
 
     # Default comparison
-    return actual == expected, f"Expected {expected}, got {actual}" if actual != expected else ""
+    return (
+        actual == expected,
+        f"Expected {expected}, got {actual}" if actual != expected else "",
+    )
 
 
 def run_operator_test(test_case: Dict) -> Tuple[bool, Any, Any, str]:
@@ -240,7 +286,7 @@ def run_operator_test(test_case: Dict) -> Tuple[bool, Any, Any, str]:
         # Handle comparison tests (expression with comparison operator)
         if any(op in expression for op in [" > ", " < ", " >= ", " <= ", " == ", " != "]):
             operator_call, comp_op, threshold = parse_comparison_expression(expression)
-            operator, window_str, signal = parse_simple_expression(operator_call)
+            operator, window_str, signal, extra_arg = parse_simple_expression(operator_call)
 
             data = test_input.get("data", [])
             eval_time = parse_timestamp(test_input["evaluationTime"])
@@ -252,7 +298,12 @@ def run_operator_test(test_case: Dict) -> Tuple[bool, Any, Any, str]:
             )
 
             operator_result = execute_operator(
-                operator, datapoints, window_seconds, eval_time, has_null_values
+                operator,
+                datapoints,
+                window_seconds,
+                eval_time,
+                has_null_values,
+                extra_arg,
             )
             actual = apply_comparison(operator_result, comp_op, threshold)
 
@@ -260,7 +311,7 @@ def run_operator_test(test_case: Dict) -> Tuple[bool, Any, Any, str]:
             return passed, actual, expected, err
 
         # Handle simple operator tests
-        operator, window_str, signal = parse_simple_expression(expression)
+        operator, window_str, signal, extra_arg = parse_simple_expression(expression)
         data = test_input.get("data", [])
         eval_time = parse_timestamp(test_input["evaluationTime"])
         window_seconds = parse_window(window_str) if window_str else None
@@ -273,7 +324,9 @@ def run_operator_test(test_case: Dict) -> Tuple[bool, Any, Any, str]:
         else:
             datapoints = create_datapoints(data)
 
-        actual = execute_operator(operator, datapoints, window_seconds, eval_time, has_null_values)
+        actual = execute_operator(
+            operator, datapoints, window_seconds, eval_time, has_null_values, extra_arg
+        )
 
         passed, err = compare_results(actual, expected)
         return passed, actual, expected, err
@@ -291,13 +344,15 @@ def load_conformance_tests() -> Dict:
 
 
 def get_all_operator_tests() -> List[Tuple[str, str, Dict]]:
-    """Get all operator test cases as (suite_name, test_id, test_case) tuples."""
+    """Get all operator test cases as (group_name, test_id, test_case) tuples."""
     tests = load_conformance_tests()
     result = []
 
-    for suite_name, suite in tests.get("testSuites", {}).items():
-        for test_case in suite.get("tests", []):
-            result.append((suite_name, test_case["id"], test_case))
+    # New format: groups is an array
+    for group in tests.get("groups", []):
+        group_name = group.get("name", "unknown")
+        for test_case in group.get("tests", []):
+            result.append((group_name, test_case["id"], test_case))
 
     return result
 
@@ -326,9 +381,44 @@ class TestConformance:
 
     def test_conformance_file_valid(self, conformance_tests):
         """Verify conformance test file is valid JSON with expected structure."""
-        assert "testSuites" in conformance_tests
-        assert "version" in conformance_tests
-        assert conformance_tests["version"] == "0.2.0"
+        assert "groups" in conformance_tests, "Missing 'groups' array"
+        assert "version" in conformance_tests, "Missing 'version' field"
+        assert "name" in conformance_tests, "Missing 'name' field"
+        assert conformance_tests["version"] == "0.3.0"
+        assert isinstance(conformance_tests["groups"], list), "'groups' should be an array"
+
+    @pytest.mark.skipif(not JSONSCHEMA_AVAILABLE, reason="jsonschema not installed")
+    def test_conformance_file_matches_schema(self, conformance_tests):
+        """Validate conformance test file against JSON Schema."""
+        assert CONFORMANCE_SCHEMA_PATH.exists(), f"Schema not found at {CONFORMANCE_SCHEMA_PATH}"
+
+        with open(CONFORMANCE_SCHEMA_PATH, "r") as f:
+            schema = json.load(f)
+
+        # This will raise ValidationError if invalid
+        jsonschema.validate(conformance_tests, schema)
+
+    @pytest.mark.skipif(not JSONSCHEMA_AVAILABLE, reason="jsonschema not installed")
+    def test_all_conformance_files_match_schema(self):
+        """Validate all conformance test files against JSON Schema."""
+        conformance_dir = CONFORMANCE_TESTS_PATH.parent
+        test_files = [
+            conformance_dir / "operator_tests.json",
+            conformance_dir / "expression_tests.json",
+            conformance_dir / "scenario_tests.json",
+        ]
+
+        with open(CONFORMANCE_SCHEMA_PATH, "r") as f:
+            schema = json.load(f)
+
+        for test_file in test_files:
+            if test_file.exists():
+                with open(test_file, "r") as f:
+                    tests = json.load(f)
+                try:
+                    jsonschema.validate(tests, schema)
+                except jsonschema.ValidationError as e:
+                    pytest.fail(f"{test_file.name} failed validation: {e.message}")
 
 
 # Dynamically generate test cases from conformance suite

@@ -32,6 +32,7 @@ __version__ = "0.3.0"
 
 # Core components
 from .core import PSDLParser, PSDLScenario
+from .core.compile import ScenarioCompiler, ScenarioIR, compile_scenario
 from .core.ir import (
     DecisionOutput,
     EvaluationResult,
@@ -42,6 +43,24 @@ from .core.ir import (
     OutputType,
     Signal,
     TrendExpr,
+)
+
+# v0.3: AST types for DAG visualization (Issue #6)
+# Imported from generated code via expression_parser
+from .expression_parser import (
+    AndExpr,
+    ComparisonExpr,
+    LogicNode,
+    NotExpr,
+    OrExpr,
+    TemporalCall,
+    TermRef,
+    TrendExpression,
+    WindowSpec,
+    extract_operators,
+    extract_terms,
+    parse_logic_expression,
+    parse_trend_expression,
 )
 from .operators import DataPoint, TemporalOperators
 
@@ -86,6 +105,10 @@ __all__ = [
     "PSDLScenario",
     "DataPoint",
     "TemporalOperators",
+    # v0.3 Compiler (RFC-0006)
+    "compile_scenario",
+    "ScenarioCompiler",
+    "ScenarioIR",
     # v0.3 IR types
     "Signal",
     "TrendExpr",
@@ -96,6 +119,20 @@ __all__ = [
     "DecisionOutput",
     "FeatureOutput",
     "EvidenceOutput",
+    # v0.3 AST types (generated from spec/ast-nodes.yaml)
+    "LogicNode",
+    "AndExpr",
+    "OrExpr",
+    "NotExpr",
+    "TermRef",
+    "TrendExpression",
+    "ComparisonExpr",
+    "TemporalCall",
+    "WindowSpec",
+    "parse_logic_expression",
+    "parse_trend_expression",
+    "extract_terms",
+    "extract_operators",
     # Execution
     "PSDLEvaluator",
     "BatchEvaluator",

@@ -1,0 +1,479 @@
+{
+  "$schema": "./conformance-tests.schema.json",
+  "name": "PsdlExpressionGrammarTests",
+  "version": "0.3.0",
+  "description": "Tests for expression parsing. Validates that parsers correctly accept valid expressions and reject invalid ones per v0.3 grammar.",
+  "reference": "https://psdl-lang.org/spec/v0.3/grammar",
+  "conformanceLevel": "core",
+  "notes": "v0.3 BREAKING: Trend expressions MUST NOT contain comparison operators. Comparisons belong in Logic layer only.",
+
+  "groups": [
+    {
+      "name": "ValidTrendExpressions",
+      "description": "Valid trend expressions (MUST parse successfully). v0.3: Trends produce numeric values only.",
+      "context": "trend",
+      "tests": [
+        {
+          "id": "trend_valid_001",
+          "name": "Simple windowed operator",
+          "expression": "delta(Cr, 48h)",
+          "invalid": "false",
+          "explanation": "Basic delta with signal and window"
+        },
+        {
+          "id": "trend_valid_002",
+          "name": "Slope operator",
+          "expression": "slope(Lact, 6h)",
+          "invalid": "false",
+          "explanation": "Slope computes linear regression"
+        },
+        {
+          "id": "trend_valid_003",
+          "name": "Simple moving average",
+          "expression": "sma(HR, 1h)",
+          "invalid": "false",
+          "explanation": "SMA with 1 hour window"
+        },
+        {
+          "id": "trend_valid_004",
+          "name": "Exponential moving average",
+          "expression": "ema(BP, 30m)",
+          "invalid": "false",
+          "explanation": "EMA with 30 minute window"
+        },
+        {
+          "id": "trend_valid_005",
+          "name": "Min operator",
+          "expression": "min(SpO2, 24h)",
+          "invalid": "false",
+          "explanation": "Minimum value in window"
+        },
+        {
+          "id": "trend_valid_006",
+          "name": "Max operator",
+          "expression": "max(Temp, 12h)",
+          "invalid": "false",
+          "explanation": "Maximum value in window"
+        },
+        {
+          "id": "trend_valid_007",
+          "name": "Count operator",
+          "expression": "count(Cr, 7d)",
+          "invalid": "false",
+          "explanation": "Count of observations"
+        },
+        {
+          "id": "trend_valid_008",
+          "name": "First operator",
+          "expression": "first(Cr, 48h)",
+          "invalid": "false",
+          "explanation": "First value in window"
+        },
+        {
+          "id": "trend_valid_009",
+          "name": "Std operator",
+          "expression": "std(HR, 1h)",
+          "invalid": "false",
+          "explanation": "Standard deviation"
+        },
+        {
+          "id": "trend_valid_010",
+          "name": "Stddev alias",
+          "expression": "stddev(HR, 1h)",
+          "invalid": "false",
+          "explanation": "Stddev is alias for std"
+        },
+        {
+          "id": "trend_valid_011",
+          "name": "Percentile operator",
+          "expression": "percentile(SpO2, 1h, 50)",
+          "invalid": "false",
+          "explanation": "50th percentile (median)"
+        },
+        {
+          "id": "trend_valid_012",
+          "name": "Last pointwise operator",
+          "expression": "last(HR)",
+          "invalid": "false",
+          "explanation": "Most recent value"
+        },
+        {
+          "id": "trend_valid_013",
+          "name": "Exists pointwise operator",
+          "expression": "exists(Cr)",
+          "invalid": "false",
+          "explanation": "Check if data exists"
+        },
+        {
+          "id": "trend_valid_014",
+          "name": "Missing pointwise operator",
+          "expression": "missing(Cr)",
+          "invalid": "false",
+          "explanation": "Check if data is missing"
+        },
+        {
+          "id": "trend_valid_015",
+          "name": "Window unit - seconds",
+          "expression": "delta(HR, 30s)",
+          "invalid": "false",
+          "explanation": "Seconds window unit"
+        },
+        {
+          "id": "trend_valid_016",
+          "name": "Window unit - minutes",
+          "expression": "delta(HR, 15m)",
+          "invalid": "false",
+          "explanation": "Minutes window unit"
+        },
+        {
+          "id": "trend_valid_017",
+          "name": "Window unit - hours",
+          "expression": "delta(HR, 2h)",
+          "invalid": "false",
+          "explanation": "Hours window unit"
+        },
+        {
+          "id": "trend_valid_018",
+          "name": "Window unit - days",
+          "expression": "delta(Cr, 7d)",
+          "invalid": "false",
+          "explanation": "Days window unit"
+        },
+        {
+          "id": "trend_valid_019",
+          "name": "Window unit - weeks",
+          "expression": "delta(Cr, 2w)",
+          "invalid": "false",
+          "explanation": "Weeks window unit"
+        },
+        {
+          "id": "trend_valid_020",
+          "name": "Signal with underscore",
+          "expression": "last(heart_rate)",
+          "invalid": "false",
+          "explanation": "Signal names can contain underscores"
+        }
+      ]
+    },
+    {
+      "name": "InvalidTrendExpressions",
+      "description": "Invalid trend expressions (MUST reject). v0.3: Comparisons NOT allowed in trends.",
+      "context": "trend",
+      "tests": [
+        {
+          "id": "trend_invalid_001",
+          "name": "Comparison in trend (v0.3 violation)",
+          "expression": "delta(Cr, 48h) >= 0.3",
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "v0.3: Comparisons not allowed in trend expressions"
+        },
+        {
+          "id": "trend_invalid_002",
+          "name": "Greater than in trend",
+          "expression": "slope(Lact, 6h) > 0",
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "v0.3: > operator not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_003",
+          "name": "Less than in trend",
+          "expression": "last(SpO2) < 90",
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "v0.3: < operator not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_004",
+          "name": "Equality in trend",
+          "expression": "count(Cr, 48h) == 2",
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "v0.3: == operator not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_005",
+          "name": "Not equal in trend",
+          "expression": "last(HR) != 0",
+          "invalid": "syntax",
+          "errorCode": "E001",
+          "explanation": "v0.3: != operator not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_006",
+          "name": "Boolean AND in trend",
+          "expression": "delta(Cr, 48h) AND slope(Cr, 24h)",
+          "invalid": "syntax",
+          "explanation": "Boolean operators not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_007",
+          "name": "Boolean OR in trend",
+          "expression": "last(HR) OR last(BP)",
+          "invalid": "syntax",
+          "explanation": "Boolean operators not allowed in trends"
+        },
+        {
+          "id": "trend_invalid_008",
+          "name": "Missing window for windowed operator",
+          "expression": "delta(Cr)",
+          "invalid": "syntax",
+          "explanation": "Windowed operators require window argument"
+        },
+        {
+          "id": "trend_invalid_009",
+          "name": "Invalid window unit",
+          "expression": "delta(Cr, 48x)",
+          "invalid": "syntax",
+          "explanation": "Invalid window unit 'x'"
+        },
+        {
+          "id": "trend_invalid_010",
+          "name": "Unknown operator",
+          "expression": "unknown(Cr, 48h)",
+          "invalid": "syntax",
+          "explanation": "Operator 'unknown' not defined"
+        },
+        {
+          "id": "trend_invalid_011",
+          "name": "Window on pointwise operator",
+          "expression": "last(HR, 1h)",
+          "invalid": "syntax",
+          "explanation": "Pointwise operators don't take window"
+        },
+        {
+          "id": "trend_invalid_012",
+          "name": "Empty expression",
+          "expression": "",
+          "invalid": "syntax",
+          "explanation": "Empty expression is invalid"
+        }
+      ]
+    },
+    {
+      "name": "ValidLogicExpressions",
+      "description": "Valid logic expressions (MUST parse successfully). Logic expressions produce boolean values.",
+      "context": "logic",
+      "tests": [
+        {
+          "id": "logic_valid_001",
+          "name": "Simple comparison",
+          "expression": "cr_delta >= 0.3",
+          "invalid": "false",
+          "explanation": "Compare trend ref to literal"
+        },
+        {
+          "id": "logic_valid_002",
+          "name": "Greater than",
+          "expression": "hr_current > 100",
+          "invalid": "false",
+          "explanation": "Greater than comparison"
+        },
+        {
+          "id": "logic_valid_003",
+          "name": "Less than",
+          "expression": "spo2_min < 90",
+          "invalid": "false",
+          "explanation": "Less than comparison"
+        },
+        {
+          "id": "logic_valid_004",
+          "name": "Less than or equal",
+          "expression": "sbp_current <= 90",
+          "invalid": "false",
+          "explanation": "Less than or equal comparison"
+        },
+        {
+          "id": "logic_valid_005",
+          "name": "Equality",
+          "expression": "count_cr == 0",
+          "invalid": "false",
+          "explanation": "Equality comparison"
+        },
+        {
+          "id": "logic_valid_006",
+          "name": "Not equal",
+          "expression": "gcs_current != 15",
+          "invalid": "false",
+          "explanation": "Not equal comparison"
+        },
+        {
+          "id": "logic_valid_007",
+          "name": "Simple AND",
+          "expression": "fever AND tachycardia",
+          "invalid": "false",
+          "explanation": "AND two logic refs"
+        },
+        {
+          "id": "logic_valid_008",
+          "name": "Simple OR",
+          "expression": "aki_stage1 OR aki_stage2",
+          "invalid": "false",
+          "explanation": "OR two logic refs"
+        },
+        {
+          "id": "logic_valid_009",
+          "name": "NOT operator",
+          "expression": "NOT recovering",
+          "invalid": "false",
+          "explanation": "Negate logic ref"
+        },
+        {
+          "id": "logic_valid_010",
+          "name": "Parentheses",
+          "expression": "(fever OR hypothermia) AND tachycardia",
+          "invalid": "false",
+          "explanation": "Parentheses for grouping"
+        },
+        {
+          "id": "logic_valid_011",
+          "name": "Complex nested",
+          "expression": "(a AND b) OR (c AND d)",
+          "invalid": "false",
+          "explanation": "Complex nested expression"
+        },
+        {
+          "id": "logic_valid_012",
+          "name": "NOT with AND",
+          "expression": "NOT stable AND deteriorating",
+          "invalid": "false",
+          "explanation": "NOT has higher precedence than AND"
+        },
+        {
+          "id": "logic_valid_013",
+          "name": "Triple AND",
+          "expression": "a AND b AND c",
+          "invalid": "false",
+          "explanation": "Multiple AND operators"
+        },
+        {
+          "id": "logic_valid_014",
+          "name": "Triple OR",
+          "expression": "a OR b OR c",
+          "invalid": "false",
+          "explanation": "Multiple OR operators"
+        },
+        {
+          "id": "logic_valid_015",
+          "name": "Mixed AND/OR",
+          "expression": "a AND b OR c AND d",
+          "invalid": "false",
+          "explanation": "AND has higher precedence than OR"
+        },
+        {
+          "id": "logic_valid_016",
+          "name": "Inline temporal comparison",
+          "expression": "delta(Cr, 48h) >= 0.3",
+          "invalid": "false",
+          "explanation": "Inline temporal operator with comparison OK in logic"
+        },
+        {
+          "id": "logic_valid_017",
+          "name": "Inline temporal with AND",
+          "expression": "delta(Cr, 48h) >= 0.3 AND last(HR) > 100",
+          "invalid": "false",
+          "explanation": "Multiple inline temporals in logic"
+        },
+        {
+          "id": "logic_valid_018",
+          "name": "Case insensitive AND",
+          "expression": "a and b",
+          "invalid": "false",
+          "explanation": "Boolean operators are case insensitive"
+        },
+        {
+          "id": "logic_valid_019",
+          "name": "Case insensitive OR",
+          "expression": "a or b",
+          "invalid": "false",
+          "explanation": "Boolean operators are case insensitive"
+        },
+        {
+          "id": "logic_valid_020",
+          "name": "Case insensitive NOT",
+          "expression": "not a",
+          "invalid": "false",
+          "explanation": "Boolean operators are case insensitive"
+        },
+        {
+          "id": "logic_valid_021",
+          "name": "Negative literal",
+          "expression": "slope_cr > -0.001",
+          "invalid": "false",
+          "explanation": "Negative numeric literal"
+        },
+        {
+          "id": "logic_valid_022",
+          "name": "Decimal literal",
+          "expression": "cr_delta >= 0.35",
+          "invalid": "false",
+          "explanation": "Decimal numeric literal"
+        }
+      ]
+    },
+    {
+      "name": "InvalidLogicExpressions",
+      "description": "Invalid logic expressions (MUST reject).",
+      "context": "logic",
+      "tests": [
+        {
+          "id": "logic_invalid_001",
+          "name": "Comparison without operand",
+          "expression": ">= 0.3",
+          "invalid": "syntax",
+          "explanation": "Missing left operand"
+        },
+        {
+          "id": "logic_invalid_002",
+          "name": "Incomplete AND",
+          "expression": "a AND",
+          "invalid": "syntax",
+          "explanation": "Missing right operand for AND"
+        },
+        {
+          "id": "logic_invalid_003",
+          "name": "Incomplete OR",
+          "expression": "OR b",
+          "invalid": "syntax",
+          "explanation": "Missing left operand for OR"
+        },
+        {
+          "id": "logic_invalid_004",
+          "name": "Unmatched parenthesis",
+          "expression": "(a AND b",
+          "invalid": "syntax",
+          "explanation": "Missing closing parenthesis"
+        },
+        {
+          "id": "logic_invalid_005",
+          "name": "Extra parenthesis",
+          "expression": "a AND b)",
+          "invalid": "syntax",
+          "explanation": "Extra closing parenthesis"
+        },
+        {
+          "id": "logic_invalid_006",
+          "name": "Double operator",
+          "expression": "a AND AND b",
+          "invalid": "syntax",
+          "explanation": "Consecutive operators"
+        },
+        {
+          "id": "logic_invalid_007",
+          "name": "Empty parentheses",
+          "expression": "()",
+          "invalid": "syntax",
+          "explanation": "Empty parentheses"
+        },
+        {
+          "id": "logic_invalid_008",
+          "name": "Invalid identifier start",
+          "expression": "123abc >= 0",
+          "invalid": "syntax",
+          "explanation": "Identifiers cannot start with number"
+        }
+      ]
+    }
+  ]
+}

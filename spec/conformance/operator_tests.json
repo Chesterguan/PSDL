@@ -1,12 +1,18 @@
 {
-  "$schema": "https://psdl-lang.org/schema/v0.2/conformance-tests",
-  "title": "PSDL Operator Conformance Tests",
+  "$schema": "./conformance-tests.schema.json",
+  "name": "PsdlOperatorConformanceTests",
+  "version": "0.3.0",
   "description": "Executable test cases that define correct operator behavior. Any conformant PSDL implementation MUST pass all these tests.",
-  "version": "0.2.0",
+  "reference": "https://psdl-lang.org/spec/v0.3/operators",
+  "conformanceLevel": "core",
+  "notes": "v0.3 BREAKING: Trend expressions produce NUMERIC values only. Comparison tests are in LOGIC context only (not allowed in Trend expressions).",
 
-  "testSuites": {
-    "delta": {
-      "description": "Tests for delta(signal, window) operator",
+  "groups": [
+    {
+      "name": "Delta",
+      "description": "Tests for delta(signal, window) operator - computes change over time window",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#delta",
       "tests": [
         {
           "id": "delta_001",
@@ -22,6 +28,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": 1.0,
+          "invalid": "false",
           "explanation": "2.0 (last) - 1.0 (first) = 1.0"
         },
         {
@@ -36,6 +43,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "Cannot compute delta with only 1 data point"
         },
         {
@@ -50,6 +58,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "Data point is outside 6h window (12 hours ago)"
         },
         {
@@ -65,6 +74,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": -1.5,
+          "invalid": "false",
           "explanation": "1.5 (last) - 3.0 (first) = -1.5"
         },
         {
@@ -82,6 +92,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": 1.5,
+          "invalid": "false",
           "explanation": "2.5 (last non-null) - 1.0 (first non-null) = 1.5"
         },
         {
@@ -97,6 +108,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "No non-null values to compute delta"
         },
         {
@@ -112,13 +124,16 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": 1.0,
+          "invalid": "false",
           "explanation": "Data point exactly at window start (6h ago) is included"
         }
       ]
     },
-
-    "slope": {
-      "description": "Tests for slope(signal, window) operator",
+    {
+      "name": "Slope",
+      "description": "Tests for slope(signal, window) operator - computes linear regression slope",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#slope",
       "tests": [
         {
           "id": "slope_001",
@@ -134,6 +149,7 @@
             "evaluationTime": "2024-01-01T02:00:00Z"
           },
           "expected": {"type": "positive", "approximation": 0.000278},
+          "invalid": "false",
           "explanation": "Linear increase of 1.0 per hour = 1/3600 per second ≈ 0.000278"
         },
         {
@@ -150,6 +166,7 @@
             "evaluationTime": "2024-01-01T02:00:00Z"
           },
           "expected": {"type": "negative", "approximation": -0.000278},
+          "invalid": "false",
           "explanation": "Linear decrease of 1.0 per hour"
         },
         {
@@ -166,6 +183,7 @@
             "evaluationTime": "2024-01-01T02:00:00Z"
           },
           "expected": 0.0,
+          "invalid": "false",
           "explanation": "No change in values = zero slope"
         },
         {
@@ -180,13 +198,16 @@
             "evaluationTime": "2024-01-01T02:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "Cannot compute slope with only 1 data point"
         }
       ]
     },
-
-    "last": {
-      "description": "Tests for last(signal) pointwise operator",
+    {
+      "name": "Last",
+      "description": "Tests for last(signal) pointwise operator - returns most recent value",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#last",
       "tests": [
         {
           "id": "last_001",
@@ -202,6 +223,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": 92.0,
+          "invalid": "false",
           "explanation": "Most recent value is 92.0"
         },
         {
@@ -214,6 +236,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "No data exists for signal"
         },
         {
@@ -229,6 +252,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "Most recent data point has null value"
         },
         {
@@ -244,13 +268,16 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": 70.0,
+          "invalid": "false",
           "explanation": "Data at 18:00 is in future, ignored"
         }
       ]
     },
-
-    "count": {
-      "description": "Tests for count(signal, window) operator",
+    {
+      "name": "Count",
+      "description": "Tests for count(signal, window) operator - counts observations in window",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#count",
       "tests": [
         {
           "id": "count_001",
@@ -266,6 +293,7 @@
             "evaluationTime": "2024-01-02T00:00:00Z"
           },
           "expected": 3,
+          "invalid": "false",
           "explanation": "3 data points in 48h window"
         },
         {
@@ -278,6 +306,7 @@
             "evaluationTime": "2024-01-02T00:00:00Z"
           },
           "expected": 0,
+          "invalid": "false",
           "explanation": "No data points = 0 count"
         },
         {
@@ -294,13 +323,16 @@
             "evaluationTime": "2024-01-02T00:00:00Z"
           },
           "expected": 3,
+          "invalid": "false",
           "explanation": "count() counts observations, including nulls"
         }
       ]
     },
-
-    "min": {
-      "description": "Tests for min(signal, window) operator",
+    {
+      "name": "Min",
+      "description": "Tests for min(signal, window) operator - returns minimum value in window",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#min",
       "tests": [
         {
           "id": "min_001",
@@ -316,6 +348,7 @@
             "evaluationTime": "2024-01-01T01:00:00Z"
           },
           "expected": 88.0,
+          "invalid": "false",
           "explanation": "Minimum value in window is 88.0"
         },
         {
@@ -328,6 +361,7 @@
             "evaluationTime": "2024-01-01T01:00:00Z"
           },
           "expected": null,
+          "invalid": "false",
           "explanation": "No data to find minimum"
         },
         {
@@ -344,13 +378,16 @@
             "evaluationTime": "2024-01-01T01:00:00Z"
           },
           "expected": 88.0,
+          "invalid": "false",
           "explanation": "Null values ignored, min of 88 and 92 is 88"
         }
       ]
     },
-
-    "max": {
-      "description": "Tests for max(signal, window) operator",
+    {
+      "name": "Max",
+      "description": "Tests for max(signal, window) operator - returns maximum value in window",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#max",
       "tests": [
         {
           "id": "max_001",
@@ -366,13 +403,461 @@
             "evaluationTime": "2024-01-02T00:00:00Z"
           },
           "expected": 39.5,
+          "invalid": "false",
           "explanation": "Maximum value in window is 39.5"
+        },
+        {
+          "id": "max_002",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "Temp",
+            "data": [],
+            "expression": "max(Temp, 24h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data to find maximum"
+        },
+        {
+          "id": "max_003",
+          "name": "Ignores null values",
+          "input": {
+            "signal": "Temp",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 37.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": null},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 38.0}
+            ],
+            "expression": "max(Temp, 24h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 38.0,
+          "invalid": "false",
+          "explanation": "Null values ignored, max of 37 and 38 is 38"
         }
       ]
     },
-
-    "exists": {
-      "description": "Tests for exists(signal) pointwise operator",
+    {
+      "name": "First",
+      "description": "Tests for first(signal, window) operator - returns earliest value in window",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#first",
+      "tests": [
+        {
+          "id": "first_001",
+          "name": "Normal case - returns earliest value",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 1.0},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 1.5},
+              {"timestamp": "2024-01-02T00:00:00Z", "value": 2.0}
+            ],
+            "expression": "first(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 1.0,
+          "invalid": "false",
+          "explanation": "First value in window is 1.0"
+        },
+        {
+          "id": "first_002",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "Cr",
+            "data": [],
+            "expression": "first(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data in window"
+        },
+        {
+          "id": "first_003",
+          "name": "First value is null - returns null",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 1.5}
+            ],
+            "expression": "first(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "First data point has null value, passthrough semantics"
+        },
+        {
+          "id": "first_004",
+          "name": "Single data point",
+          "input": {
+            "signal": "Cr",
+            "data": [
+              {"timestamp": "2024-01-01T12:00:00Z", "value": 1.5}
+            ],
+            "expression": "first(Cr, 48h)",
+            "evaluationTime": "2024-01-02T00:00:00Z"
+          },
+          "expected": 1.5,
+          "invalid": "false",
+          "explanation": "Single value is both first and last"
+        }
+      ]
+    },
+    {
+      "name": "SMA",
+      "description": "Tests for sma(signal, window) operator - simple moving average",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#sma",
+      "tests": [
+        {
+          "id": "sma_001",
+          "name": "Normal case - 3 values",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "sma(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 80.0,
+          "invalid": "false",
+          "explanation": "(60 + 80 + 100) / 3 = 80"
+        },
+        {
+          "id": "sma_002",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "HR",
+            "data": [],
+            "expression": "sma(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data to average"
+        },
+        {
+          "id": "sma_003",
+          "name": "Single value - returns that value",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 75.0}
+            ],
+            "expression": "sma(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 75.0,
+          "invalid": "false",
+          "explanation": "Average of single value is itself"
+        },
+        {
+          "id": "sma_004",
+          "name": "Ignores null values",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": null},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "sma(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 80.0,
+          "invalid": "false",
+          "explanation": "(60 + 100) / 2 = 80, null ignored"
+        },
+        {
+          "id": "sma_005",
+          "name": "All nulls returns null",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": null}
+            ],
+            "expression": "sma(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No non-null values to average"
+        }
+      ]
+    },
+    {
+      "name": "EMA",
+      "description": "Tests for ema(signal, window) operator - exponential moving average",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#ema",
+      "tests": [
+        {
+          "id": "ema_001",
+          "name": "Single value - returns that value",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 75.0}
+            ],
+            "expression": "ema(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 75.0,
+          "invalid": "false",
+          "explanation": "EMA of single value is itself"
+        },
+        {
+          "id": "ema_002",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "HR",
+            "data": [],
+            "expression": "ema(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data for EMA"
+        },
+        {
+          "id": "ema_003",
+          "name": "Two values - weighted average",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "ema(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": {"type": "range", "min": 70.0, "max": 90.0},
+          "invalid": "false",
+          "explanation": "EMA with alpha=2/(2+1)=0.667: EMA = 0.667*100 + 0.333*60 ≈ 86.7"
+        },
+        {
+          "id": "ema_004",
+          "name": "All nulls returns null",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": null},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": null}
+            ],
+            "expression": "ema(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No non-null values for EMA"
+        }
+      ]
+    },
+    {
+      "name": "Std",
+      "description": "Tests for std(signal, window) operator - sample standard deviation",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#std",
+      "tests": [
+        {
+          "id": "std_001",
+          "name": "Normal case - 3 values",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "std(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 20.0,
+          "invalid": "false",
+          "explanation": "Sample stddev of [60,80,100] with mean=80: sqrt(((60-80)^2+(80-80)^2+(100-80)^2)/2) = sqrt(400) = 20"
+        },
+        {
+          "id": "std_002",
+          "name": "Single value returns null",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 75.0}
+            ],
+            "expression": "std(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "Sample stddev requires at least 2 values"
+        },
+        {
+          "id": "std_003",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "HR",
+            "data": [],
+            "expression": "std(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data for stddev"
+        },
+        {
+          "id": "std_004",
+          "name": "All same values returns zero",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 80.0}
+            ],
+            "expression": "std(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 0.0,
+          "invalid": "false",
+          "explanation": "No variance = zero stddev"
+        },
+        {
+          "id": "std_005",
+          "name": "Stddev alias works",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "stddev(HR, 1h)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": {"type": "range", "min": 28.0, "max": 29.0},
+          "invalid": "false",
+          "explanation": "stddev is alias for std, sqrt((40^2)/1) ≈ 28.28"
+        }
+      ]
+    },
+    {
+      "name": "Percentile",
+      "description": "Tests for percentile(signal, window, p) operator - compute percentile value",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#percentile",
+      "tests": [
+        {
+          "id": "pct_001",
+          "name": "Median (50th percentile)",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:20:00Z", "value": 70.0},
+              {"timestamp": "2024-01-01T00:40:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 90.0}
+            ],
+            "expression": "percentile(HR, 1h, 50)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 75.0,
+          "invalid": "false",
+          "explanation": "Median of [60,70,80,90] = 75 (interpolated)"
+        },
+        {
+          "id": "pct_002",
+          "name": "25th percentile",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:20:00Z", "value": 70.0},
+              {"timestamp": "2024-01-01T00:40:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 90.0}
+            ],
+            "expression": "percentile(HR, 1h, 25)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 67.5,
+          "invalid": "false",
+          "explanation": "25th percentile of [60,70,80,90] = 67.5 (interpolated)"
+        },
+        {
+          "id": "pct_003",
+          "name": "Empty window returns null",
+          "input": {
+            "signal": "HR",
+            "data": [],
+            "expression": "percentile(HR, 1h, 50)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": null,
+          "invalid": "false",
+          "explanation": "No data for percentile"
+        },
+        {
+          "id": "pct_004",
+          "name": "Single value - returns that value",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 75.0}
+            ],
+            "expression": "percentile(HR, 1h, 50)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 75.0,
+          "invalid": "false",
+          "explanation": "Any percentile of single value is itself"
+        },
+        {
+          "id": "pct_005",
+          "name": "0th percentile - minimum",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "percentile(HR, 1h, 0)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 60.0,
+          "invalid": "false",
+          "explanation": "0th percentile = minimum value"
+        },
+        {
+          "id": "pct_006",
+          "name": "100th percentile - maximum",
+          "input": {
+            "signal": "HR",
+            "data": [
+              {"timestamp": "2024-01-01T00:00:00Z", "value": 60.0},
+              {"timestamp": "2024-01-01T00:30:00Z", "value": 80.0},
+              {"timestamp": "2024-01-01T01:00:00Z", "value": 100.0}
+            ],
+            "expression": "percentile(HR, 1h, 100)",
+            "evaluationTime": "2024-01-01T01:00:00Z"
+          },
+          "expected": 100.0,
+          "invalid": "false",
+          "explanation": "100th percentile = maximum value"
+        }
+      ]
+    },
+    {
+      "name": "Exists",
+      "description": "Tests for exists(signal) pointwise operator - checks if data exists",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#exists",
       "tests": [
         {
           "id": "exists_001",
@@ -386,6 +871,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "Data exists for signal"
         },
         {
@@ -398,6 +884,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": false,
+          "invalid": "false",
           "explanation": "No data exists for signal"
         },
         {
@@ -412,13 +899,16 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "Data point exists even though value is null"
         }
       ]
     },
-
-    "missing": {
-      "description": "Tests for missing(signal) pointwise operator",
+    {
+      "name": "Missing",
+      "description": "Tests for missing(signal) pointwise operator - checks if data is missing",
+      "context": "operator",
+      "reference": "https://psdl-lang.org/spec/v0.3/operators#missing",
       "tests": [
         {
           "id": "missing_001",
@@ -430,6 +920,7 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "No data = missing"
         },
         {
@@ -444,13 +935,16 @@
             "evaluationTime": "2024-01-01T12:00:00Z"
           },
           "expected": false,
+          "invalid": "false",
           "explanation": "Data exists = not missing"
         }
       ]
     },
-
-    "comparison": {
-      "description": "Tests for comparison operators",
+    {
+      "name": "Comparison",
+      "description": "Tests for comparison operators (LOGIC context only in v0.3)",
+      "context": "logic",
+      "reference": "https://psdl-lang.org/spec/v0.3/grammar#comparison",
       "tests": [
         {
           "id": "cmp_001",
@@ -465,6 +959,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "delta = 0.5, 0.5 > 0.3 is true"
         },
         {
@@ -480,6 +975,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": false,
+          "invalid": "false",
           "explanation": "delta = 0.2, 0.2 > 0.3 is false"
         },
         {
@@ -492,6 +988,7 @@
             "evaluationTime": "2024-01-01T06:00:00Z"
           },
           "expected": false,
+          "invalid": "false",
           "explanation": "delta returns null, null > 0.3 is false"
         },
         {
@@ -506,6 +1003,7 @@
             "evaluationTime": "2024-01-01T00:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "88 < 90 is true"
         },
         {
@@ -521,13 +1019,16 @@
             "evaluationTime": "2024-01-02T00:00:00Z"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "count = 2, 2 >= 2 is true"
         }
       ]
     },
-
-    "booleanLogic": {
+    {
+      "name": "BooleanLogic",
       "description": "Tests for AND, OR, NOT operators",
+      "context": "logic",
+      "reference": "https://psdl-lang.org/spec/v0.3/grammar#boolean-logic",
       "tests": [
         {
           "id": "bool_001",
@@ -539,7 +1040,8 @@
             },
             "expression": "cr_high AND hr_high"
           },
-          "expected": true
+          "expected": true,
+          "invalid": "false"
         },
         {
           "id": "bool_002",
@@ -551,7 +1053,8 @@
             },
             "expression": "cr_high AND hr_high"
           },
-          "expected": false
+          "expected": false,
+          "invalid": "false"
         },
         {
           "id": "bool_003",
@@ -563,7 +1066,8 @@
             },
             "expression": "cr_high OR hr_high"
           },
-          "expected": true
+          "expected": true,
+          "invalid": "false"
         },
         {
           "id": "bool_004",
@@ -575,7 +1079,8 @@
             },
             "expression": "cr_high OR hr_high"
           },
-          "expected": false
+          "expected": false,
+          "invalid": "false"
         },
         {
           "id": "bool_005",
@@ -586,7 +1091,8 @@
             },
             "expression": "NOT stable"
           },
-          "expected": false
+          "expected": false,
+          "invalid": "false"
         },
         {
           "id": "bool_006",
@@ -599,6 +1105,7 @@
             "expression": "NOT a AND b"
           },
           "expected": false,
+          "invalid": "false",
           "explanation": "Parsed as (NOT a) AND b = false AND false = false"
         },
         {
@@ -613,6 +1120,7 @@
             "expression": "a OR b AND c"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "Parsed as a OR (b AND c) = true OR false = true"
         },
         {
@@ -627,20 +1135,10 @@
             "expression": "(a OR b) AND c"
           },
           "expected": true,
+          "invalid": "false",
           "explanation": "(false OR true) AND true = true AND true = true"
         }
       ]
     }
-  },
-
-  "metadata": {
-    "totalTests": 42,
-    "categories": ["delta", "slope", "last", "count", "min", "max", "exists", "missing", "comparison", "booleanLogic"],
-    "conformanceLevels": {
-      "level1": "Document validation (JSON Schema)",
-      "level2": "Expression parsing (grammar)",
-      "level3": "Semantic validation (signal references)",
-      "level4": "Operator evaluation (this test suite)"
-    }
-  }
+  ]
 }

@@ -27,20 +27,25 @@ from .compiler import (  # noqa: F401
     OperatorType,
     StreamingCompiler,
 )
-from .config import CheckpointMode, StreamingConfig
+from .config import CheckpointMode, LateDataPolicy, StreamingConfig
 from .models import ClinicalEvent, TrendResult
 
 logger = logging.getLogger(__name__)
+
+# Late data output tag (for side output)
+LATE_DATA_TAG = "late-clinical-events"
 
 # Try to import PyFlink - graceful fallback if not installed
 try:
     from pyflink.common import Types, WatermarkStrategy
     from pyflink.common.serialization import SimpleStringSchema
     from pyflink.common.time import Time
+    from pyflink.common.typeinfo import TypeInformation
     from pyflink.common.watermark_strategy import TimestampAssigner
     from pyflink.datastream import (
         DataStream,
         KeyedProcessFunction,
+        OutputTag,
         RuntimeContext,
         StreamExecutionEnvironment,
     )
@@ -61,6 +66,8 @@ except ImportError:
     TimestampAssigner = object
     DataStream = Any
     StreamExecutionEnvironment = Any
+    OutputTag = Any
+    TypeInformation = Any
     Types = None
     WatermarkStrategy = None
     ValueStateDescriptor = None
@@ -99,19 +106,43 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
 
     Handles both window-based operators (delta, slope, etc.) and
     stateful operators (last, ema) using Flink's keyed state.
+
+    Supports late data handling via side output when configured.
     """
 
-    def __init__(self, compiled_trend: "CompiledTrend", window_ms: int):
+    # Output tag for late data side output
+    LATE_DATA_OUTPUT_TAG = None
+
+    @classmethod
+    def get_late_data_output_tag(cls) -> "OutputTag":
+        """Get the OutputTag for late data side output."""
+        if cls.LATE_DATA_OUTPUT_TAG is None and PYFLINK_AVAILABLE:
+            cls.LATE_DATA_OUTPUT_TAG = OutputTag(LATE_DATA_TAG, Types.STRING())
+        return cls.LATE_DATA_OUTPUT_TAG
+
+    def __init__(
+        self,
+        compiled_trend: "CompiledTrend",
+        window_ms: int,
+        late_data_policy: LateDataPolicy = LateDataPolicy.DROP,
+        allowed_lateness_ms: int = 0,
+    ):
         """
         Initialize trend process function.
 
         Args:
             compiled_trend: Compiled PSDL trend
             window_ms: Window size in milliseconds
+            late_data_policy: How to handle late data (DROP, ALLOW, SIDE_OUTPUT)
+            allowed_lateness_ms: Additional lateness allowed beyond watermark
         """
         self.compiled_trend = compiled_trend
         self.window_ms = window_ms
         self.trend_name = compiled_trend.name
+        self.late_data_policy = late_data_policy
+        self.allowed_lateness_ms = allowed_lateness_ms
+        self._late_data_count = 0
+        self._processed_count = 0
 
     def open(self, runtime_context: RuntimeContext):
         """Initialize Flink state."""
@@ -123,11 +154,89 @@ class FlinkTrendProcessFunction(KeyedProcessFunction if PYFLINK_AVAILABLE else o
         self.ema_state = runtime_context.get_state(ValueStateDescriptor("ema", Types.FLOAT()))
         # State for last value
         self.last_state = runtime_context.get_state(ValueStateDescriptor("last", Types.FLOAT()))
+        # State to track current watermark (for late data detection)
+        self.watermark_state = runtime_context.get_state(
+            ValueStateDescriptor("watermark", Types.LONG())
+        )
+
+    def _is_late_data(self, event_time_ms: int, ctx: Any) -> bool:
+        """
+        Check if the event is considered late based on current watermark.
+
+        Args:
+            event_time_ms: Event timestamp in milliseconds
+            ctx: Process function context
+
+        Returns:
+            True if the event is late (arrived after watermark + allowed_lateness)
+        """
+        # Get current watermark from timer service
+        current_watermark = ctx.timer_service().current_watermark()
+
+        # Event is late if its timestamp is before (watermark - allowed_lateness)
+        # Note: Flink watermark represents "no events earlier than this will arrive"
+        deadline = current_watermark - self.allowed_lateness_ms
+        return event_time_ms < deadline
+
+    def _handle_late_data(self, event: ClinicalEvent, ctx: Any) -> bool:
+        """
+        Handle late data according to configured policy.
+
+        Args:
+            event: The late clinical event
+            ctx: Process function context
+
+        Returns:
+            True if processing should continue, False if event should be skipped
+        """
+        self._late_data_count += 1
+
+        if self.late_data_policy == LateDataPolicy.DROP:
+            logger.debug(
+                f"Dropping late event for trend {self.trend_name}: "
+                f"patient={event.patient_id}, time={event.timestamp}"
+            )
+            return False
+
+        elif self.late_data_policy == LateDataPolicy.SIDE_OUTPUT:
+            # Emit to side output for late data handling
+            event_json = json.dumps(
+                {
+                    "patient_id": event.patient_id,
+                    "timestamp": event.timestamp.isoformat(),
+                    "signal_type": event.signal_type,
+                    "value": event.value,
+                    "unit": event.unit or "",
+                    "source": event.source or "",
+                    "trend_name": self.trend_name,
+                    "late_data": True,
+                    "late_count": self._late_data_count,
+                }
+            )
+            ctx.output(self.get_late_data_output_tag(), event_json)
+            logger.debug(
+                f"Emitting late event to side output for trend {self.trend_name}: "
+                f"patient={event.patient_id}"
+            )
+            return False
+
+        else:  # LateDataPolicy.ALLOW
+            logger.debug(
+                f"Allowing late event for trend {self.trend_name}: "
+                f"patient={event.patient_id}, time={event.timestamp}"
+            )
+            return True
 
     def process_element(self, value: ClinicalEvent, ctx: Any):
         """Process incoming clinical event."""
         patient_id = ctx.get_current_key()
         current_time_ms = int(value.timestamp.timestamp() * 1000)
+        self._processed_count += 1
+
+        # Check for late data
+        if self._is_late_data(current_time_ms, ctx):
+            if not self._handle_late_data(value, ctx):
+                return  # Skip processing for dropped/side-output late data
 
         if self.compiled_trend.operator_type == OperatorType.PROCESS:
             # Stateful processing (last, ema)
@@ -453,6 +562,8 @@ class FlinkRuntime:
 
         # Create trend streams for each signal
         trend_streams = {}
+        late_data_streams = {}  # Collect late data side outputs
+
         for trend_name, trend in compiled.trends.items():
             signal_name = trend.signal
 
@@ -462,12 +573,24 @@ class FlinkRuntime:
             # Key by patient
             keyed_stream = signal_stream.key_by(lambda e: e.patient_id)
 
-            # Apply trend operator
+            # Apply trend operator with late data handling
             window_ms = trend.window_spec.size_ms if trend.window_spec else 3600000
-            trend_fn = FlinkTrendProcessFunction(trend, window_ms)
+            trend_fn = FlinkTrendProcessFunction(
+                compiled_trend=trend,
+                window_ms=window_ms,
+                late_data_policy=compiled.config.late_data_policy,
+                allowed_lateness_ms=compiled.config.allowed_lateness_ms,
+            )
 
             trend_stream = keyed_stream.process(trend_fn)
             trend_streams[trend_name] = trend_stream
+
+            # Collect late data side output if policy is SIDE_OUTPUT
+            if compiled.config.late_data_policy == LateDataPolicy.SIDE_OUTPUT:
+                late_output = trend_stream.get_side_output(
+                    FlinkTrendProcessFunction.get_late_data_output_tag()
+                )
+                late_data_streams[trend_name] = late_output
 
         # Union all trend streams and evaluate logic
         if trend_streams:
@@ -487,6 +610,23 @@ class FlinkRuntime:
 
                 # Add sink for logic results
                 logic_stream.print()  # For debugging; replace with Kafka sink in production
+
+        # Handle late data side outputs (if any)
+        if late_data_streams:
+            # Union all late data streams
+            all_late_data = None
+            for stream in late_data_streams.values():
+                if all_late_data is None:
+                    all_late_data = stream
+                else:
+                    all_late_data = all_late_data.union(stream)
+
+            if all_late_data:
+                # For debugging; in production, this would go to a separate Kafka topic
+                all_late_data.print().name("late-data-sink")
+                logger.info(
+                    f"Late data side output configured for {len(late_data_streams)} trend streams"
+                )
 
     def _create_kafka_source(
         self, kafka_config: Dict[str, str], compiled: CompiledScenario
@@ -522,6 +662,39 @@ def create_kafka_sink(
 
     Returns:
         KafkaSink configured for PSDL output
+    """
+    if not PYFLINK_AVAILABLE:
+        raise RuntimeError("PyFlink not installed")
+
+    return (
+        KafkaSink.builder()
+        .set_bootstrap_servers(bootstrap_servers)
+        .set_record_serializer(
+            KafkaRecordSerializationSchema.builder()
+            .set_topic(topic)
+            .set_value_serialization_schema(SimpleStringSchema())
+            .build()
+        )
+        .build()
+    )
+
+
+def create_late_data_kafka_sink(
+    bootstrap_servers: str,
+    topic: str = "psdl-late-data",
+) -> "KafkaSink":
+    """
+    Create Kafka sink for late clinical events.
+
+    Late data events are clinical events that arrived after the watermark deadline.
+    These can be processed separately or used for monitoring/alerting.
+
+    Args:
+        bootstrap_servers: Kafka bootstrap servers
+        topic: Output topic name (default: psdl-late-data)
+
+    Returns:
+        KafkaSink configured for late data output
     """
     if not PYFLINK_AVAILABLE:
         raise RuntimeError("PyFlink not installed")

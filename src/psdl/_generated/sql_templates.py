@@ -1,6 +1,6 @@
 """
 Auto-generated SQL templates from spec/operators.yaml
-Generated: 2025-12-11T18:18:15.807671
+Generated: 2025-12-15T12:01:47.799507
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --sql
 """
@@ -31,7 +31,6 @@ POSTGRESQL_TEMPLATES: Dict[str, SQLTemplate] = {
             "window_seconds",
         ],
         "cte_template": """-- Delta computation using CTEs
--- Requires: window_seconds, reference_time, table, filter_cond, value_col, datetime_col
 {trend_name}_first AS (
     SELECT person_id, {value_col} as value,
            ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY {datetime_col} ASC) as rn
@@ -299,7 +298,7 @@ POSTGRESQL_POINTWISE_TEMPLATES: Dict[str, SQLTemplate] = {
             "filter_cond",
             "datetime_col",
         ],
-        "cte_template": """-- missing is computed as NOT EXISTS in the final query
+        "cte_template": """-- missing is computed as NOT EXISTS
 -- For patients with no data, use LEFT JOIN and check for NULL
 {trend_name} AS (
     SELECT p.person_id,

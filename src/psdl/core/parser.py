@@ -16,7 +16,13 @@ Version 0.3.0 (RFC-0005) - STRICT MODE:
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
+from psdl.expression_parser import (
+    PSDLExpressionError,
+    extract_operators,
+    extract_terms,
+    parse_logic_expression,
+    parse_trend_expression,
+)
 
 from .ir import (
     AuditBlock,
@@ -82,10 +88,13 @@ class PSDLParser:
         self.errors = []
         self.warnings = []
 
+        # Use normalized YAML parsing for deterministic type handling
+        from psdl.core.normalize import PSDLYAMLError, normalize_yaml
+
         try:
-            data = yaml.safe_load(content)
-        except yaml.YAMLError as e:
-            raise PSDLParseError(f"Invalid YAML: {e}")
+            data = normalize_yaml(content)
+        except PSDLYAMLError as e:
+            raise PSDLParseError(str(e))
 
         if not isinstance(data, dict):
             raise PSDLParseError("PSDL document must be a YAML mapping")
@@ -302,39 +311,53 @@ class PSDLParser:
         return WindowSpec(value=int(match.group(1)), unit=match.group(2))
 
     def _parse_trend_expr(self, name: str, expr: str) -> TrendExpr:
-        """Parse a trend expression like 'delta(Cr, 6h) > 0.3'."""
+        """
+        Parse a trend expression using Lark grammar.
+
+        v0.3 STRICT: Trends produce NUMERIC values only.
+        - Simple: delta(Cr, 6h), last(HR), sma(Temp, 1h)
+        - Arithmetic: last(Cr) / last(Cr_baseline), delta(Cr, 48h) * 2
+        - NO comparisons in trends (use Logic layer for comparisons)
+        """
+        from psdl._generated.ast_types import ArithExpr, TrendExpression
+
         expr = expr.strip()
 
-        match = self.TREND_PATTERN.match(expr)
-        if not match:
-            # Try simpler pattern without comparison (for boolean trends)
-            ops = r"delta|slope|ema|sma|min|max|count|last|first|std|stddev|percentile"
-            simple_pattern = re.compile(rf"^({ops})\s*\(\s*(\w+)(?:\s*,\s*(\d+[smhd]))?\s*\)$")
-            simple_match = simple_pattern.match(expr)
-            if simple_match:
-                operator, signal, window_str = simple_match.groups()
-                window = self._parse_window(window_str) if window_str else None
-                return TrendExpr(
-                    name=name,
-                    operator=operator,
-                    signal=signal,
-                    window=window,
-                    raw_expr=expr,
-                )
-            raise PSDLParseError(f"Invalid trend expression: '{expr}'")
+        try:
+            ast = parse_trend_expression(expr)
+        except PSDLExpressionError as e:
+            raise PSDLParseError(f"Invalid trend expression: '{expr}' - {e}")
 
-        operator, signal, window_str, comparator, threshold = match.groups()
-        window = self._parse_window(window_str) if window_str else None
+        # Handle different AST types
+        if isinstance(ast, ArithExpr):
+            # Compound arithmetic expression - store full AST
+            return TrendExpr(
+                name=name,
+                operator="arith",
+                signal="",  # Multiple signals in compound expr
+                window=None,
+                raw_expr=expr,
+                ast=ast,
+            )
+        elif isinstance(ast, TrendExpression):
+            # v0.3: Simple temporal expression (numeric only, no comparison)
+            temporal = ast.temporal
+            window = temporal.window
 
-        return TrendExpr(
-            name=name,
-            operator=operator,
-            signal=signal,
-            window=window,
-            comparator=comparator,
-            threshold=float(threshold),
-            raw_expr=expr,
-        )
+            return TrendExpr(
+                name=name,
+                operator=temporal.operator,
+                signal=temporal.signal,
+                window=window,
+                raw_expr=expr,
+                ast=ast,
+                # v0.3: No comparisons in trends - these are always None
+                comparator=None,
+                threshold=None,
+            )
+        else:
+            # Fallback for unexpected types
+            raise PSDLParseError(f"Unexpected AST type for trend expression: {type(ast)}")
 
     def _parse_trends(self, data: dict) -> Dict[str, TrendExpr]:
         """Parse trend definitions."""
@@ -388,15 +411,17 @@ class PSDLParser:
         for name, spec in data.items():
             if isinstance(spec, str):
                 # Shorthand: just the expression (v0.3: treated as 'when')
-                terms, operators = self._parse_logic_expr(name, spec)
-                logic[name] = LogicExpr(name=name, expr=spec, terms=terms, operators=operators)
+                ast, terms, operators = self._parse_logic_with_ast(name, spec)
+                logic[name] = LogicExpr(
+                    name=name, expr=spec, terms=terms, operators=operators, ast=ast
+                )
             elif isinstance(spec, dict):
                 # v0.3 strict: only 'when' is accepted
                 expr = spec.get("when")
                 if not expr:
                     raise PSDLParseError(f"Logic '{name}' missing 'when'")
 
-                terms, operators = self._parse_logic_expr(name, expr)
+                ast, terms, operators = self._parse_logic_with_ast(name, expr)
 
                 severity = None
                 if "severity" in spec:
@@ -414,11 +439,31 @@ class PSDLParser:
                     operators=operators,
                     severity=severity,
                     description=spec.get("description"),
+                    ast=ast,
                 )
             else:
                 raise PSDLParseError(f"Invalid logic specification for '{name}'")
 
         return logic
+
+    def _parse_logic_with_ast(self, name: str, expr: str):
+        """
+        Parse logic expression using Lark parser for full AST support.
+
+        Returns (ast, terms, operators) tuple.
+        Falls back to regex parsing if Lark parser fails (for complex expressions).
+        """
+        ast = None
+        try:
+            # Try Lark parser first for full AST
+            ast = parse_logic_expression(expr)
+            terms = extract_terms(ast)
+            operators = extract_operators(ast)
+        except PSDLExpressionError:
+            # Fall back to regex parsing for expressions Lark can't handle
+            # (e.g., inline temporal operators with complex comparisons)
+            terms, operators = self._parse_logic_expr(name, expr)
+        return ast, terms, operators
 
 
 def parse_scenario(source: str) -> PSDLScenario:

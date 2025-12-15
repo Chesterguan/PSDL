@@ -1,0 +1,372 @@
+# PSDL Operator Conformance Tests
+# Generated tests validate parser behavior against spec
+#
+# Usage: python tools/codegen.py --conformance
+# Output: src/psdl/_generated/conformance_tests.py
+
+version: "0.3.0"
+
+# =============================================================================
+# WINDOWED OPERATORS
+# =============================================================================
+
+windowed_operators:
+  delta:
+    description: "Change in signal value over time window"
+    valid_parse:
+      - expr: "delta(Cr, 6h)"
+        expected:
+          operator: "delta"
+          signal: "Cr"
+          window_value: 6
+          window_unit: "h"
+      - expr: "delta(HR, 30m)"
+        expected:
+          operator: "delta"
+          signal: "HR"
+          window_value: 30
+          window_unit: "m"
+      - expr: "delta(Temp, 1d)"
+        expected:
+          operator: "delta"
+          signal: "Temp"
+          window_value: 1
+          window_unit: "d"
+
+    invalid_parse:
+      - expr: "delta(Cr)"
+        reason: "Missing window argument"
+      - expr: "delta()"
+        reason: "Missing signal and window"
+      - expr: "delta Cr, 6h"
+        reason: "Missing parentheses"
+
+    # v0.3: Comparisons NOT allowed in trend expressions
+    trend_comparison_rejected:
+      - expr: "delta(Cr, 6h) > 0"
+        reason: "Comparison operator not allowed in trend (v0.3)"
+      - expr: "delta(Cr, 6h) >= 0.3"
+        reason: "Comparison operator not allowed in trend (v0.3)"
+
+    return_type: numeric
+
+  slope:
+    description: "Linear regression slope over window"
+    valid_parse:
+      - expr: "slope(Lact, 3h)"
+        expected:
+          operator: "slope"
+          signal: "Lact"
+          window_value: 3
+          window_unit: "h"
+      - expr: "slope(Cr, 24h)"
+        expected:
+          operator: "slope"
+          signal: "Cr"
+          window_value: 24
+          window_unit: "h"
+
+    invalid_parse:
+      - expr: "slope(Lact)"
+        reason: "Missing window argument"
+
+    return_type: numeric
+
+  ema:
+    description: "Exponential moving average"
+    valid_parse:
+      - expr: "ema(HR, 1h)"
+        expected:
+          operator: "ema"
+          signal: "HR"
+          window_value: 1
+          window_unit: "h"
+
+    return_type: numeric
+
+  sma:
+    description: "Simple moving average"
+    valid_parse:
+      - expr: "sma(SpO2, 30m)"
+        expected:
+          operator: "sma"
+          signal: "SpO2"
+          window_value: 30
+          window_unit: "m"
+
+    return_type: numeric
+
+  min:
+    description: "Minimum value in window"
+    valid_parse:
+      - expr: "min(BP_sys, 6h)"
+        expected:
+          operator: "min"
+          signal: "BP_sys"
+          window_value: 6
+          window_unit: "h"
+
+    return_type: numeric
+
+  max:
+    description: "Maximum value in window"
+    valid_parse:
+      - expr: "max(Temp, 24h)"
+        expected:
+          operator: "max"
+          signal: "Temp"
+          window_value: 24
+          window_unit: "h"
+
+    return_type: numeric
+
+  count:
+    description: "Number of observations in window"
+    valid_parse:
+      - expr: "count(Cr, 48h)"
+        expected:
+          operator: "count"
+          signal: "Cr"
+          window_value: 48
+          window_unit: "h"
+
+    return_type: numeric
+
+  first:
+    description: "First value in window"
+    valid_parse:
+      - expr: "first(Cr, 24h)"
+        expected:
+          operator: "first"
+          signal: "Cr"
+          window_value: 24
+          window_unit: "h"
+
+    return_type: numeric
+
+  std:
+    description: "Standard deviation in window"
+    valid_parse:
+      - expr: "std(HR, 1h)"
+        expected:
+          operator: "std"
+          signal: "HR"
+          window_value: 1
+          window_unit: "h"
+
+    return_type: numeric
+
+  stddev:
+    description: "Standard deviation (alias for std)"
+    valid_parse:
+      - expr: "stddev(HR, 1h)"
+        expected:
+          operator: "stddev"
+          signal: "HR"
+          window_value: 1
+          window_unit: "h"
+
+    return_type: numeric
+
+  percentile:
+    description: "Percentile value in window (requires percentile argument)"
+    valid_parse:
+      - expr: "percentile(HR, 1h, 95)"
+        expected:
+          operator: "percentile"
+          signal: "HR"
+          window_value: 1
+          window_unit: "h"
+      - expr: "percentile(BP_sys, 24h, 50)"
+        expected:
+          operator: "percentile"
+          signal: "BP_sys"
+          window_value: 24
+          window_unit: "h"
+
+    invalid_parse:
+      - expr: "percentile(HR, 1h)"
+        reason: "Missing percentile argument"
+      - expr: "percentile(HR)"
+        reason: "Missing window and percentile arguments"
+
+    return_type: numeric
+
+# =============================================================================
+# POINTWISE OPERATORS
+# =============================================================================
+
+pointwise_operators:
+  last:
+    description: "Most recent signal value"
+    valid_parse:
+      - expr: "last(HR)"
+        expected:
+          operator: "last"
+          signal: "HR"
+          window: null
+      - expr: "last(Cr)"
+        expected:
+          operator: "last"
+          signal: "Cr"
+          window: null
+
+    invalid_parse:
+      - expr: "last(HR, 6h)"
+        reason: "Pointwise operator does not take window"
+      - expr: "last()"
+        reason: "Missing signal argument"
+
+    return_type: numeric
+
+  exists:
+    description: "Check if signal has any value"
+    valid_parse:
+      - expr: "exists(Cr)"
+        expected:
+          operator: "exists"
+          signal: "Cr"
+          window: null
+
+    return_type: boolean
+
+  missing:
+    description: "Check if signal has no value"
+    valid_parse:
+      - expr: "missing(Cr)"
+        expected:
+          operator: "missing"
+          signal: "Cr"
+          window: null
+
+    return_type: boolean
+
+# =============================================================================
+# ARITHMETIC EXPRESSIONS
+# =============================================================================
+
+arithmetic:
+  valid_parse:
+    - expr: "last(Cr) / last(Cr_baseline)"
+      description: "Division of two trends"
+      expected_type: ArithExpr
+
+    - expr: "delta(Cr, 48h) + delta(Cr, 24h)"
+      description: "Addition of two trends"
+      expected_type: ArithExpr
+
+    - expr: "max(HR, 1h) - min(HR, 1h)"
+      description: "Subtraction (HR range)"
+      expected_type: ArithExpr
+
+    - expr: "delta(Cr, 6h) * 2"
+      description: "Multiplication with literal"
+      expected_type: ArithExpr
+
+  invalid_parse:
+    - expr: "last(Cr) /"
+      reason: "Incomplete expression"
+    - expr: "/ last(Cr)"
+      reason: "Missing left operand"
+
+# =============================================================================
+# LOGIC EXPRESSIONS
+# =============================================================================
+
+logic:
+  valid_parse:
+    - expr: "aki_stage1"
+      description: "Simple term reference"
+      expected_type: TermRef
+      expected_terms: ["aki_stage1"]
+
+    - expr: "aki_stage1 AND aki_stage2"
+      description: "AND expression"
+      expected_type: AndExpr
+      expected_terms: ["aki_stage1", "aki_stage2"]
+      expected_operators: ["AND"]
+
+    - expr: "aki_stage1 OR aki_stage2"
+      description: "OR expression"
+      expected_type: OrExpr
+      expected_terms: ["aki_stage1", "aki_stage2"]
+      expected_operators: ["OR"]
+
+    - expr: "NOT recovering"
+      description: "NOT expression"
+      expected_type: NotExpr
+      expected_terms: ["recovering"]
+      expected_operators: ["NOT"]
+
+    - expr: "aki_stage1 AND NOT recovering"
+      description: "Combined AND and NOT"
+      expected_terms: ["aki_stage1", "recovering"]
+      expected_operators: ["AND", "NOT"]
+
+    - expr: "(fever OR hypothermia) AND tachycardia"
+      description: "Parenthesized expression"
+      expected_terms: ["fever", "hypothermia", "tachycardia"]
+
+    # Case insensitive boolean operators
+    - expr: "a and b"
+      description: "Lowercase AND"
+      expected_type: AndExpr
+
+    - expr: "a or b"
+      description: "Lowercase OR"
+      expected_type: OrExpr
+
+    - expr: "not a"
+      description: "Lowercase NOT"
+      expected_type: NotExpr
+
+  # v0.3: Comparisons ARE allowed in logic expressions
+  comparison_in_logic:
+    - expr: "cr_delta >= 0.3"
+      description: "Comparison with term reference"
+      expected_type: ComparisonExpr
+      expected_operator: ">="
+
+    - expr: "cr_ratio >= 1.5"
+      description: "Simple comparison with term"
+      expected_type: ComparisonExpr
+      expected_operator: ">="
+
+    - expr: "cr_ratio >= 1.5 AND cr_ratio < 2.0"
+      description: "Range check with two comparisons"
+      expected_type: AndExpr
+      expected_terms: ["cr_ratio"]
+
+  invalid_parse:
+    - expr: "aki_stage1 &&"
+      reason: "Invalid operator (use AND not &&)"
+
+    - expr: "aki_stage1 ||"
+      reason: "Invalid operator (use OR not ||)"
+
+    - expr: "aki_stage1 AND"
+      reason: "Incomplete expression"
+
+# =============================================================================
+# PRECEDENCE TESTS
+# =============================================================================
+
+precedence:
+  description: "Verify correct operator precedence: NOT > AND > OR"
+
+  tests:
+    - expr: "a OR b AND c"
+      description: "AND binds tighter than OR"
+      equivalent: "a OR (b AND c)"
+
+    - expr: "NOT a AND b"
+      description: "NOT binds tighter than AND"
+      equivalent: "(NOT a) AND b"
+
+    - expr: "NOT a OR b"
+      description: "NOT binds tighter than OR"
+      equivalent: "(NOT a) OR b"
+
+    - expr: "a AND b OR c AND d"
+      description: "Multiple AND/OR"
+      equivalent: "(a AND b) OR (c AND d)"

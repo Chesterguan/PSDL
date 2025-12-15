@@ -1,0 +1,130 @@
+"""
+Auto-generated AST types from spec/ast-nodes.yaml
+Generated: {{ timestamp }}
+
+DO NOT EDIT - Regenerate with: python tools/codegen.py --ast
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Optional, Union, TYPE_CHECKING
+
+
+# =============================================================================
+# SPEC VERSION
+# =============================================================================
+
+AST_SPEC_VERSION = "{{ version }}"
+
+
+# =============================================================================
+# ENUMS (Primitive Types)
+# =============================================================================
+
+{% for name, enum in primitives.items() %}
+class {{ name }}(str, Enum):
+    """{{ enum.description }}"""
+{% for value in enum.enum_values %}
+{% if value == '<' %}
+    LT = "<"
+{% elif value == '<=' %}
+    LE = "<="
+{% elif value == '>' %}
+    GT = ">"
+{% elif value == '>=' %}
+    GE = ">="
+{% elif value == '==' %}
+    EQ = "=="
+{% elif value == '!=' %}
+    NE = "!="
+{% elif value == '+' %}
+    ADD = "+"
+{% elif value == '-' %}
+    SUB = "-"
+{% elif value == '*' %}
+    MUL = "*"
+{% elif value == '/' %}
+    DIV = "/"
+{% else %}
+    {{ value | upper }} = "{{ value }}"
+{% endif %}
+{% endfor %}
+
+
+{% endfor %}
+# =============================================================================
+# TYPE ALIASES (Forward References)
+# =============================================================================
+
+# These are string forward references for recursive types
+# Actual type checking is handled by TYPE_CHECKING block below
+
+{% for name, alias in type_aliases.items() %}
+# {{ alias.description }}
+{% endfor %}
+
+# =============================================================================
+# AST NODE DATACLASSES
+# =============================================================================
+
+{% for name, node in nodes.items() %}
+@dataclass
+class {{ name }}:
+    """
+    {{ node.description }}
+{% if node.deprecated is defined and node.deprecated %}
+
+    DEPRECATED: {{ node.deprecation_note }}
+{% endif %}
+    """
+{% for field_name, field in node.fields.items() %}
+{% if field.required %}
+{% set field_type = field.type | replace('NumericNode | TermRef', 'Union["TemporalCall", "ArithExpr", "NumberLiteral", float, "TermRef"]') | replace('NumericNode', 'Union["TemporalCall", "ArithExpr", "NumberLiteral", float]') | replace('LogicNode', '"LogicNode"') %}
+    {{ field_name }}: {{ field_type }}  # {{ field.description }}
+{% endif %}
+{% endfor %}
+{% for field_name, field in node.fields.items() %}
+{% if not field.required %}
+{% set field_type = field.type | replace('NumericNode | TermRef', 'Union["TemporalCall", "ArithExpr", "NumberLiteral", float, "TermRef"]') | replace('NumericNode', 'Union["TemporalCall", "ArithExpr", "NumberLiteral", float]') | replace('LogicNode', '"LogicNode"') %}
+    {{ field_name }}: Optional[{{ field_type }}] = None  # {{ field.description }}
+{% endif %}
+{% endfor %}
+{% if node.computed_properties is defined %}
+{% for prop_name, prop in node.computed_properties.items() %}
+
+    @property
+    def {{ prop_name }}(self) -> {{ prop.type }}:
+        """{{ prop.description }}"""
+{% if name == 'WindowSpec' and prop_name == 'seconds' %}
+        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+        return self.value * multipliers.get(self.unit, 1)
+{% elif name == 'TrendExpression' and prop_name == 'operator' %}
+        return self.temporal.operator
+{% elif name == 'TrendExpression' and prop_name == 'signal' %}
+        return self.temporal.signal
+{% elif name == 'TrendExpression' and prop_name == 'window' %}
+        return self.temporal.window
+{% else %}
+        raise NotImplementedError("{{ prop_name }}")
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if name == 'WindowSpec' %}
+
+    def __str__(self) -> str:
+        return f"{self.value}{self.unit}"
+{% endif %}
+
+
+{% endfor %}
+# =============================================================================
+# TYPE ALIASES (Union Types)
+# =============================================================================
+
+{% for name, alias in type_aliases.items() %}
+# {{ alias.description }}
+{{ name }} = Union[{{ alias.union_of | join(', ') }}]
+
+{% endfor %}

@@ -5,9 +5,9 @@
 | RFC | 0004 |
 | Title | Dataset Specification - Portable Data Binding Layer |
 | Author | PSDL Team |
-| Status | Draft |
+| Status | Implemented |
 | Created | 2025-12-12 |
-| Updated | 2025-12-12 |
+| Updated | 2025-12-14 |
 
 ## Summary
 
@@ -63,8 +63,12 @@ Adapter        = execution (HOW to run it)
 │       expected_unit: mg/dL     # Constraint (optional)          │
 │                                                                 │
 │   trends:                                                       │
+│     cr_delta_48h:                                               │
+│       expr: delta(Cr, 48h)             # Numeric only (v0.3)    │
+│                                                                 │
+│   logic:                                                        │
 │     cr_rising:                                                  │
-│       expr: delta(Cr, 48h) >= 0.3                              │
+│       when: cr_delta_48h >= 0.3        # Comparison in logic    │
 ├─────────────────────────────────────────────────────────────────┤
 │ LAYER 2: Dataset Spec (Binding)                                 │
 │                                                                 │
@@ -171,8 +175,11 @@ Scenarios reference elements by semantic name only:
 
 ```yaml
 # scenarios/aki_detection.yaml
-scenario: aki_detection
-version: "0.2.0"
+psdl_version: "0.3"
+
+scenario:
+  name: aki_detection
+  version: "1.0.0"
 
 audit:
   intent: "Detect AKI using KDIGO criteria"
@@ -190,13 +197,18 @@ signals:
     expected_unit: mmol/L
 
 trends:
-  cr_rising:
-    expr: delta(Cr, 48h) >= 0.3
-    description: "Creatinine rise >= 0.3 mg/dL in 48h"
+  cr_delta_48h:
+    type: float
+    expr: delta(Cr, 48h)      # ← Numeric only (v0.3)
+    description: "Creatinine change over 48h"
 
 logic:
+  cr_rising:
+    when: cr_delta_48h >= 0.3  # ← Comparison in logic layer (v0.3)
+    description: "Creatinine rise >= 0.3 mg/dL in 48h"
+
   aki_stage1:
-    expr: cr_rising
+    when: cr_rising
     severity: medium
 ```
 

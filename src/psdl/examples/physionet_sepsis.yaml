@@ -82,92 +82,162 @@ signals:
     unit: mg/dL
     description: Serum creatinine
 
+# ── Trends (v0.3: NUMERIC VALUES ONLY) ─────
 trends:
+  # Current values
+  hr_current:
+    expr: last(HR)
+    type: float
+    unit: bpm
+    description: "Current heart rate"
+
+  temp_current:
+    expr: last(Temp)
+    type: float
+    unit: celsius
+    description: "Current body temperature"
+
+  resp_current:
+    expr: last(Resp)
+    type: float
+    unit: breaths/min
+    description: "Current respiratory rate"
+
+  wbc_current:
+    expr: last(WBC)
+    type: float
+    unit: "10^9/L"
+    description: "Current WBC count"
+
+  lactate_current:
+    expr: last(Lactate)
+    type: float
+    unit: mmol/L
+    description: "Current lactate level"
+
+  map_current:
+    expr: last(MAP)
+    type: float
+    unit: mmHg
+    description: "Current mean arterial pressure"
+
+  sbp_current:
+    expr: last(SBP)
+    type: float
+    unit: mmHg
+    description: "Current systolic blood pressure"
+
+  # Trending indicators (6-hour window)
+  hr_delta_6h:
+    expr: delta(HR, 6h)
+    type: float
+    unit: bpm
+    description: "Heart rate change over 6 hours"
+
+  lactate_delta_6h:
+    expr: delta(Lactate, 6h)
+    type: float
+    unit: mmol/L
+    description: "Lactate change over 6 hours"
+
+  creatinine_delta_6h:
+    expr: delta(Creatinine, 6h)
+    type: float
+    unit: mg/dL
+    description: "Creatinine change over 6 hours"
+
+  sbp_delta_6h:
+    expr: delta(SBP, 6h)
+    type: float
+    unit: mmHg
+    description: "SBP change over 6 hours"
+
+# ── Logic (v0.3: ALL COMPARISONS HERE) ─────
+logic:
   # SIRS criteria detection
   hr_elevated:
-    expr: last(HR) > 90
-    description: Tachycardia (HR > 90)
+    when: hr_current > 90
+    description: "Tachycardia (HR > 90)"
 
   temp_abnormal:
-    expr: last(Temp) > 38.3
-    description: Fever (Temp > 38.3C)
+    when: temp_current > 38.3
+    description: "Fever (Temp > 38.3C)"
 
   temp_low:
-    expr: last(Temp) < 36
-    description: Hypothermia (Temp < 36C)
+    when: temp_current < 36
+    description: "Hypothermia (Temp < 36C)"
 
   resp_elevated:
-    expr: last(Resp) > 22
-    description: Tachypnea (RR > 22)
+    when: resp_current > 22
+    description: "Tachypnea (RR > 22)"
 
   wbc_abnormal_high:
-    expr: last(WBC) > 12
-    description: Leukocytosis (WBC > 12)
+    when: wbc_current > 12
+    description: "Leukocytosis (WBC > 12)"
 
   wbc_abnormal_low:
-    expr: last(WBC) < 4
-    description: Leukopenia (WBC < 4)
+    when: wbc_current < 4
+    description: "Leukopenia (WBC < 4)"
 
   # Sepsis markers
   lactate_elevated:
-    expr: last(Lactate) > 2.0
-    description: Elevated lactate (> 2 mmol/L)
+    when: lactate_current > 2.0
+    description: "Elevated lactate (> 2 mmol/L)"
 
   map_low:
-    expr: last(MAP) < 65
-    description: Hypotension (MAP < 65)
+    when: map_current < 65
+    description: "Hypotension (MAP < 65)"
 
-  # Trending indicators (6-hour window)
+  # Trending indicators
   hr_rising:
-    expr: delta(HR, 6h) > 20
-    description: Heart rate increasing trend
+    when: hr_delta_6h > 20
+    description: "Heart rate increasing trend"
 
   lactate_rising:
-    expr: delta(Lactate, 6h) > 1.0
-    description: Lactate increasing trend
+    when: lactate_delta_6h > 1.0
+    description: "Lactate increasing trend"
 
   creatinine_rising:
-    expr: delta(Creatinine, 6h) >= 0.3
-    description: Acute kidney injury (Cr delta >= 0.3)
+    when: creatinine_delta_6h >= 0.3
+    description: "Acute kidney injury (Cr delta >= 0.3)"
 
   sbp_falling:
-    expr: delta(SBP, 6h) < -20
-    description: Blood pressure falling trend
+    when: sbp_delta_6h < -20
+    description: "Blood pressure falling trend"
 
-logic:
   # SIRS criteria (2+ of 4)
   sirs_temp:
     when: temp_abnormal OR temp_low
-    description: Temperature criterion for SIRS
+    description: "Temperature criterion for SIRS"
 
   sirs_wbc:
     when: wbc_abnormal_high OR wbc_abnormal_low
-    description: WBC criterion for SIRS
+    description: "WBC criterion for SIRS"
 
   sirs_positive:
     when: (hr_elevated AND resp_elevated) OR (hr_elevated AND sirs_temp) OR (hr_elevated AND sirs_wbc) OR (resp_elevated AND sirs_temp) OR (resp_elevated AND sirs_wbc) OR (sirs_temp AND sirs_wbc)
     severity: medium
-    description: SIRS criteria met (2+ positive)
+    description: "SIRS criteria met (2+ positive)"
 
   # Organ dysfunction
   organ_dysfunction:
     when: map_low OR creatinine_rising
     severity: high
-    description: Evidence of organ dysfunction
+    description: "Evidence of organ dysfunction"
 
   # Sepsis alert
   sepsis_suspected:
     when: sirs_positive AND (lactate_elevated OR organ_dysfunction)
     severity: high
-    description: Suspected sepsis - SIRS + organ dysfunction or lactate elevation
-    recommendation: Initiate sepsis bundle, obtain blood cultures, start empiric antibiotics
+    description: "Suspected sepsis - SIRS + organ dysfunction or lactate elevation"
+    recommendation: "Initiate sepsis bundle, obtain blood cultures, start empiric antibiotics"
 
   # Early warning (trending)
   early_warning:
     when: (hr_rising OR lactate_rising) AND sirs_positive
     severity: medium
-    description: Early warning - deteriorating trends with SIRS
-    recommendation: Increase monitoring frequency, consider sepsis workup
+    description: "Early warning - deteriorating trends with SIRS"
+    recommendation: "Increase monitoring frequency, consider sepsis workup"
 
 metadata:
   validation_status: draft
