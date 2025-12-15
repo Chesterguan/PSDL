@@ -76,7 +76,7 @@ from psdl._generated.ast_types import (
     TermRef,
     TrendExpression,
 )
-from psdl.core.ir import LogicExpr, PSDLScenario, Signal, TrendExpr
+from psdl.core.ir import LogicExpr, PSDLScenario, TrendExpr
 
 
 @dataclass
@@ -817,10 +817,10 @@ class ScenarioCompiler:
                 if t not in dep_analysis.trend_to_logic:
                     dep_analysis.trend_to_logic[t] = set()
                 dep_analysis.trend_to_logic[t].add(name)
-            for l in logic_used:
-                if l not in dep_analysis.logic_to_logic:
-                    dep_analysis.logic_to_logic[l] = set()
-                dep_analysis.logic_to_logic[l].add(name)
+            for logic_ref in logic_used:
+                if logic_ref not in dep_analysis.logic_to_logic:
+                    dep_analysis.logic_to_logic[logic_ref] = set()
+                dep_analysis.logic_to_logic[logic_ref].add(name)
 
             # Type analysis: logic produces boolean
             type_analysis.logic_types[name] = "boolean"

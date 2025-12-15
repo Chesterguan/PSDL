@@ -4,8 +4,6 @@ Tests for PSDL Benchmarking Suite.
 Tests data generation, benchmark scenarios, and the benchmark runner.
 """
 
-from datetime import datetime, timedelta
-
 import pytest
 
 from psdl.benchmarks import (

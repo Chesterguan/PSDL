@@ -8,7 +8,7 @@ import statistics
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from psdl.core import PSDLParser
 from psdl.operators import DataPoint

@@ -10,28 +10,21 @@ Tests the RFC-0006 compilation architecture including:
 """
 
 import hashlib
-import json
 from datetime import datetime
 
 import pytest
 
-from psdl.core.compile import (  # Core classes; Diagnostics; Hashing functions; Convenience function
+from psdl.core.compile import (
     CompilationDiagnostics,
     DependencyAnalysis,
     DependencyDAG,
     Diagnostic,
     DiagnosticCode,
     DiagnosticSeverity,
-    ResolvedLogic,
-    ResolvedSignal,
-    ResolvedTrend,
     ScenarioCompiler,
-    ScenarioIR,
     SourceLocation,
-    TypeAnalysis,
     canonicalize_json,
     compile_scenario,
-    compute_ir_hash,
     compute_sha256,
     compute_spec_hash,
     compute_toolchain_hash,

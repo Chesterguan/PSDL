@@ -15,7 +15,7 @@ Version 0.3.0 Changes (RFC-0005):
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 # Import AST types from generated code (consolidation)
 from psdl._generated.ast_types import LogicNode, WindowSpec

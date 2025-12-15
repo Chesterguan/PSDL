@@ -494,7 +494,7 @@ FROM {from_clause}{trend_joins}
         """
         # Count trends and extract window sizes
         trend_count = len(scenario.trends) if hasattr(scenario, "trends") and scenario.trends else 0
-        logic_count = len(scenario.logic) if hasattr(scenario, "logic") and scenario.logic else 0
+        _ = len(scenario.logic) if hasattr(scenario, "logic") and scenario.logic else 0  # Reserved
 
         # Analyze windows
         largest_window = 0
