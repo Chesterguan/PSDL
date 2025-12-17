@@ -23,6 +23,9 @@ from psdl import (
     # Compilation (v0.3)
     compile_scenario, ScenarioCompiler, ScenarioIR,
 
+    # Dataset Spec (RFC-0004)
+    load_dataset_spec, DatasetSpec, Binding,
+
     # Evaluation
     SinglePatientEvaluator, InMemoryBackend,
 
@@ -435,6 +438,208 @@ evaluator = SinglePatientEvaluator(scenario, adapter)
 
 ---
 
+## Dataset Spec API (RFC-0004)
+
+The Dataset Specification provides a portable binding layer that maps semantic signal references to physical data locations. This enables the same PSDL scenario to run across different datasets.
+
+### Architecture
+
+```
+Scenario (WHAT)  →  DatasetSpec (WHERE)  →  Adapter (HOW)
+    |                    |                      |
+    v                    v                      v
+"creatinine"       table: measurement      SQL query
+                   filter: concept_id=X    execution
+```
+
+---
+
+### `load_dataset_spec()`
+
+Load and validate a Dataset Specification from YAML.
+
+```python
+from psdl import load_dataset_spec
+
+# Load a dataset spec (mandatory validation)
+spec = load_dataset_spec("dataset_specs/mimic_iv_omop.yaml")
+
+# Resolve a signal reference to physical binding
+binding = spec.resolve("creatinine")
+print(binding.table)        # "measurement"
+print(binding.filter_expr)  # "concept_id = 3016723"
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `str \| Path` | Path to dataset spec YAML file |
+
+**Returns:** `DatasetSpec`
+
+**Raises:**
+| Exception | When |
+|-----------|------|
+| `FileNotFoundError` | File doesn't exist |
+| `DatasetValidationError` | Spec fails schema validation |
+
+> **Important**: Always use `load_dataset_spec()` to load specs. Direct construction bypasses validation and will raise `DatasetSpecError` when using `resolve()`.
+
+---
+
+### `DatasetSpec`
+
+Dataset specification with semantic-to-physical bindings.
+
+```python
+spec = load_dataset_spec("dataset_specs/omop_cdm_v54.yaml")
+
+# Metadata
+print(spec.name)            # "OMOP CDM v5.4"
+print(spec.version)         # "1.0.0"
+print(spec.data_model)      # "omop"
+print(spec.psdl_version)    # "0.3"
+
+# Validation status
+print(spec.is_validated)    # True (if loaded via load_dataset_spec)
+
+# Audit info
+print(spec.checksum)        # SHA-256 of source file
+print(spec.source_path)     # Path to YAML file
+
+# List available elements
+print(spec.list_elements())
+# ['creatinine', 'potassium', 'heart_rate', ...]
+
+# List by kind
+print(spec.list_elements_by_kind("lab"))
+# ['creatinine', 'potassium', 'bun', ...]
+```
+
+**Methods:**
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `resolve(signal_ref)` | `Binding` | Resolve semantic ref to physical binding |
+| `list_elements()` | `List[str]` | List all element names |
+| `list_elements_by_kind(kind)` | `List[str]` | List elements of specific kind |
+| `get_valueset(name)` | `ValuesetSpec \| None` | Get valueset by name |
+| `to_dict()` | `Dict` | Convert to dictionary |
+
+**Properties:**
+| Property | Type | Description |
+|----------|------|-------------|
+| `is_validated` | `bool` | Whether loaded via `load_dataset_spec()` |
+| `checksum` | `str \| None` | SHA-256 of source YAML |
+| `source_path` | `Path \| None` | Path to source file |
+
+---
+
+### `Binding`
+
+Resolved physical binding - the contract between DatasetSpec and adapters.
+
+```python
+binding = spec.resolve("creatinine")
+
+print(binding.table)         # "measurement"
+print(binding.value_field)   # "value_as_number"
+print(binding.time_field)    # "measurement_datetime"
+print(binding.patient_field) # "person_id"
+print(binding.filter_expr)   # "concept_id = 3016723"
+print(binding.unit)          # "mg/dL"
+print(binding.value_type)    # "numeric"
+```
+
+**Attributes:**
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `table` | `str` | Table name (with schema if configured) |
+| `value_field` | `str` | Column containing the value |
+| `time_field` | `str` | Column containing timestamp |
+| `patient_field` | `str` | Column containing patient ID |
+| `filter_expr` | `str` | SQL-like filter expression |
+| `unit` | `str \| None` | Expected unit |
+| `value_type` | `str` | Value type (numeric, string, etc.) |
+| `transform` | `str \| None` | Optional transform expression |
+
+---
+
+### Using with OMOP Adapter
+
+```python
+from psdl import load_dataset_spec
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
+
+# Load dataset spec
+spec = load_dataset_spec("dataset_specs/mimic_iv_omop.yaml")
+
+# Configure OMOP backend with dataset spec
+config = OMOPConfig(
+    connection_string="postgresql://user:pass@host/db",
+    cdm_schema="cdm",
+)
+backend = OMOPBackend(config, dataset_spec=spec)
+
+# Signals in scenarios are resolved through the spec
+# scenario.yaml: signals.Cr.ref = "creatinine"
+# → spec resolves "creatinine" to measurement table with concept_id filter
+```
+
+---
+
+### Dataset Spec YAML Format
+
+```yaml
+psdl_version: "0.3"
+dataset:
+  name: "My Hospital OMOP"
+  version: "1.0.0"
+  description: "OMOP CDM 5.4 with local mappings"
+
+data_model: omop
+
+conventions:
+  patient_id_field: person_id
+  default_time_field: measurement_datetime
+  schema: cdm
+  unit_strategy: strict
+
+elements:
+  creatinine:
+    table: measurement
+    value_field: value_as_number
+    filter:
+      concept_id: 3016723
+    unit: mg/dL
+    kind: lab
+
+  heart_rate:
+    table: measurement
+    value_field: value_as_number
+    filter:
+      concept_id: 3027018
+    unit: beats/min
+    kind: vital
+```
+
+---
+
+### Type Reference
+
+| Type | Description |
+|------|-------------|
+| `DatasetSpec` | Main specification class |
+| `Binding` | Resolved physical binding |
+| `ElementSpec` | Element definition |
+| `FilterSpec` | Filter criteria |
+| `Conventions` | Global conventions |
+| `ValuesetSpec` | Valueset definition |
+| `DatasetSpecError` | Base exception |
+| `DatasetValidationError` | Validation failure |
+| `BindingResolutionError` | Unknown signal reference |
+
+---
+
 ## Built-in Examples
 
 ```python
@@ -487,16 +692,31 @@ path = examples.get_scenario_path("aki_detection")
 | `DependencyDAG` | Evaluation order graph |
 | `CompilationDiagnostics` | Warnings and errors |
 
+### Dataset Spec Types (RFC-0004)
+
+| Type | Description |
+|------|-------------|
+| `DatasetSpec` | Main specification class |
+| `Binding` | Resolved physical binding |
+| `ElementSpec` | Element definition with table/field info |
+| `FilterSpec` | Filter criteria (concept_id, source_value, etc.) |
+| `Conventions` | Global conventions (patient_id_field, schema, etc.) |
+| `ValuesetSpec` | Valueset definition (inline or file reference) |
+| `DatasetSpecError` | Base exception for dataset errors |
+| `DatasetValidationError` | Schema validation failure |
+| `BindingResolutionError` | Unknown signal reference |
+
 ---
 
 ## Version History
 
 | Version | Changes |
 |---------|---------|
+| 0.3.1 | Dataset Spec API (RFC-0004), mandatory validation |
 | 0.3.0 | v0.3 architecture, compile_scenario(), AST exposure |
 | 0.2.0 | Streaming support, FHIR adapter |
 | 0.1.0 | Initial release |
 
 ---
 
-*Last updated: December 15, 2025*
+*Last updated: December 17, 2025*

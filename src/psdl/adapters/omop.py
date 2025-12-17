@@ -6,36 +6,44 @@ Supports OMOP CDM v5.4 (recommended) and v5.3.
 
 Reference: https://ohdsi.github.io/CommonDataModel/cdm54.html
 
-Architecture:
-    PSDL separates data format (Adapter) from terminology (Mapping):
+Architecture (RFC-0004):
+    PSDL uses a three-layer architecture:
 
-    - Adapter (this file): Handles OMOP database structure, SQL generation
-    - Mapping (mapping.py): Translates logical signal names to local codes
+    - Scenario: Defines WHAT to detect (clinical logic)
+    - DatasetSpec: Defines WHERE to find data (physical bindings)
+    - Adapter: Defines HOW to execute (SQL generation)
 
     This separation enables:
     - Portable scenarios that work across institutions
-    - Institution-specific mappings without code changes
+    - Auditable data bindings in versioned YAML files
     - Easy testing with different datasets
 
-Usage with Mapping (Recommended):
-    from psdl.mapping import load_mapping
+Usage with DatasetSpec (Recommended - RFC-0004):
+    from psdl import load_dataset_spec
     from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
-    # Load institution-specific mapping
-    mapping = load_mapping("mappings/mimic_iv.yaml")
+    # Load dataset specification
+    spec = load_dataset_spec("dataset_specs/mimic_iv_omop.yaml")
 
-    # Create adapter with mapping
+    # Create adapter with dataset spec
+    config = OMOPConfig(connection_string="postgresql://user:pass@host/db")
+    backend = OMOPBackend(config, dataset_spec=spec)
+
+    # Run portable scenario
+    evaluator = PSDLEvaluator(scenario, backend)
+    result = evaluator.evaluate_patient(patient_id=12345)
+
+Legacy Usage (MappingProvider):
+    from psdl.mapping import load_mapping
+
+    mapping = load_mapping("mappings/mimic_iv.yaml")
     config = OMOPConfig(
         connection_string="postgresql://user:pass@host/db",
         cdm_schema="public"
     )
     backend = OMOPBackend(config, mapping=mapping)
 
-    # Run portable scenario
-    evaluator = PSDLEvaluator(scenario, backend)
-    result = evaluator.evaluate_patient(patient_id=12345)
-
-Legacy Usage (mapping in config):
+Legacy Usage (config-level mappings):
     config = OMOPConfig(
         connection_string="postgresql://user:pass@host/db",
         cdm_schema="cdm",
@@ -49,11 +57,12 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from ..mapping import MappingProvider
 
+from ..core.dataset import Binding, DatasetSpec, Event
 from ..core.ir import Signal
 from ..operators import DataPoint
 from ..runtimes.single import DataBackend
@@ -137,7 +146,17 @@ class OMOPBackend(DataBackend):
     - Conditions (for presence/absence checks)
     - Multiple database engines via SQLAlchemy
 
-    Example with Mapping (Recommended):
+    Example with DatasetSpec (Recommended - RFC-0004):
+        from psdl import load_dataset_spec
+
+        spec = load_dataset_spec("dataset_specs/mimic_iv_omop.yaml")
+        config = OMOPConfig(connection_string="postgresql://localhost/mimic")
+        backend = OMOPBackend(config, dataset_spec=spec)
+
+        evaluator = PSDLEvaluator(scenario, backend)
+        results = evaluator.evaluate_cohort()
+
+    Example with MappingProvider (Legacy):
         from psdl.mapping import load_mapping
 
         mapping = load_mapping("mappings/mimic_iv.yaml")
@@ -146,24 +165,34 @@ class OMOPBackend(DataBackend):
             cdm_schema="public"
         )
         backend = OMOPBackend(config, mapping=mapping)
-
-        evaluator = PSDLEvaluator(scenario, backend)
-        results = evaluator.evaluate_cohort()
     """
 
-    def __init__(self, config: OMOPConfig, mapping: Optional["MappingProvider"] = None):
+    def __init__(
+        self,
+        config: OMOPConfig,
+        dataset_spec: Optional[DatasetSpec] = None,
+        mapping: Optional["MappingProvider"] = None,
+    ):
         """
-        Initialize OMOP backend with configuration and optional mapping.
+        Initialize OMOP backend with configuration and optional bindings.
 
         Args:
             config: OMOPConfig with connection details
+            dataset_spec: DatasetSpec for signal-to-physical bindings (recommended).
+                         Takes highest precedence when provided.
             mapping: Optional MappingProvider for signal-to-terminology translation.
-                    If provided, the mapping takes precedence over config mappings.
+                    If provided, takes precedence over config mappings.
         """
         self.config = config
+        self.dataset_spec = dataset_spec
         self.mapping = mapping
         self._engine = None
         self._connection = None
+
+        # If dataset_spec provided, use its conventions
+        if dataset_spec is not None:
+            if dataset_spec.conventions.schema:
+                self.config.cdm_schema = dataset_spec.conventions.schema
 
         # If mapping provided, update config settings
         if mapping is not None:
@@ -231,17 +260,97 @@ class OMOPBackend(DataBackend):
         # For other domains, we might check presence (1.0) or absence (0.0)
         return "1.0"
 
+    def resolve_binding(self, signal_ref: str) -> Optional[Binding]:
+        """
+        Resolve a semantic reference to a physical binding (RFC-0004 interface).
+
+        Args:
+            signal_ref: Semantic reference name (e.g., "creatinine")
+
+        Returns:
+            Binding object if dataset_spec is available, None otherwise
+        """
+        if self.dataset_spec is not None:
+            try:
+                return self.dataset_spec.resolve(signal_ref)
+            except Exception:
+                return None
+        return None
+
+    def fetch_events(
+        self,
+        binding: Binding,
+        patient_ids: Optional[List[str]] = None,
+        time_range: Optional[Tuple[datetime, datetime]] = None,
+    ) -> Iterator[Event]:
+        """
+        Fetch events from data source using a resolved binding (RFC-0004 interface).
+
+        Args:
+            binding: Resolved physical binding
+            patient_ids: Optional list of patient IDs to filter
+            time_range: Optional (start, end) datetime tuple
+
+        Yields:
+            Event objects in canonical format
+        """
+        # Build query from binding
+        query_parts = [
+            f"SELECT {binding.patient_field} as patient_id,",
+            f"       {binding.time_field} as event_time,",
+            f"       {binding.value_field} as value",
+            f"FROM {binding.table}",
+            f"WHERE {binding.filter_expr}",
+        ]
+
+        params: Dict[str, Any] = {}
+
+        if patient_ids:
+            query_parts.append("AND patient_id IN :patient_ids")
+            params["patient_ids"] = tuple(patient_ids)
+
+        if time_range:
+            query_parts.append(f"AND {binding.time_field} >= :start_time")
+            query_parts.append(f"AND {binding.time_field} <= :end_time")
+            params["start_time"] = time_range[0]
+            params["end_time"] = time_range[1]
+
+        query_parts.append(f"ORDER BY {binding.patient_field}, {binding.time_field}")
+
+        query = "\n".join(query_parts)
+        rows = self._execute_query(query, params)
+
+        for row in rows:
+            if row["event_time"] and row["value"] is not None:
+                yield Event(
+                    patient_id=str(row["patient_id"]),
+                    timestamp=row["event_time"],
+                    signal_ref="",  # Caller should set this
+                    value=float(row["value"]) if binding.value_type == "numeric" else row["value"],
+                    unit=binding.unit,
+                )
+
     def _get_concept_id(self, signal: Signal) -> int:
         """
         Get the concept_id for a signal.
 
         Priority:
-        1. MappingProvider (if provided)
-        2. Config-level concept_mappings override
-        3. Signal's concept_id field
-        4. Raise error if not found
+        1. DatasetSpec (if provided) - RFC-0004
+        2. MappingProvider (if provided)
+        3. Config-level concept_mappings override
+        4. Signal's concept_id field
+        5. Raise error if not found
         """
-        # Check MappingProvider first (new recommended approach)
+        # Check DatasetSpec first (RFC-0004 recommended approach)
+        if self.dataset_spec is not None:
+            signal_ref = signal.source or signal.name
+            if signal_ref in self.dataset_spec.elements:
+                elem = self.dataset_spec.elements[signal_ref]
+                if elem.filter and elem.filter.concept_id is not None:
+                    cid = elem.filter.concept_id
+                    return cid[0] if isinstance(cid, list) else cid
+
+        # Check MappingProvider (legacy approach)
         if self.mapping is not None:
             # Try to get from mapping using signal's source (logical name)
             concept_id = self.mapping.get_concept_id(signal.source or signal.name)
@@ -258,7 +367,7 @@ class OMOPBackend(DataBackend):
 
         raise ValueError(
             f"No concept_id found for signal '{signal.name}'. "
-            f"Either provide a mapping file, set concept_id in the scenario, "
+            f"Provide a dataset_spec, mapping file, set concept_id in the scenario, "
             f"or add to config.concept_mappings"
         )
 
@@ -267,12 +376,22 @@ class OMOPBackend(DataBackend):
         Get the source_value for a signal when using source value lookups.
 
         Priority:
-        1. MappingProvider (if provided)
-        2. Config-level source_value_mappings override
-        3. Signal's source field
-        4. Signal's name as fallback
+        1. DatasetSpec (if provided) - RFC-0004
+        2. MappingProvider (if provided)
+        3. Config-level source_value_mappings override
+        4. Signal's source field
+        5. Signal's name as fallback
         """
-        # Check MappingProvider first (new recommended approach)
+        # Check DatasetSpec first (RFC-0004 recommended approach)
+        if self.dataset_spec is not None:
+            signal_ref = signal.source or signal.name
+            if signal_ref in self.dataset_spec.elements:
+                elem = self.dataset_spec.elements[signal_ref]
+                if elem.filter and elem.filter.source_value is not None:
+                    sv = elem.filter.source_value
+                    return sv[0] if isinstance(sv, list) else sv
+
+        # Check MappingProvider (legacy approach)
         if self.mapping is not None:
             # Try to get from mapping using signal's source (logical name)
             source_value = self.mapping.get_source_value(signal.source or signal.name)

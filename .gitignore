@@ -72,3 +72,4 @@ localDocs/
 # Example data (keep only compressed archives)
 /examples/data/physionet.org/
 /examples/data/sepsis_sample_500/
+docs/DEMO_PLANNING.md

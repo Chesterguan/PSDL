@@ -5,9 +5,9 @@
 | RFC | 0004 |
 | Title | Dataset Specification - Portable Data Binding Layer |
 | Author | PSDL Team |
-| Status | Implemented |
+| Status | **IMPLEMENTED** |
 | Created | 2025-12-12 |
-| Updated | 2025-12-14 |
+| Updated | 2025-12-17 |
 
 ## Summary
 

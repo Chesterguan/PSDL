@@ -245,8 +245,58 @@ PSDL separates **clinical logic** from **local terminology**:
 
 This means:
 - **Researchers** write scenarios using logical names (portable)
-- **Hospitals** create a mapping file for their local codes (no code)
+- **Hospitals** create a Dataset Spec for their local codes (no code)
 - **Adapters** are shared infrastructure (OMOP, FHIR)
+
+## Dataset Specifications (RFC-0004)
+
+Dataset Specs formalize the mapping layer, making scenarios truly portable:
+
+```python
+from psdl import load_dataset_spec
+
+# Load institution-specific mapping
+spec = load_dataset_spec("dataset_specs/my_hospital_omop.yaml")
+
+# Resolve a logical signal to physical binding
+binding = spec.resolve("creatinine")
+print(binding.table)        # "measurement"
+print(binding.filter_expr)  # "concept_id = 3016723"
+```
+
+**Dataset Spec YAML format:**
+
+```yaml
+psdl_version: "0.3"
+dataset:
+  name: "My Hospital OMOP"
+  version: "1.0.0"
+
+data_model: omop
+
+conventions:
+  patient_id_field: person_id
+  schema: cdm
+
+elements:
+  creatinine:
+    table: measurement
+    value_field: value_as_number
+    filter:
+      concept_id: 3016723
+    unit: mg/dL
+    kind: lab
+
+  heart_rate:
+    table: measurement
+    value_field: value_as_number
+    filter:
+      concept_id: 3027018
+    unit: beats/min
+    kind: vital
+```
+
+> **Important**: Always use `load_dataset_spec()` to load specs. This validates against the JSON schema and enables the `resolve()` method.
 
 ## Using with OMOP CDM
 
@@ -323,4 +373,4 @@ pytest tests/test_evaluator.py -v
 
 ---
 
-*Last updated: December 15, 2025*
+*Last updated: December 17, 2025*

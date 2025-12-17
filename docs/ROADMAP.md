@@ -88,12 +88,14 @@ Foundation       Architecture      Readiness        & Scale
 - [ ] Profile selection semantics
 - [ ] Default profile behavior
 
-#### Dataset Specification (RFC-0004 - Deferred)
-> **Status**: Draft. This defines the portable binding layer for mapping semantic references to physical data locations. Deferred until core is stable.
-- [ ] Dataset Spec schema (`spec/dataset_schema.json`)
-- [ ] Element binding format
-- [ ] Valueset handling strategy
-- [ ] Unit conversion strategy
+#### Dataset Specification (RFC-0004) ✅
+> **Status**: Implemented. Portable binding layer for mapping semantic references to physical data locations.
+- [x] Dataset Spec schema (`spec/dataset_schema.json`)
+- [x] Element binding format with filters (concept_id, source_value, custom)
+- [x] Valueset handling (inline codes, file references with SHA-256)
+- [x] Unit strategy (strict, allow_declare, backend_specific)
+- [x] DatasetSpec loader with mandatory runtime validation
+- [x] OMOP adapter integration
 
 ### Reference Implementation Work
 
@@ -180,9 +182,10 @@ When planning features, always ask:
 | [RFC-0001](../rfcs/0001-ai-model-integration.md) | AI/ML Integration | ❌ Withdrawn | - |
 | [RFC-0002](../rfcs/0002-streaming-execution.md) | Streaming Execution | ✅ Architecture | 3 |
 | [RFC-0003](../rfcs/0003-architecture-refactor.md) | Architecture Refactor | ✅ Implemented | 2 |
-| [RFC-0004](../rfcs/0004-dataset-specification.md) | Dataset Specification | 📋 Deferred | 3 |
+| [RFC-0004](../rfcs/0004-dataset-specification.md) | Dataset Specification | ✅ Implemented | 3 |
 | [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) | PSDL v0.3 Architecture | ✅ Implemented | 2 |
 | [RFC-0006](../rfcs/0006-spec-driven-compilation.md) | Spec-Driven Compilation | ✅ Implemented | 3 |
+| [RFC-0007](../rfcs/0007-extension-mechanism.md) | Extension Mechanism | 📋 Draft | Future |
 
 ---
 
@@ -221,4 +224,4 @@ When planning features, always ask:
 
 ---
 
-*Last updated: December 15, 2025*
+*Last updated: December 17, 2025*

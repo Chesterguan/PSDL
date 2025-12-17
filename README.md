@@ -255,6 +255,24 @@ The compiled IR includes:
 - **Compilation diagnostics** - Warnings for unused signals/trends
 - **Audit trail** - Full traceability from YAML to evaluation
 
+### Dataset Specifications (RFC-0004)
+
+Dataset Specs enable portable scenarios by mapping semantic signal references to physical data locations:
+
+```python
+from psdl import load_dataset_spec
+
+# Load institution-specific binding
+spec = load_dataset_spec("dataset_specs/my_hospital_omop.yaml")
+
+# Resolve a signal reference to physical binding
+binding = spec.resolve("creatinine")
+print(binding.table)        # "measurement"
+print(binding.filter_expr)  # "concept_id = 3016723"
+```
+
+This separates **clinical logic** (portable scenarios) from **local terminology** (institution-specific mappings).
+
 ## Temporal Operators
 
 | Operator | Syntax | Description |

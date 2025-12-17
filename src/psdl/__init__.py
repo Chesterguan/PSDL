@@ -33,6 +33,12 @@ __version__ = "0.3.1"
 # Core components
 from .core import PSDLParser, PSDLScenario
 from .core.compile import ScenarioCompiler, ScenarioIR, compile_scenario
+from .core.dataset import (
+    Binding,
+    DatasetSpec,
+    ElementSpec,
+    load_dataset_spec,
+)
 from .core.ir import (
     DecisionOutput,
     EvaluationResult,
@@ -109,6 +115,11 @@ __all__ = [
     "compile_scenario",
     "ScenarioCompiler",
     "ScenarioIR",
+    # v0.3 Dataset Spec (RFC-0004)
+    "load_dataset_spec",
+    "DatasetSpec",
+    "ElementSpec",
+    "Binding",
     # v0.3 IR types
     "Signal",
     "TrendExpr",
