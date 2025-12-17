@@ -33,12 +33,7 @@ __version__ = "0.3.1"
 # Core components
 from .core import PSDLParser, PSDLScenario
 from .core.compile import ScenarioCompiler, ScenarioIR, compile_scenario
-from .core.dataset import (
-    Binding,
-    DatasetSpec,
-    ElementSpec,
-    load_dataset_spec,
-)
+from .core.dataset import Binding, DatasetSpec, ElementSpec, load_dataset_spec
 from .core.ir import (
     DecisionOutput,
     EvaluationResult,
