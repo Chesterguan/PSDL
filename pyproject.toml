@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "psdl-lang"
-version = "0.3.1"
+version = "0.3.2"
 description = "Patient Scenario Definition Language - Reference Implementation"
 readme = "README_PYPI.md"
 license = {text = "Apache-2.0"}
