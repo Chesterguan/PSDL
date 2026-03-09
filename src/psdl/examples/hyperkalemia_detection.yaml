@@ -35,25 +35,21 @@ population:
 signals:
   K:
     ref: potassium
-    concept_id: 3023103
     unit: mEq/L
     domain: measurement
 
   Cr:
     ref: creatinine
-    concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   pH:
     ref: blood_ph
-    concept_id: 3019977
     unit: pH
     domain: measurement
 
   Glucose:
     ref: glucose
-    concept_id: 3004501
     unit: mg/dL
     domain: measurement
 

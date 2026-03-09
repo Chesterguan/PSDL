@@ -13,7 +13,7 @@ Usage:
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from ..core.ir import Signal
 from ..operators import DataPoint, TemporalOperators
@@ -97,6 +97,11 @@ class PhysioNetBackend(DataBackend):
         self._patient_data: Dict[str, Dict[str, List[DataPoint]]] = {}
         self._patient_metadata: Dict[str, Dict] = {}
         self._current_patient: Optional[str] = None
+
+    @property
+    def capabilities(self) -> Set[str]:
+        """PhysioNetBackend capabilities."""
+        return set()
 
     def load_patient(self, patient_id: str) -> bool:
         """

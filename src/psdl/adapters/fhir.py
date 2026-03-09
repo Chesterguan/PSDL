@@ -21,7 +21,7 @@ Usage:
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 try:
     import requests
@@ -138,17 +138,29 @@ class FHIRBackend(DataBackend):
         backend = FHIRBackend(config, mapping=mapping)
     """
 
-    def __init__(self, config: FHIRConfig, mapping: Optional["MappingProvider"] = None):
+    def __init__(
+        self,
+        config: FHIRConfig,
+        mapping: Optional["MappingProvider"] = None,
+        dataset_spec: Optional[Any] = None,
+    ):
         """
         Initialize FHIR backend with configuration.
 
         Args:
             config: FHIRConfig with connection details
             mapping: Optional MappingProvider for signal-to-LOINC translation
+            dataset_spec: Optional DatasetSpec for signal binding (RFC-0008)
         """
         self.config = config
         self.mapping = mapping
+        self.dataset_spec = dataset_spec
         self._session = None
+
+    @property
+    def capabilities(self) -> Set[str]:
+        """FHIRBackend capabilities."""
+        return set()
 
     def _get_session(self):
         """Lazy initialization of HTTP session."""

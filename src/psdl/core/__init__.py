@@ -22,6 +22,8 @@ from .dataset import (
     DatasetValidationError,
     ElementSpec,
     Event,
+    FilterPredicate,
+    FilterPredicateSet,
     FilterSpec,
     UnitConversion,
     ValuesetSpec,
@@ -30,6 +32,7 @@ from .dataset import (
 )
 from .ir import (
     AuditBlock,
+    ClinicalDomain,
     Domain,
     LogicExpr,
     PopulationFilter,
@@ -47,6 +50,7 @@ from .parser import PSDLParseError, PSDLParser, parse_scenario
 __all__ = [
     # IR Types
     "AuditBlock",
+    "ClinicalDomain",
     "Domain",
     "LogicExpr",
     "PopulationFilter",
@@ -67,6 +71,8 @@ __all__ = [
     # Dataset Spec (RFC-0004)
     "DatasetSpec",
     "ElementSpec",
+    "FilterPredicate",
+    "FilterPredicateSet",
     "FilterSpec",
     "Conventions",
     "ValuesetSpec",

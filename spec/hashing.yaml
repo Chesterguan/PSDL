@@ -1,11 +1,11 @@
 # PSDL Canonical Hashing Specification
-# Version: 0.3.0
-# Last Updated: 2025-12-15
+# Version: 0.4.0
+# Last Updated: 2026-03-06
 #
 # This file defines the canonical hashing algorithm for PSDL scenarios and IR.
 # Used for cache invalidation, reproducibility tracking, and audit trails.
 
-version: "0.3.0"
+version: "0.4.0"
 
 # Hashing Algorithm
 algorithm:
@@ -43,10 +43,11 @@ canonicalization:
       - logic
     signal:
       - name
-      - source
+      - ref
       - concept_id
       - unit
       - domain
+      - clinical_domain
     trend:
       - name
       - operator

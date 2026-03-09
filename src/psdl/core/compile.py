@@ -88,6 +88,7 @@ class ResolvedSignal:
     concept_id: Optional[int] = None
     unit: Optional[str] = None
     domain: str = "measurement"
+    clinical_domain: str = "laboratory"
 
 
 @dataclass
@@ -421,6 +422,7 @@ class ScenarioIR:
                     "concept_id": s.concept_id,
                     "unit": s.unit,
                     "domain": s.domain,
+                    "clinical_domain": s.clinical_domain,
                 }
                 for name, s in self.signals.items()
             },
@@ -502,6 +504,9 @@ def compute_spec_hash(scenario: PSDLScenario) -> str:
                 "concept_id": s.concept_id,
                 "unit": s.unit,
                 "domain": s.domain.value if s.domain else None,
+                "clinical_domain": (
+                    s.clinical_domain.value if hasattr(s.clinical_domain, "value") else None
+                ),
             }
             for name, s in sorted(scenario.signals.items())
         },
@@ -553,6 +558,7 @@ def compute_ir_hash(
                 "concept_id": s.concept_id,
                 "unit": s.unit,
                 "domain": s.domain,
+                "clinical_domain": s.clinical_domain,
             }
             for name, s in sorted(signals.items())
         },
@@ -740,6 +746,7 @@ class ScenarioCompiler:
                 concept_id=signal.concept_id,
                 unit=signal.unit,
                 domain=signal.domain.value if signal.domain else "measurement",
+                clinical_domain=signal.clinical_domain.value,
             )
             # Type analysis: signals produce timeseries
             type_analysis.signal_types[name] = "timeseries"
@@ -996,6 +1003,7 @@ class ScenarioCompiler:
                 concept_id=signal.concept_id,
                 unit=signal.unit,
                 domain=signal.domain.value if signal.domain else "measurement",
+                clinical_domain=signal.clinical_domain.value,
             )
         return signals
 

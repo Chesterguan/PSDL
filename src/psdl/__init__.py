@@ -1,6 +1,6 @@
 """
 PSDL - Patient Scenario Definition Language
-Python Reference Implementation v0.3
+Python Reference Implementation v0.4
 
 A declarative language for expressing clinical scenarios.
 
@@ -28,13 +28,21 @@ Structure:
 - adapters/: Data source adapters (OMOP, FHIR)
 """
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 # Core components
 from .core import PSDLParser, PSDLScenario
 from .core.compile import ScenarioCompiler, ScenarioIR, compile_scenario
-from .core.dataset import Binding, DatasetSpec, ElementSpec, load_dataset_spec
+from .core.dataset import (
+    Binding,
+    DatasetSpec,
+    ElementSpec,
+    FilterPredicate,
+    FilterPredicateSet,
+    load_dataset_spec,
+)
 from .core.ir import (
+    ClinicalDomain,
     DecisionOutput,
     EvaluationResult,
     EvidenceOutput,
@@ -115,6 +123,10 @@ __all__ = [
     "DatasetSpec",
     "ElementSpec",
     "Binding",
+    # v0.4 Vendor-neutral types (RFC-0008)
+    "ClinicalDomain",
+    "FilterPredicate",
+    "FilterPredicateSet",
     # v0.3 IR types
     "Signal",
     "TrendExpr",

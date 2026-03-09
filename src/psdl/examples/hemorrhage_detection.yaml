@@ -35,25 +35,21 @@ population:
 signals:
   Hgb:
     ref: hemoglobin
-    concept_id: 3000963
     unit: g/dL
     domain: measurement
 
   Plt:
     ref: platelet_count
-    concept_id: 3024929
     unit: "10^9/L"
     domain: measurement
 
   Lact:
     ref: lactate
-    concept_id: 3047181
     unit: mmol/L
     domain: measurement
 
   Cr:
     ref: creatinine
-    concept_id: 3016723
     unit: mg/dL
     domain: measurement
 

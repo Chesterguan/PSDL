@@ -114,6 +114,14 @@ Foundation       Architecture      Readiness        & Scale
 - [ ] Late data handling
 - [ ] Production-ready state management
 
+#### Vendor-Neutral Foundation (RFC-0008) ✅
+- [x] ClinicalDomain enum (semantic domain names)
+- [x] FilterPredicate / FilterPredicateSet (structured filters)
+- [x] DataBackend lifecycle and capabilities protocol
+- [x] BatchRuntime / SQLBatchRuntime abstractions
+- [x] SQL templates extracted to dialect-specific files
+- [x] concept_id deprecated from signals and examples
+
 #### Query Generation
 - [x] Basic SQL generation (CohortCompiler)
 - [ ] Query optimization for large datasets
@@ -186,6 +194,7 @@ When planning features, always ask:
 | [RFC-0005](../rfcs/0005-psdl-v03-architecture.md) | PSDL v0.3 Architecture | ✅ Implemented | 2 |
 | [RFC-0006](../rfcs/0006-spec-driven-compilation.md) | Spec-Driven Compilation | ✅ Implemented | 3 |
 | [RFC-0007](../rfcs/0007-extension-mechanism.md) | Extension Mechanism | 📋 Draft | Future |
+| [RFC-0008](../rfcs/0008-vendor-neutral-foundation.md) | Vendor-Neutral Foundation | ✅ Implemented | 3 |
 
 ---
 
@@ -224,4 +233,4 @@ When planning features, always ask:
 
 ---
 
-*Last updated: December 17, 2025*
+*Last updated: March 7, 2026*

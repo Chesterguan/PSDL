@@ -119,6 +119,11 @@ class DataBackend(ABC):
     - FHIR servers
     - In-memory data
     - Streaming sources
+
+    v0.4 (RFC-0008): Added lifecycle methods (connect/close/context manager)
+    and capabilities discovery. Backends can optionally implement
+    resolve_binding() and fetch_events() by declaring "dataset_adapter"
+    in their capabilities.
     """
 
     @abstractmethod
@@ -160,6 +165,50 @@ class DataBackend(ABC):
             List of patient IDs
         """
         pass
+
+    # v0.4 (RFC-0008): Lifecycle methods
+
+    def connect(self) -> None:
+        """Eagerly initialize backend resources (e.g., database connections)."""
+        pass
+
+    def close(self) -> None:
+        """Release backend resources."""
+        pass
+
+    def __enter__(self) -> "DataBackend":
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    # v0.4 (RFC-0008): Capabilities discovery
+
+    @property
+    def capabilities(self) -> Set[str]:
+        """Declare backend capabilities (RFC-0008).
+
+        Known capabilities:
+        - "dataset_adapter": supports resolve_binding() and fetch_events()
+        """
+        return set()
+
+    # v0.4 (RFC-0008): Optional dataset adapter methods
+
+    def resolve_binding(self, signal_ref: str) -> Optional[Any]:
+        """Resolve a semantic reference to a physical binding.
+
+        Only available if "dataset_adapter" is in capabilities.
+        """
+        return None
+
+    def fetch_events(self, binding: Any, **kwargs) -> Optional[Any]:
+        """Fetch events from data source using a resolved binding.
+
+        Only available if "dataset_adapter" is in capabilities.
+        """
+        return None
 
 
 class InMemoryBackend(DataBackend):

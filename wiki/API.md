@@ -1,6 +1,6 @@
 # PSDL API Reference
 
-> Developer documentation for `psdl-lang` v0.3
+> Developer documentation for `psdl-lang` v0.4
 
 ## Installation
 

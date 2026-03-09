@@ -37,31 +37,26 @@ population:
 signals:
   Lact:
     ref: lactate
-    concept_id: 3047181
     unit: mmol/L
     domain: measurement
 
   pH:
     ref: blood_ph
-    concept_id: 3019977
     unit: pH
     domain: measurement
 
   HCO3:
     ref: bicarbonate
-    concept_id: 3015632
     unit: mEq/L
     domain: measurement
 
   Cr:
     ref: creatinine
-    concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   Glucose:
     ref: glucose
-    concept_id: 3004501
     unit: mg/dL
     domain: measurement
 

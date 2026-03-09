@@ -1,6 +1,10 @@
 """
 PSDL Batch Evaluator - Retrospective scenario execution.
 
+.. deprecated:: 0.4.0
+    This module is deprecated (RFC-0008). Use ``psdl.runtimes.single.SinglePatientEvaluator``
+    for patient evaluation and ``psdl.runtimes.cohort.CohortCompiler`` for SQL compilation.
+
 This module provides:
 1. Signal data fetching (pluggable backends)
 2. Trend computation using temporal operators

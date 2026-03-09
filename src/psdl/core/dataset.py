@@ -60,6 +60,9 @@ __all__ = [
     "Conventions",
     "ValuesetSpec",
     "UnitConversion",
+    # v0.4 Vendor-neutral types (RFC-0008)
+    "FilterPredicate",
+    "FilterPredicateSet",
     # Adapter interface types (RFC-0004)
     "Binding",
     "Event",
@@ -126,6 +129,66 @@ UnitStrategy = Literal["strict", "allow_declare", "backend_specific"]
 DataModel = Literal["omop", "fhir", "custom"]
 
 
+# =============================================================================
+# Vendor-Neutral Filter Types (RFC-0008)
+# =============================================================================
+
+
+FilterOperator = Literal["eq", "in", "contains", "custom"]
+
+
+@dataclass(frozen=True)
+class FilterPredicate:
+    """A single structured filter predicate (RFC-0008).
+
+    Vendor-neutral representation of a filter condition.
+    Can be rendered to SQL or other query languages.
+    """
+
+    field: str
+    operator: FilterOperator
+    value: Any
+
+    def to_sql(self) -> str:
+        """Render this predicate as a SQL expression."""
+        if self.operator == "eq":
+            if isinstance(self.value, str):
+                return f"{self.field} = '{self.value}'"
+            return f"{self.field} = {self.value}"
+        elif self.operator == "in":
+            if isinstance(self.value, (list, tuple)):
+                vals = ", ".join(f"'{v}'" if isinstance(v, str) else str(v) for v in self.value)
+                return f"{self.field} IN ({vals})"
+            return f"{self.field} IN ({self.value})"
+        elif self.operator == "contains":
+            return f"{self.field} LIKE '%{self.value}%'"
+        elif self.operator == "custom":
+            return str(self.value)
+        return "1=1"
+
+
+@dataclass(frozen=True)
+class FilterPredicateSet:
+    """A set of filter predicates combined with AND (RFC-0008).
+
+    Structured, vendor-neutral representation of filter criteria.
+    """
+
+    predicates: tuple[FilterPredicate, ...] = ()
+
+    def to_sql(self) -> str:
+        """Render all predicates as a SQL WHERE clause fragment."""
+        if not self.predicates:
+            return "1=1"
+        return " AND ".join(p.to_sql() for p in self.predicates)
+
+    def __len__(self) -> int:
+        return len(self.predicates)
+
+    def __iter__(self):
+        return iter(self.predicates)
+
+
 @dataclass(frozen=True)
 class UnitConversion:
     """Unit conversion declaration."""
@@ -146,41 +209,60 @@ class FilterSpec:
     custom: str | None = None
     valueset: str | None = None  # Reference to valueset name
 
-    def to_filter_expr(self, spec: DatasetSpec) -> str:
-        """Convert filter to SQL-like expression."""
-        conditions = []
+    def to_predicates(self, spec: DatasetSpec | None = None) -> FilterPredicateSet:
+        """Convert filter to structured predicates (RFC-0008).
+
+        Returns a vendor-neutral FilterPredicateSet that can be
+        rendered to SQL or other query languages.
+        """
+        predicates: list[FilterPredicate] = []
 
         if self.concept_id is not None:
             if isinstance(self.concept_id, list):
-                ids = ", ".join(str(c) for c in self.concept_id)
-                conditions.append(f"concept_id IN ({ids})")
+                predicates.append(
+                    FilterPredicate(field="concept_id", operator="in", value=self.concept_id)
+                )
             else:
-                conditions.append(f"concept_id = {self.concept_id}")
+                predicates.append(
+                    FilterPredicate(field="concept_id", operator="eq", value=self.concept_id)
+                )
 
         if self.source_value is not None:
             if isinstance(self.source_value, list):
-                vals = ", ".join(f"'{v}'" for v in self.source_value)
-                conditions.append(f"source_value IN ({vals})")
+                predicates.append(
+                    FilterPredicate(field="source_value", operator="in", value=self.source_value)
+                )
             else:
-                conditions.append(f"source_value = '{self.source_value}'")
+                predicates.append(
+                    FilterPredicate(field="source_value", operator="eq", value=self.source_value)
+                )
 
         if self.code is not None:
-            conditions.append(f"code = '{self.code}'")
+            predicates.append(FilterPredicate(field="code", operator="eq", value=self.code))
 
         if self.code_system is not None:
-            conditions.append(f"code_system = '{self.code_system}'")
+            predicates.append(
+                FilterPredicate(field="code_system", operator="eq", value=self.code_system)
+            )
 
-        if self.valueset is not None:
-            # Resolve valueset to codes
+        if self.valueset is not None and spec is not None:
             vs = spec.get_valueset(self.valueset)
             if vs and vs.codes:
-                codes = ", ".join(str(c) for c in vs.codes)
-                conditions.append(f"concept_id IN ({codes})")
+                predicates.append(
+                    FilterPredicate(field="concept_id", operator="in", value=list(vs.codes))
+                )
 
         if self.custom is not None:
-            conditions.append(self.custom)
+            predicates.append(FilterPredicate(field="custom", operator="custom", value=self.custom))
 
-        return " AND ".join(conditions) if conditions else "1=1"
+        return FilterPredicateSet(predicates=tuple(predicates))
+
+    def to_filter_expr(self, spec: DatasetSpec) -> str:
+        """Convert filter to SQL-like expression.
+
+        Internally delegates to to_predicates().to_sql().
+        """
+        return self.to_predicates(spec).to_sql()
 
 
 @dataclass(frozen=True)
@@ -253,6 +335,7 @@ class Binding:
     unit: str | None = None
     value_type: ValueType = "numeric"
     transform: str | None = None
+    filter_predicates: FilterPredicateSet | None = None  # v0.4 (RFC-0008)
 
 
 @dataclass
@@ -267,7 +350,13 @@ class Event:
 
 
 class DatasetAdapter(Protocol):
-    """Interface that all adapters must implement (RFC-0004)."""
+    """Interface that all adapters must implement (RFC-0004).
+
+    .. deprecated:: 0.4.0
+        Use ``DataBackend`` with ``capabilities`` instead (RFC-0008).
+        DataBackend now supports optional ``resolve_binding()`` and
+        ``fetch_events()`` methods via the ``dataset_adapter`` capability.
+    """
 
     def load_dataset_spec(self, uri_or_path: str) -> DatasetSpec:
         """Load and validate a Dataset Spec file."""
@@ -368,13 +457,12 @@ class DatasetSpec:
         elem = self.elements[signal_ref]
 
         # Apply conventions for missing fields
-        time_field = (
-            elem.time_field or self.conventions.default_time_field or "measurement_datetime"
-        )
+        time_field = elem.time_field or self.conventions.default_time_field or "event_datetime"
         patient_field = elem.patient_field or self.conventions.patient_id_field
 
-        # Build filter expression
-        filter_expr = elem.filter.to_filter_expr(self) if elem.filter else "1=1"
+        # Build filter predicates and expression
+        filter_preds = elem.filter.to_predicates(self) if elem.filter else None
+        filter_expr = filter_preds.to_sql() if filter_preds else "1=1"
 
         # Prepend schema if configured
         table = elem.table
@@ -390,6 +478,7 @@ class DatasetSpec:
             unit=elem.unit,
             value_type=elem.value_type,
             transform=elem.transform,
+            filter_predicates=filter_preds,
         )
 
     def get_valueset(self, name: str) -> ValuesetSpec | None:

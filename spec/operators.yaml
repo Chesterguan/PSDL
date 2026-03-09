@@ -1,6 +1,6 @@
 # PSDL Operator Specification
-# Version: 0.3.0
-# Last Updated: 2025-12-14
+# Version: 0.4.0
+# Last Updated: 2026-03-06
 #
 # This file is the SOURCE OF TRUTH for all PSDL temporal operators.
 # Code generation tools use this file to generate:
@@ -10,13 +10,17 @@
 #
 # DO NOT hand-edit generated files. Edit this specification instead.
 #
+# RFC-0008 NOTE: SQL implementation templates are also extracted to
+# dialect-specific files in src/psdl/runtimes/cohort/ for runtime use.
+# The templates here remain as the canonical source for code generation.
+#
 # v0.3 BREAKING CHANGE:
 #   - Trend expressions produce NUMERIC values only
 #   - Comparison operators belong in LOGIC expressions only
 #   - See spec/grammar/expression.lark for grammar details
 
-$schema: "https://psdl-lang.org/schema/v0.3/operators"
-version: "0.3.0"
+$schema: "https://psdl-lang.org/schema/v0.4/operators"
+version: "0.4.0"
 
 # =============================================================================
 # Type Definitions
@@ -98,6 +102,20 @@ operators:
         single_value: null
         all_nulls: null
         some_nulls: "Computed from non-null values only"
+
+      test_vectors:
+        - input: [1.0, 1.2, 1.5]
+          window: "6h"
+          expected: 0.5
+          description: "Simple delta: 1.5 - 1.0"
+        - input: [2.0]
+          window: "6h"
+          expected: null
+          description: "Single value returns null"
+        - input: []
+          window: "6h"
+          expected: null
+          description: "Empty window returns null"
 
       implementations:
         python: |

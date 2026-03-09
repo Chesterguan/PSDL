@@ -57,7 +57,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Set, Tuple
 
 if TYPE_CHECKING:
     from ..mapping import MappingProvider
@@ -198,6 +198,15 @@ class OMOPBackend(DataBackend):
         if mapping is not None:
             if mapping.use_source_values:
                 self.config.use_source_values = True
+
+    @property
+    def capabilities(self) -> Set[str]:
+        """OMOPBackend supports dataset_adapter capability."""
+        return {"dataset_adapter"}
+
+    def connect(self) -> None:
+        """Eagerly initialize the database engine."""
+        self._get_engine()
 
     def _get_engine(self):
         """Lazy initialization of database engine."""

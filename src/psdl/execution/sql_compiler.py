@@ -1,8 +1,16 @@
 """
 PSDL SQL Compiler - Generate SQL queries from PSDL scenarios.
 
+.. deprecated:: 0.4.0
+    This module is deprecated (RFC-0008). Use ``psdl.runtimes.cohort.CohortCompiler``
+    instead, which supports vendor-neutral Dataset Spec bindings::
+
+        from psdl.runtimes.cohort import CohortCompiler
+        compiler = CohortCompiler(schema="public", dataset_spec=my_spec)
+
 This module compiles PSDL scenarios into SQL queries that can be executed
-on OMOP CDM databases for cohort-level evaluation.
+on OMOP CDM databases for cohort-level evaluation. It hardcodes OMOP table
+and column names and does not support Dataset Spec bindings.
 
 Architecture:
     The SQL compiler follows a spec-driven approach:
@@ -10,11 +18,9 @@ Architecture:
     2. Generate CTEs for each trend using templates from operators.yaml
     3. Combine CTEs into a single query with logic evaluation
 
-Usage:
-    from psdl.parser import parse_scenario
+Usage (legacy):
     from psdl.execution.sql_compiler import SQLCompiler
 
-    scenario = parse_scenario("scenarios/aki_detection.yaml")
     compiler = SQLCompiler(schema="public", use_source_values=True)
     sql = compiler.compile(scenario)
     print(sql)

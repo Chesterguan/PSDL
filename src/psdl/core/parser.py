@@ -26,6 +26,7 @@ from psdl.expression_parser import (
 
 from .ir import (
     AuditBlock,
+    ClinicalDomain,
     DecisionOutput,
     Domain,
     EvidenceOutput,
@@ -283,20 +284,37 @@ class PSDLParser:
                     raise PSDLParseError(f"Signal '{name}' missing 'ref'")
 
                 domain = Domain.MEASUREMENT
+                clinical_domain = ClinicalDomain.LABORATORY
                 if "domain" in spec:
                     try:
                         domain = Domain(spec["domain"])
+                        clinical_domain = ClinicalDomain.from_legacy(domain)
                     except ValueError:
                         self.warnings.append(
                             f"Unknown domain '{spec['domain']}' for signal '{name}'"
                         )
 
+                # Allow explicit clinical_domain override in YAML (RFC-0008)
+                if "clinical_domain" in spec:
+                    try:
+                        clinical_domain = ClinicalDomain(spec["clinical_domain"])
+                    except ValueError:
+                        self.warnings.append(
+                            f"Unknown clinical_domain '{spec['clinical_domain']}' "
+                            f"for signal '{name}'"
+                        )
+
+                concept_id = spec.get("concept_id")
+                # Note: Signal.__post_init__ emits DeprecationWarning when
+                # concept_id is set (RFC-0008). No need to warn here too.
+
                 signals[name] = Signal(
                     name=name,
                     ref=ref,
-                    concept_id=spec.get("concept_id"),
+                    concept_id=concept_id,
                     unit=spec.get("unit"),
                     domain=domain,
+                    clinical_domain=clinical_domain,
                 )
             else:
                 raise PSDLParseError(f"Invalid signal specification for '{name}'")

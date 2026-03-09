@@ -34,31 +34,26 @@ population:
 signals:
   Cr:
     ref: creatinine
-    concept_id: 3016723
     unit: mg/dL
     domain: measurement
 
   Lact:
     ref: lactate
-    concept_id: 3047181
     unit: mmol/L
     domain: measurement
 
   MAP:
     ref: mean_arterial_pressure
-    concept_id: 3027598
     unit: mmHg
     domain: measurement
 
   HR:
     ref: heart_rate
-    concept_id: 3027018
     unit: beats/min
     domain: measurement
 
   SpO2:
     ref: oxygen_saturation
-    concept_id: 3016502
     unit: percent
     domain: measurement
 

@@ -4,6 +4,7 @@ Data models for PSDL streaming execution.
 Defines the event schema and result types used throughout the streaming pipeline.
 """
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -28,13 +29,36 @@ class ClinicalEvent:
     unit: str
     source: str = "unknown"
 
-    # Optional metadata
-    concept_id: Optional[int] = None  # OMOP concept ID
+    # Vendor-neutral metadata (RFC-0008)
+    source_ids: Dict[str, Any] = field(default_factory=dict)
+
+    # Deprecated: use source_ids instead (RFC-0008)
+    concept_id: Optional[int] = None
     fhir_resource_id: Optional[str] = None
     location: Optional[str] = None
 
     # Processing metadata
     ingestion_time: Optional[datetime] = None
+
+    def __post_init__(self):
+        if self.concept_id is not None:
+            warnings.warn(
+                "ClinicalEvent.concept_id is deprecated (RFC-0008). "
+                "Use source_ids={'concept_id': ...} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if "concept_id" not in self.source_ids:
+                self.source_ids["concept_id"] = self.concept_id
+        if self.fhir_resource_id is not None:
+            warnings.warn(
+                "ClinicalEvent.fhir_resource_id is deprecated (RFC-0008). "
+                "Use source_ids={'fhir_resource_id': ...} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if "fhir_resource_id" not in self.source_ids:
+                self.source_ids["fhir_resource_id"] = self.fhir_resource_id
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -45,6 +69,7 @@ class ClinicalEvent:
             "value": self.value,
             "unit": self.unit,
             "source": self.source,
+            "source_ids": self.source_ids,
             "concept_id": self.concept_id,
             "fhir_resource_id": self.fhir_resource_id,
             "location": self.location,
@@ -61,6 +86,7 @@ class ClinicalEvent:
             value=float(data["value"]),
             unit=data.get("unit", ""),
             source=data.get("source", "unknown"),
+            source_ids=data.get("source_ids", {}),
             concept_id=data.get("concept_id"),
             fhir_resource_id=data.get("fhir_resource_id"),
             location=data.get("location"),

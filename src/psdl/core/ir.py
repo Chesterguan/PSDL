@@ -12,6 +12,7 @@ Version 0.3.0 Changes (RFC-0005):
 - AST types generated from spec/ast-nodes.yaml
 """
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -29,6 +30,38 @@ class Domain(Enum):
     DRUG = "drug"
     PROCEDURE = "procedure"
     OBSERVATION = "observation"
+
+
+class ClinicalDomain(Enum):
+    """Vendor-neutral clinical domains (RFC-0008).
+
+    Semantic domain names that describe clinical concepts,
+    not database table names. Use this instead of Domain
+    for new code.
+    """
+
+    LABORATORY = "laboratory"
+    VITAL_SIGN = "vital_sign"
+    CONDITION = "condition"
+    MEDICATION = "medication"
+    PROCEDURE = "procedure"
+    OBSERVATION = "observation"
+    DEMOGRAPHIC = "demographic"
+
+    @classmethod
+    def from_legacy(cls, domain: "Domain") -> "ClinicalDomain":
+        """Convert a legacy Domain enum to ClinicalDomain."""
+        _legacy_map = {
+            Domain.MEASUREMENT: cls.LABORATORY,
+            Domain.CONDITION: cls.CONDITION,
+            Domain.DRUG: cls.MEDICATION,
+            Domain.PROCEDURE: cls.PROCEDURE,
+            Domain.OBSERVATION: cls.OBSERVATION,
+        }
+        result = _legacy_map.get(domain)
+        if result is None:
+            raise ValueError(f"Unknown legacy domain: {domain}")
+        return result
 
 
 class Severity(Enum):
@@ -70,6 +103,16 @@ class Signal:
     concept_id: Optional[int] = None
     unit: Optional[str] = None
     domain: Domain = Domain.MEASUREMENT
+    clinical_domain: ClinicalDomain = ClinicalDomain.LABORATORY  # v0.4 (RFC-0008)
+
+    def __post_init__(self):
+        if self.concept_id is not None:
+            warnings.warn(
+                "Signal.concept_id is deprecated (RFC-0008). "
+                "Use Dataset Spec bindings instead of embedding concept_id in signals.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     # v0.2 compatibility
     @property

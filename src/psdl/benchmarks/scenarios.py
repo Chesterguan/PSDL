@@ -14,7 +14,9 @@ BENCHMARK_SCENARIOS: Dict[str, dict] = {
         "version": "0.3.0",
         "description": "Simple threshold detection - baseline benchmark",
         "signals": {
-            "HR": {"ref": "heart_rate", "concept_id": 3027018},
+            "HR": {
+                "ref": "heart_rate",
+            },
         },
         "trends": {
             "hr_current": {"expr": "last(HR)", "type": "float"},
@@ -29,8 +31,12 @@ BENCHMARK_SCENARIOS: Dict[str, dict] = {
         "version": "0.3.0",
         "description": "AKI detection with delta and baseline comparison",
         "signals": {
-            "Cr": {"ref": "creatinine", "concept_id": 3016723},
-            "K": {"ref": "potassium", "concept_id": 3023103},
+            "Cr": {
+                "ref": "creatinine",
+            },
+            "K": {
+                "ref": "potassium",
+            },
         },
         "trends": {
             "cr_current": {"expr": "last(Cr)", "type": "float"},
@@ -49,14 +55,18 @@ BENCHMARK_SCENARIOS: Dict[str, dict] = {
         "version": "0.3.0",
         "description": "Sepsis detection with SIRS criteria and organ dysfunction",
         "signals": {
-            "HR": {"ref": "heart_rate", "concept_id": 3027018},
-            "Temp": {"ref": "temperature", "concept_id": 3020891},
-            "Resp": {"ref": "respiratory_rate", "concept_id": 3024171},
-            "WBC": {"ref": "wbc", "concept_id": 3000905},
-            "Lactate": {"ref": "lactate", "concept_id": 3047181},
-            "MAP": {"ref": "mean_arterial_pressure", "concept_id": 3027598},
-            "Cr": {"ref": "creatinine", "concept_id": 3016723},
-            "SpO2": {"ref": "spo2", "concept_id": 3016502},
+            "HR": {
+                "ref": "heart_rate",
+            },
+            "Temp": {"ref": "temperature"},
+            "Resp": {"ref": "respiratory_rate"},
+            "WBC": {"ref": "wbc"},
+            "Lactate": {"ref": "lactate"},
+            "MAP": {"ref": "mean_arterial_pressure"},
+            "Cr": {
+                "ref": "creatinine",
+            },
+            "SpO2": {"ref": "spo2"},
         },
         "trends": {
             "hr_current": {"expr": "last(HR)", "type": "float"},
@@ -104,21 +114,27 @@ BENCHMARK_SCENARIOS: Dict[str, dict] = {
         "version": "0.3.0",
         "description": "Comprehensive ICU deterioration detection",
         "signals": {
-            "HR": {"ref": "heart_rate", "concept_id": 3027018},
-            "SBP": {"ref": "systolic_bp", "concept_id": 3004249},
-            "DBP": {"ref": "diastolic_bp", "concept_id": 3012888},
-            "MAP": {"ref": "mean_arterial_pressure", "concept_id": 3027598},
-            "Temp": {"ref": "temperature", "concept_id": 3020891},
-            "Resp": {"ref": "respiratory_rate", "concept_id": 3024171},
-            "SpO2": {"ref": "spo2", "concept_id": 3016502},
-            "Cr": {"ref": "creatinine", "concept_id": 3016723},
-            "K": {"ref": "potassium", "concept_id": 3023103},
-            "Na": {"ref": "sodium", "concept_id": 3019550},
-            "Lactate": {"ref": "lactate", "concept_id": 3047181},
-            "pH": {"ref": "blood_ph", "concept_id": 3019977},
-            "Hgb": {"ref": "hemoglobin", "concept_id": 3000963},
-            "Plt": {"ref": "platelets", "concept_id": 3024929},
-            "WBC": {"ref": "wbc", "concept_id": 3000905},
+            "HR": {
+                "ref": "heart_rate",
+            },
+            "SBP": {"ref": "systolic_bp"},
+            "DBP": {"ref": "diastolic_bp"},
+            "MAP": {"ref": "mean_arterial_pressure"},
+            "Temp": {"ref": "temperature"},
+            "Resp": {"ref": "respiratory_rate"},
+            "SpO2": {"ref": "spo2"},
+            "Cr": {
+                "ref": "creatinine",
+            },
+            "K": {
+                "ref": "potassium",
+            },
+            "Na": {"ref": "sodium"},
+            "Lactate": {"ref": "lactate"},
+            "pH": {"ref": "blood_ph"},
+            "Hgb": {"ref": "hemoglobin"},
+            "Plt": {"ref": "platelets"},
+            "WBC": {"ref": "wbc"},
         },
         "trends": {
             # Current values

@@ -1,0 +1,110 @@
+# Flink SQL Templates for PSDL Operators
+# Extracted from spec/operators.yaml (RFC-0008)
+#
+# These templates are implementation-specific and belong with the
+# Flink runtime, not in the vendor-neutral specification.
+
+dialect: flink_sql
+min_version: "1.17"
+
+templates:
+  delta: |
+    SELECT
+        patient_id,
+        LAST_VALUE({value_col}) OVER w - FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  sma: |
+    SELECT
+        patient_id,
+        AVG({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  min: |
+    SELECT
+        patient_id,
+        MIN({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  max: |
+    SELECT
+        patient_id,
+        MAX({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  count: |
+    SELECT
+        patient_id,
+        COUNT(*) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  first: |
+    SELECT
+        patient_id,
+        FIRST_VALUE({value_col}) OVER w AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    WINDOW w AS (
+        PARTITION BY patient_id
+        ORDER BY {datetime_col}
+        RANGE BETWEEN INTERVAL '{window_seconds}' SECOND PRECEDING AND CURRENT ROW
+    )
+
+  last: |
+    SELECT
+        patient_id,
+        LAST_VALUE({value_col}) AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+
+  slope: null  # Requires UDF implementation
+  ema: null  # Requires custom AggregateFunction
+  std: null  # Limited support in OVER windows
+  percentile: null  # PERCENTILE_CONT not supported in OVER windows
+
+  exists: |
+    SELECT
+        patient_id,
+        CASE WHEN COUNT(*) > 0 THEN true ELSE false END AS {trend_name}_value
+    FROM {table}
+    WHERE {filter_cond}
+    GROUP BY patient_id
+
+  missing: |
+    SELECT
+        p.patient_id,
+        CASE WHEN s.patient_id IS NULL THEN true ELSE false END AS {trend_name}_value
+    FROM patients p
+    LEFT JOIN (
+        SELECT DISTINCT patient_id FROM {table} WHERE {filter_cond}
+    ) s ON p.patient_id = s.patient_id

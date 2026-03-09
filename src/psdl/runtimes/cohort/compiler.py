@@ -34,7 +34,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +222,10 @@ class CohortCompiler:
     The compiler generates PostgreSQL CTEs using templates from the
     specification, ensuring consistency across runtimes.
 
+    v0.4 (RFC-0008): Implements SQLBatchRuntime interface. When a
+    dataset_spec is provided, uses it for table/column resolution
+    instead of hardcoded OMOP names.
+
     Features:
         - Batch processing for large datasets
         - Population pre-filtering optimization
@@ -236,6 +240,7 @@ class CohortCompiler:
         source_value_mappings: Optional[Dict[str, str]] = None,
         dialect: str = "postgresql",
         optimization: Optional[QueryOptimizationConfig] = None,
+        dataset_spec: Any = None,
     ):
         """
         Initialize SQL compiler.
@@ -246,12 +251,41 @@ class CohortCompiler:
             source_value_mappings: Map signal names to source values
             dialect: SQL dialect (currently only "postgresql" supported)
             optimization: Query optimization configuration
+            dataset_spec: Optional DatasetSpec for binding resolution (RFC-0008)
         """
         self.schema = schema
         self.use_source_values = use_source_values
         self.source_value_mappings = source_value_mappings or {}
         self.dialect = dialect
         self.optimization = optimization or QueryOptimizationConfig()
+        self.dataset_spec = dataset_spec
+
+    # v0.4 (RFC-0008): SQLBatchRuntime interface methods
+
+    @property
+    def capabilities(self) -> Set[str]:
+        """Declare runtime capabilities."""
+        return {"sql", "parallel"}
+
+    def get_sql_dialect(self) -> str:
+        """Return the SQL dialect name."""
+        return self.dialect
+
+    def render_interval(self, seconds: int) -> str:
+        """Render a time interval in PostgreSQL SQL."""
+        return f"INTERVAL '{seconds} seconds'"
+
+    def execute(
+        self,
+        scenario: Any,
+        dataset_spec: Any = None,
+        patient_ids: Optional[List[str]] = None,
+    ) -> Iterator[Any]:
+        """Not implemented — CohortCompiler only compiles, not executes."""
+        raise NotImplementedError(
+            "CohortCompiler only compiles SQL queries. "
+            "Execute the compiled SQL against your database directly."
+        )
 
     def _get_table(self, domain: str = "measurement") -> str:
         """Get fully qualified table name."""
@@ -266,7 +300,7 @@ class CohortCompiler:
         return f"{self.schema}.{table}"
 
     def _get_filter_condition(self, signal_name: str, signal_def: Any) -> str:
-        """Generate filter condition for a signal."""
+        """Generate filter condition for a signal (legacy OMOP fallback)."""
         if self.use_source_values:
             source_value = self.source_value_mappings.get(signal_name)
             if source_value is None:
@@ -281,6 +315,44 @@ class CohortCompiler:
             if hasattr(signal_def, "concept_id") and signal_def.concept_id:
                 return f"measurement_concept_id = {signal_def.concept_id}"
             raise ValueError(f"No concept_id for signal {signal_name}")
+
+    def _resolve_signal_binding(self, signal_name: str, signal_def: Any) -> Dict[str, str]:
+        """Resolve table/columns/filter for a signal (RFC-0008).
+
+        When dataset_spec is available, uses it for vendor-neutral resolution.
+        Falls through to legacy hardcoded OMOP resolution otherwise.
+
+        Returns:
+            Dict with keys: table, filter_cond, value_col, datetime_col
+        """
+        if self.dataset_spec is not None:
+            # Get the signal's semantic ref for dataset_spec lookup
+            signal_ref = getattr(signal_def, "ref", None) or signal_name
+            try:
+                binding = self.dataset_spec.resolve(signal_ref)
+                filter_sql = (
+                    binding.filter_predicates.to_sql()
+                    if binding.filter_predicates
+                    else binding.filter_expr
+                )
+                return {
+                    "table": binding.table,
+                    "filter_cond": filter_sql,
+                    "value_col": binding.value_field,
+                    "datetime_col": binding.time_field,
+                }
+            except (KeyError, Exception):
+                pass  # Fall through to legacy resolution
+
+        # Legacy: hardcoded OMOP resolution
+        domain = getattr(signal_def, "domain", None)
+        domain_str = domain.value if hasattr(domain, "value") else "measurement"
+        return {
+            "table": self._get_table(domain_str),
+            "filter_cond": self._get_filter_condition(signal_name, signal_def),
+            "value_col": "value_as_number",
+            "datetime_col": "measurement_datetime",
+        }
 
     def _compile_trend(
         self,
@@ -316,16 +388,12 @@ class CohortCompiler:
         if signal_def is None:
             raise ValueError(f"Unknown signal: {signal_name}")
 
-        # Build template parameters
-        table = self._get_table("measurement")
-        filter_cond = self._get_filter_condition(signal_name, signal_def)
+        # Build template parameters — use dataset_spec if available (RFC-0008)
+        resolved = self._resolve_signal_binding(signal_name, signal_def)
 
         params = {
             "trend_name": trend_name,
-            "table": table,
-            "filter_cond": filter_cond,
-            "value_col": "value_as_number",
-            "datetime_col": "measurement_datetime",
+            **resolved,
         }
 
         if window_str:
