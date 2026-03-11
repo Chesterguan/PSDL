@@ -246,15 +246,12 @@ Reference table for frequently used clinical signals:
 ### No Data Returned
 
 ```python
-# Check if concept_id is correct
-from psdl.parser import Signal, Domain
+# Check signal binding via Dataset Spec
+from psdl import load_dataset_spec
 
-signal = Signal(
-    name="Cr",
-    source="creatinine",
-    concept_id=3016723,
-    domain=Domain.MEASUREMENT
-)
+spec = load_dataset_spec("dataset_specs/my_omop.yaml")
+binding = spec.resolve("creatinine")
+print(binding.table, binding.filter_predicates)
 
 # Verify data exists
 data = backend.fetch_signal_data(

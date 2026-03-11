@@ -220,8 +220,7 @@ population:
 
 signals:
   Cr:
-    source: creatinine
-    concept_id: 3016723    # Concepto estándar OMOP
+    ref: creatinine          # Referencia semántica (resuelta vía Dataset Spec)
     unit: mg/dL
 
 trends:

@@ -121,8 +121,7 @@ audit:
 
 signals:
   Cr:
-    ref: creatinine        # v0.3: 'ref' instead of 'source'
-    concept_id: 3016723    # OMOP concept
+    ref: creatinine        # Semantic reference (resolved via Dataset Spec)
     unit: mg/dL
 
 trends:
@@ -267,8 +266,8 @@ spec = load_dataset_spec("dataset_specs/my_hospital_omop.yaml")
 
 # Resolve a signal reference to physical binding
 binding = spec.resolve("creatinine")
-print(binding.table)        # "measurement"
-print(binding.filter_expr)  # "concept_id = 3016723"
+print(binding.table)              # "measurement"
+print(binding.filter_predicates)  # FilterPredicateSet (vendor-neutral)
 ```
 
 This separates **clinical logic** (portable scenarios) from **local terminology** (institution-specific mappings).
@@ -455,7 +454,7 @@ See [tests/TEST_VALIDATION.md](tests/TEST_VALIDATION.md) for detailed methodolog
 
 | Standard | Relationship |
 |----------|--------------|
-| **OMOP CDM** | Data model for signals (concept_id references) |
+| **OMOP CDM** | Data model for signals (via Dataset Spec bindings) |
 | **FHIR R4** | EHR integration (implemented adapter) |
 | **CQL** | Similar domain, different scope (quality measures) |
 | **ONNX** | Inspiration for portable format approach |

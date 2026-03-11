@@ -74,8 +74,7 @@ audit:
 
 signals:
   Cr:
-    ref: creatinine        # v0.3: 'ref' instead of 'source'
-    concept_id: 3016723
+    ref: creatinine        # Semantic reference (resolved via Dataset Spec)
     unit: mg/dL
 
 trends:
@@ -223,10 +222,10 @@ PSDL separates **clinical logic** from **local terminology**:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Mapping File (Institution-Specific)                            │
-│  - Translates: "creatinine" → concept_id: 3016723               │
-│  - Or: "creatinine" → source_value: "CREATININE_SERUM"          │
-│  - Each hospital creates their own mapping                      │
+│  Dataset Spec (Institution-Specific, RFC-0004)                   │
+│  - Translates: "creatinine" → table, filters, columns            │
+│  - E.g.: filter: concept_id: [3016723] (OMOP binding)            │
+│  - Each hospital creates their own Dataset Spec                  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -260,8 +259,8 @@ spec = load_dataset_spec("dataset_specs/my_hospital_omop.yaml")
 
 # Resolve a logical signal to physical binding
 binding = spec.resolve("creatinine")
-print(binding.table)        # "measurement"
-print(binding.filter_expr)  # "concept_id = 3016723"
+print(binding.table)              # "measurement"
+print(binding.filter_predicates)  # FilterPredicateSet (vendor-neutral)
 ```
 
 **Dataset Spec YAML format:**

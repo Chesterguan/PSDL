@@ -261,8 +261,7 @@ population:
 
 signals:
   Cr:
-    ref: creatinine          # v0.3: 'ref' instead of 'source'
-    concept_id: 3016723      # OMOP standard concept
+    ref: creatinine          # Semantic reference (resolved via Dataset Spec)
     unit: mg/dL
 
 trends:
@@ -873,30 +872,24 @@ signals:
   # Renal markers
   Cr:
     ref: creatinine
-    concept_id: 3016723
     unit: mg/dL
-    domain: measurement
 
   BUN:
     ref: blood_urea_nitrogen
-    concept_id: 3013682
     unit: mg/dL
 
   # Metabolic markers
   Lactate:
     ref: lactate
-    concept_id: 3047181
     unit: mmol/L
 
   # Hemodynamic markers
   MAP:
     ref: mean_arterial_pressure
-    concept_id: 3027598
     unit: mmHg
 
   HR:
     ref: heart_rate
-    concept_id: 3027018
     unit: bpm
 
 trends:
