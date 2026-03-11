@@ -4,7 +4,7 @@
 
 <h1 align="center">PSDL Whitepaper</h1>
 <h3 align="center">Patient Scenario Definition Language</h3>
-<h4 align="center">Version 0.3 | December 2025</h4>
+<h4 align="center">Version 0.4 | March 2026</h4>
 
 <p align="center">
   <em>An Open Standard for Clinical Logic in Healthcare AI</em>

@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-11
+
+### Added
+
+#### RFC-0008: Vendor-Neutral Foundation
+- **ClinicalDomain enum**: Vendor-neutral replacement for OMOP-specific `Domain` enum (LABORATORY, VITAL_SIGN, CONDITION, MEDICATION, PROCEDURE, DEMOGRAPHIC, SCORING, OTHER)
+- **FilterPredicate / FilterPredicateSet**: Structured, vendor-neutral filter types replacing raw SQL strings
+- **DataBackend ABC**: Enhanced with `connect()/close()/__enter__/__exit__/capabilities`
+- **BatchRuntime / SQLBatchRuntime**: Abstract base classes for vendor-neutral batch execution
+- **CohortCompiler → SQLBatchRuntime**: Inherits runtime ABC, `compile()` accepts `dataset_spec` override
+- **OMOPBackend → BatchRuntime**: Inherits runtime ABC with `compile()` and `execute()` methods
+- **ClinicalEvent.source_ids**: Vendor-neutral metadata dict for streaming events
+- **Signal.clinical_domain**: New field set via `ClinicalDomain.from_legacy(domain)`
+- **Dataset Spec resolve()**: `load_dataset_spec()` returns structured `FilterPredicateSet` bindings
+
+#### Testing
+- Added 115 vendor-neutral tests (test_vendor_neutral.py)
+- Total test count: 539 tests (all passing)
+
+### Changed
+- OMOPBackend capabilities: `{"dataset_adapter"}` → `{"dataset_adapter", "sql"}`
+- CohortCompiler `_resolve_signal_binding()` uses `dataset_spec.resolve()` when available
+- SQL templates extracted to `runtimes/cohort/postgresql_templates.yaml`
+
+### Deprecated
+- `Signal.concept_id` — use Dataset Spec bindings instead (removal in v0.5.0)
+- `Domain` enum — use `ClinicalDomain` instead (removal in v0.5.0)
+- `DatasetAdapter` protocol — use `DataBackend` ABC instead
+- `ClinicalEvent.concept_id` / `fhir_resource_id` — use `source_ids` dict instead
+- `execution/sql_compiler.py` — use `runtimes/cohort/` instead
+- `execution/batch.py` — use `runtimes/batch.py` instead
+
+## [0.3.2] - 2026-03-07
+
+### Added
+
+#### RFC-0004: Dataset Specification
+- **DatasetSpec loader**: `load_dataset_spec()` with JSON Schema validation
+- **Dataset Schema**: `spec/dataset_schema.json` for spec validation
+- **OMOP CDM v5.4 bindings**: `dataset_specs/omop_cdm_v54.yaml` standard mapping
+- **Element resolution**: `spec.resolve("creatinine")` returns physical binding
+
+#### RFC-0007: Extension Mechanism (Draft)
+- Initial RFC draft for PSDL extension mechanism
+
+### Changed
+- Import ordering fixed in `__init__.py`
+
+## [0.3.1] - 2026-03-05
+
 ### Added
 
 #### RFC-0006: Spec-Driven Compilation
@@ -18,14 +68,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SinglePatientEvaluator.from_ir()**: Create evaluator from compiled IR
 - **spec/hashing.yaml**: Canonical hashing specification
 
+#### Documentation
+- API reference (`wiki/API.md`)
+- Updated notebooks to v0.3 syntax (MIMIC, Synthea, PhysioNet demos)
+
 #### Testing
 - Added 54 compiler tests (test_compile.py)
 - Total test count: 424 tests (all passing)
 
-#### Documentation
-- Updated notebooks to v0.3 syntax (MIMIC, Synthea, PhysioNet demos)
-- Added compile_scenario usage to README
-- Updated GLOSSARY.md with ScenarioIR documentation
+### Fixed
+- flake8 lint errors resolved
 
 ## [0.3.0] - 2025-12-12
 
@@ -147,6 +199,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.4.0 | 2026-03-11 | Vendor-Neutral Foundation (RFC-0008) |
+| 0.3.2 | 2026-03-07 | Dataset Specification (RFC-0004) |
+| 0.3.1 | 2026-03-05 | Spec-Driven Compilation (RFC-0006) |
 | 0.3.0 | 2025-12-12 | v0.3 Architecture, PyPI publication, RFC-0005 |
 | 0.2.0 | 2025-12-12 | Clinical Accountability, State Machine, Dataset Spec |
 | 0.1.0 | 2025-12-05 | Initial release - Semantic Foundation |

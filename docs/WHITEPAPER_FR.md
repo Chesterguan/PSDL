@@ -4,7 +4,7 @@
 
 <h1 align="center">Livre Blanc PSDL</h1>
 <h3 align="center">Langage de Définition de Scénarios Patient</h3>
-<h4 align="center">Version 0.1 | Décembre 2025</h4>
+<h4 align="center">Version 0.4 | Mars 2026</h4>
 
 <p align="center">
   <em>Un Standard Ouvert pour la Logique Clinique en IA de Santé</em>

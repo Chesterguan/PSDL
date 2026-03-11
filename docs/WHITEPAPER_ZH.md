@@ -4,7 +4,7 @@
 
 <h1 align="center">PSDL 白皮书</h1>
 <h3 align="center">患者场景定义语言</h3>
-<h4 align="center">版本 0.1 | 2025年12月</h4>
+<h4 align="center">版本 0.4 | 2026年3月</h4>
 
 <p align="center">
   <em>医疗AI临床逻辑的开放标准</em>

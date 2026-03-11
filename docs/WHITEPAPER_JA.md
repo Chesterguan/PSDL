@@ -4,7 +4,7 @@
 
 <h1 align="center">PSDLホワイトペーパー</h1>
 <h3 align="center">患者シナリオ定義言語</h3>
-<h4 align="center">バージョン 0.1 | 2025年12月</h4>
+<h4 align="center">バージョン 0.4 | 2026年3月</h4>
 
 <p align="center">
   <em>医療AIにおける臨床ロジックのオープンスタンダード</em>

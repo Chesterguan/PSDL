@@ -372,4 +372,4 @@ pytest tests/test_evaluator.py -v
 
 ---
 
-*Last updated: December 17, 2025*
+*Last updated: March 11, 2026*

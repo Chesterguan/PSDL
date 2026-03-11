@@ -2,7 +2,7 @@
 
 > Quick reference for architectural decisions. Review this when in doubt.
 >
-> Last Updated: December 12, 2025
+> Last Updated: March 11, 2026
 
 ---
 
