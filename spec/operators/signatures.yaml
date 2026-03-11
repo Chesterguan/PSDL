@@ -1,6 +1,6 @@
 # PSDL Operator Signatures
-# Version: 0.3.0
-# Last Updated: 2025-12-15
+# Version: 0.4.0
+# Last Updated: 2026-03-09
 #
 # This file defines CORE operator signatures - the interface contract.
 # Backend implementations (SQL templates) are in backends/ directory.
@@ -9,8 +9,8 @@
 #   - Generated code uses these signatures for type checking
 #   - Backends implement these signatures for specific dialects
 
-$schema: "https://psdl-lang.org/schema/v0.3/operators/signatures"
-version: "0.3.0"
+$schema: "https://psdl-lang.org/schema/v0.4/operators/signatures"
+version: "0.4.0"
 
 # =============================================================================
 # Type Definitions

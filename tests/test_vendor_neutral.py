@@ -910,3 +910,141 @@ class TestClinicalEventSourceIds:
         }
         event = ClinicalEvent.from_dict(data)
         assert event.source_ids["loinc"] == "8867-4"
+
+
+# =============================================================================
+# Phase 2 Wiring: CohortCompiler inherits SQLBatchRuntime (#8)
+# =============================================================================
+
+
+class TestCohortCompilerSQLBatchRuntime:
+    """Verify CohortCompiler properly inherits SQLBatchRuntime."""
+
+    def test_isinstance_sql_batch_runtime(self):
+        from psdl.runtimes.batch import SQLBatchRuntime
+        from psdl.runtimes.cohort.compiler import CohortCompiler
+
+        compiler = CohortCompiler()
+        assert isinstance(compiler, SQLBatchRuntime)
+
+    def test_isinstance_batch_runtime(self):
+        from psdl.runtimes.batch import BatchRuntime
+        from psdl.runtimes.cohort.compiler import CohortCompiler
+
+        compiler = CohortCompiler()
+        assert isinstance(compiler, BatchRuntime)
+
+    def test_compile_with_dataset_spec_override(self):
+        """compile(scenario, dataset_spec=...) should override self.dataset_spec."""
+        from unittest.mock import MagicMock, patch
+
+        from psdl.runtimes.cohort.compiler import CohortCompiler
+
+        compiler = CohortCompiler(dataset_spec="original")
+
+        # Mock _compile_impl to avoid actual compilation
+        with patch.object(compiler, "_compile_impl") as mock_impl:
+            mock_impl.return_value = MagicMock()
+            compiler.compile("scenario", dataset_spec="override")
+
+            # During compilation, dataset_spec should have been overridden
+            mock_impl.assert_called_once_with("scenario")
+
+        # After compilation, dataset_spec should be restored
+        assert compiler.dataset_spec == "original"
+
+    def test_compile_without_dataset_spec_keeps_original(self):
+        """compile(scenario) without dataset_spec uses self.dataset_spec."""
+        from unittest.mock import MagicMock, patch
+
+        from psdl.runtimes.cohort.compiler import CohortCompiler
+
+        compiler = CohortCompiler(dataset_spec="original")
+
+        with patch.object(compiler, "_compile_impl") as mock_impl:
+            mock_impl.return_value = MagicMock()
+            compiler.compile("scenario")
+
+        assert compiler.dataset_spec == "original"
+
+
+# =============================================================================
+# Phase 2 Wiring: OMOPBackend inherits BatchRuntime (#9)
+# =============================================================================
+
+
+class TestOMOPBackendBatchRuntime:
+    """Verify OMOPBackend properly inherits BatchRuntime."""
+
+    def test_isinstance_batch_runtime(self):
+        from psdl.adapters.omop import OMOPBackend, OMOPConfig
+        from psdl.runtimes.batch import BatchRuntime
+
+        config = OMOPConfig(connection_string="sqlite:///test.db")
+        backend = OMOPBackend(config)
+        assert isinstance(backend, BatchRuntime)
+
+    def test_capabilities_includes_sql(self):
+        from psdl.adapters.omop import OMOPBackend, OMOPConfig
+
+        config = OMOPConfig(connection_string="sqlite:///test.db")
+        backend = OMOPBackend(config)
+        assert "sql" in backend.capabilities
+        assert "dataset_adapter" in backend.capabilities
+
+    def test_compile_delegates_to_cohort_compiler(self):
+        """OMOPBackend.compile() should delegate to CohortCompiler."""
+        from unittest.mock import MagicMock, patch
+
+        from psdl.adapters.omop import OMOPBackend, OMOPConfig
+
+        config = OMOPConfig(connection_string="sqlite:///test.db")
+        backend = OMOPBackend(config)
+
+        mock_scenario = MagicMock()
+
+        with patch("psdl.runtimes.cohort.CohortCompiler") as MockCompiler:
+            mock_instance = MagicMock()
+            MockCompiler.return_value = mock_instance
+            mock_instance.compile.return_value = MagicMock()
+
+            backend.compile(mock_scenario)
+
+            MockCompiler.assert_called_once()
+            mock_instance.compile.assert_called_once()
+
+    def test_compile_uses_dataset_spec(self):
+        """OMOPBackend.compile() passes dataset_spec to CohortCompiler."""
+        from unittest.mock import MagicMock, patch
+
+        from psdl.adapters.omop import OMOPBackend, OMOPConfig
+
+        mock_ds = MagicMock()
+        config = OMOPConfig(connection_string="sqlite:///test.db")
+        backend = OMOPBackend(config, dataset_spec=mock_ds)
+
+        with patch("psdl.runtimes.cohort.CohortCompiler") as MockCompiler:
+            mock_instance = MagicMock()
+            MockCompiler.return_value = mock_instance
+            mock_instance.compile.return_value = MagicMock()
+
+            backend.compile(MagicMock())
+
+            # Verify dataset_spec was passed to CohortCompiler
+            call_kwargs = MockCompiler.call_args[1]
+            assert call_kwargs["dataset_spec"] is mock_ds
+
+
+# =============================================================================
+# Domain Deprecation Docstring
+# =============================================================================
+
+
+class TestDomainDeprecation:
+    """Verify Domain enum has deprecation notice."""
+
+    def test_domain_docstring_mentions_deprecated(self):
+        assert "deprecated" in Domain.__doc__.lower()
+
+    def test_domain_docstring_mentions_clinical_domain(self):
+        assert "ClinicalDomain" in Domain.__doc__

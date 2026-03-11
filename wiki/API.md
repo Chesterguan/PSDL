@@ -541,13 +541,14 @@ Resolved physical binding - the contract between DatasetSpec and adapters.
 ```python
 binding = spec.resolve("creatinine")
 
-print(binding.table)         # "measurement"
-print(binding.value_field)   # "value_as_number"
-print(binding.time_field)    # "measurement_datetime"
-print(binding.patient_field) # "person_id"
-print(binding.filter_expr)   # "concept_id = 3016723"
-print(binding.unit)          # "mg/dL"
-print(binding.value_type)    # "numeric"
+print(binding.table)              # "measurement"
+print(binding.value_field)        # "value_as_number"
+print(binding.time_field)         # "measurement_datetime"
+print(binding.patient_field)      # "person_id"
+print(binding.filter_predicates)  # FilterPredicateSet (v0.4, preferred)
+print(binding.filter_expr)        # "concept_id = 3016723" (deprecated, use filter_predicates)
+print(binding.unit)               # "mg/dL"
+print(binding.value_type)         # "numeric"
 ```
 
 **Attributes:**
@@ -557,7 +558,8 @@ print(binding.value_type)    # "numeric"
 | `value_field` | `str` | Column containing the value |
 | `time_field` | `str` | Column containing timestamp |
 | `patient_field` | `str` | Column containing patient ID |
-| `filter_expr` | `str` | SQL-like filter expression |
+| `filter_predicates` | `FilterPredicateSet` | Structured filter predicates (v0.4) |
+| `filter_expr` | `str` | SQL-like filter expression (**deprecated** in v0.4, use `filter_predicates`) |
 | `unit` | `str \| None` | Expected unit |
 | `value_type` | `str` | Value type (numeric, string, etc.) |
 | `transform` | `str \| None` | Optional transform expression |
@@ -664,11 +666,21 @@ path = examples.get_scenario_path("aki_detection")
 
 | Type | Description |
 |------|-------------|
-| `Signal` | Signal definition (ref, concept_id, unit) |
+| `Signal` | Signal definition (ref, clinical_domain, unit) |
 | `TrendExpr` | Trend expression with metadata |
 | `LogicExpr` | Logic rule with severity |
 | `DataPoint` | Single observation (timestamp, value) |
 | `EvaluationResult` | Evaluation output |
+
+### Vendor-Neutral Types (v0.4, RFC-0008)
+
+| Type | Description |
+|------|-------------|
+| `ClinicalDomain` | Vendor-neutral clinical domain enum (LABORATORY, VITAL_SIGN, CONDITION, MEDICATION, PROCEDURE, OBSERVATION, DEMOGRAPHIC) |
+| `FilterPredicate` | Single structured filter predicate (field, operator, value) |
+| `FilterPredicateSet` | Ordered set of predicates (AND semantics) |
+| `BatchRuntime` | Abstract base for batch scenario execution |
+| `SQLBatchRuntime` | SQL-specific batch runtime with dialect rendering |
 
 ### AST Types
 
@@ -712,6 +724,7 @@ path = examples.get_scenario_path("aki_detection")
 
 | Version | Changes |
 |---------|---------|
+| 0.4.0 | RFC-0008 Vendor-Neutral Foundation: ClinicalDomain, FilterPredicate/FilterPredicateSet, BatchRuntime/SQLBatchRuntime, concept_id deprecated, DataBackend lifecycle |
 | 0.3.1 | Dataset Spec API (RFC-0004), mandatory validation |
 | 0.3.0 | v0.3 architecture, compile_scenario(), AST exposure |
 | 0.2.0 | Streaming support, FHIR adapter |
@@ -719,4 +732,4 @@ path = examples.get_scenario_path("aki_detection")
 
 ---
 
-*Last updated: December 17, 2025*
+*Last updated: March 9, 2026*

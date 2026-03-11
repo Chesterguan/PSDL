@@ -23,7 +23,12 @@ from psdl._generated.ast_types import LogicNode, WindowSpec
 
 
 class Domain(Enum):
-    """OMOP CDM domains for signals."""
+    """OMOP CDM domains for signals.
+
+    .. deprecated:: 0.4.0
+        Use :class:`ClinicalDomain` instead (RFC-0008).
+        Will be removed in v0.5.0.
+    """
 
     MEASUREMENT = "measurement"
     CONDITION = "condition"

@@ -821,3 +821,4 @@ Tests for deprecated behavior are tagged `@pytest.mark.deprecated` and run in CI
 | Date | Author | Changes |
 |------|--------|---------|
 | 2026-03-05 | PSDL Team | Initial draft |
+| 2026-03-09 | PSDL Team | All phases implemented; CohortCompiler→SQLBatchRuntime, OMOPBackend→BatchRuntime (#8, #9) |

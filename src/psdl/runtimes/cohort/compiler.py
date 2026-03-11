@@ -36,6 +36,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Tuple
 
+from ..batch import BatchResult, SQLBatchRuntime
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -215,7 +217,7 @@ def parse_trend_expression(
     raise ValueError(f"Cannot parse trend expression: {expr}")
 
 
-class CohortCompiler:
+class CohortCompiler(SQLBatchRuntime):
     """
     Compile PSDL scenarios to SQL queries.
 
@@ -280,7 +282,7 @@ class CohortCompiler:
         scenario: Any,
         dataset_spec: Any = None,
         patient_ids: Optional[List[str]] = None,
-    ) -> Iterator[Any]:
+    ) -> Iterator[BatchResult]:
         """Not implemented — CohortCompiler only compiles, not executes."""
         raise NotImplementedError(
             "CohortCompiler only compiles SQL queries. "
@@ -451,16 +453,29 @@ class CohortCompiler:
 
         return f"CASE WHEN {sql_expr} THEN TRUE ELSE FALSE END AS {logic_name}"
 
-    def compile(self, scenario: Any) -> CompiledSQL:
+    def compile(self, scenario: Any, dataset_spec: Any = None) -> CompiledSQL:
         """
         Compile a PSDL scenario to SQL.
 
         Args:
             scenario: Parsed PSDL scenario object
+            dataset_spec: Optional DatasetSpec override for binding resolution
 
         Returns:
             CompiledSQL with the generated query and metadata
         """
+        # Allow dataset_spec override per-call
+        if dataset_spec is not None:
+            prev = self.dataset_spec
+            self.dataset_spec = dataset_spec
+            try:
+                return self._compile_impl(scenario)
+            finally:
+                self.dataset_spec = prev
+        return self._compile_impl(scenario)
+
+    def _compile_impl(self, scenario: Any) -> CompiledSQL:
+        """Internal compile implementation."""
         ctes: List[str] = []
         trend_comparisons: Dict[str, Tuple[str, float]] = {}
         trend_columns: List[str] = []

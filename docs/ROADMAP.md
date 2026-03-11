@@ -121,6 +121,8 @@ Foundation       Architecture      Readiness        & Scale
 - [x] BatchRuntime / SQLBatchRuntime abstractions
 - [x] SQL templates extracted to dialect-specific files
 - [x] concept_id deprecated from signals and examples
+- [x] CohortCompiler inherits SQLBatchRuntime (#8)
+- [x] OMOPBackend inherits BatchRuntime (#9)
 
 #### Query Generation
 - [x] Basic SQL generation (CohortCompiler)
@@ -233,4 +235,4 @@ When planning features, always ask:
 
 ---
 
-*Last updated: March 7, 2026*
+*Last updated: March 9, 2026*

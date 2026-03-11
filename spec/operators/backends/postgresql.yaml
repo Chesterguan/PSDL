@@ -1,12 +1,12 @@
 # PSDL PostgreSQL Backend
-# Version: 0.3.0
-# Last Updated: 2025-12-15
+# Version: 0.4.0
+# Last Updated: 2026-03-09
 #
 # SQL templates for PostgreSQL dialect.
 # These implement the operator signatures defined in ../signatures.yaml
 
-$schema: "https://psdl-lang.org/schema/v0.3/operators/backend"
-version: "0.3.0"
+$schema: "https://psdl-lang.org/schema/v0.4/operators/backend"
+version: "0.4.0"
 dialect: postgresql
 min_version: "12"
 

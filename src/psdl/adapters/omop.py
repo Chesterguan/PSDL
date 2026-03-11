@@ -65,6 +65,7 @@ if TYPE_CHECKING:
 from ..core.dataset import Binding, DatasetSpec, Event
 from ..core.ir import Signal
 from ..operators import DataPoint
+from ..runtimes.batch import BatchResult, BatchRuntime
 from ..runtimes.single import DataBackend
 
 
@@ -133,7 +134,7 @@ class OMOPConfig:
             raise ValueError(f"Unsupported CDM version: {self.cdm_version}. Use '5.3' or '5.4'")
 
 
-class OMOPBackend(DataBackend):
+class OMOPBackend(DataBackend, BatchRuntime):
     """
     OMOP CDM data backend for PSDL.
 
@@ -201,8 +202,8 @@ class OMOPBackend(DataBackend):
 
     @property
     def capabilities(self) -> Set[str]:
-        """OMOPBackend supports dataset_adapter capability."""
-        return {"dataset_adapter"}
+        """OMOPBackend supports dataset_adapter and sql capabilities."""
+        return {"dataset_adapter", "sql"}
 
     def connect(self) -> None:
         """Eagerly initialize the database engine."""
@@ -753,6 +754,83 @@ class OMOPBackend(DataBackend):
         if self._engine is not None:
             self._engine.dispose()
             self._engine = None
+
+    # BatchRuntime interface (RFC-0008)
+
+    def compile(self, scenario: Any, dataset_spec: Any = None) -> Any:
+        """Compile a scenario to SQL via CohortCompiler.
+
+        Args:
+            scenario: Parsed PSDL scenario
+            dataset_spec: Optional DatasetSpec override
+
+        Returns:
+            CompiledSQL from CohortCompiler
+        """
+        from ..runtimes.cohort import CohortCompiler
+
+        ds = dataset_spec or self.dataset_spec
+        compiler = CohortCompiler(
+            schema=self.config.cdm_schema,
+            dialect="postgresql",
+            dataset_spec=ds,
+        )
+        return compiler.compile(scenario, dataset_spec=ds)
+
+    def execute(
+        self,
+        scenario: Any,
+        dataset_spec: Any = None,
+        patient_ids: Optional[List[str]] = None,
+    ) -> Iterator[BatchResult]:
+        """Compile and execute a scenario, yielding results per patient.
+
+        Args:
+            scenario: Parsed PSDL scenario
+            dataset_spec: Optional DatasetSpec override
+            patient_ids: Optional patient ID filter
+
+        Yields:
+            BatchResult for each patient
+        """
+        compiled = self.compile(scenario, dataset_spec)
+        engine = self._get_engine()
+
+        from sqlalchemy import text
+
+        params = dict(compiled.parameters)
+        with engine.connect() as conn:
+            result = conn.execute(text(compiled.sql), params)
+            columns = list(result.keys())
+
+            for row in result:
+                row_dict = dict(zip(columns, row))
+                pid = str(row_dict.get("person_id", row[0]))
+
+                # Extract logic columns
+                logic_results = {}
+                triggered_logic = []
+                for col in compiled.logic_columns:
+                    val = row_dict.get(col, False)
+                    logic_results[col] = bool(val)
+                    if val:
+                        triggered_logic.append(col)
+
+                # Extract trend columns
+                trend_values = {}
+                for col in compiled.trend_columns:
+                    clean = col.split(" AS ")[-1] if " AS " in col else col
+                    val = row_dict.get(clean)
+                    if val is not None:
+                        trend_values[clean] = float(val)
+
+                yield BatchResult(
+                    patient_id=pid,
+                    triggered=len(triggered_logic) > 0,
+                    triggered_logic=triggered_logic,
+                    trend_values=trend_values,
+                    logic_results=logic_results,
+                )
 
 
 # Convenience function for quick setup
