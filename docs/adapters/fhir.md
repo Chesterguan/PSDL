@@ -22,8 +22,9 @@ pip install requests
 ## Quick Start
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.adapters import FHIRBackend, FHIRConfig
+from psdl.core import parse_scenario
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
+from psdl.runtimes.single import SinglePatientEvaluator
 
 # Configure FHIR connection
 config = FHIRConfig(
@@ -33,11 +34,11 @@ config = FHIRConfig(
 
 # Create backend and evaluator
 backend = FHIRBackend(config)
-scenario = PSDLParser().parse_file("my_scenario.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
+scenario = parse_scenario("my_scenario.yaml")
+evaluator = SinglePatientEvaluator(scenario, backend)
 
 # Evaluate a patient
-result = evaluator.evaluate_patient(patient_id="patient-uuid-123")
+result = evaluator.evaluate(patient_id="patient-uuid-123")
 
 if result.is_triggered:
     print(f"Alert triggered: {result.triggered_logic}")
@@ -146,7 +147,7 @@ You can also use LOINC codes directly as the signal source:
 ```yaml
 signals:
   Procalcitonin:
-    source: "75241-0"  # LOINC code format
+    ref: "75241-0"  # LOINC code format
     unit: ng/mL
 ```
 
@@ -155,8 +156,9 @@ signals:
 ### Real-Time ICU Monitoring
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.adapters import FHIRBackend, FHIRConfig
+from psdl.core import parse_scenario
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
+from psdl.runtimes.single import SinglePatientEvaluator
 from datetime import datetime
 
 # FHIR connection
@@ -168,12 +170,12 @@ config = FHIRConfig(
 backend = FHIRBackend(config)
 
 # Load scenario
-scenario = PSDLParser().parse_file("icu_deterioration.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
+scenario = parse_scenario("icu_deterioration.yaml")
+evaluator = SinglePatientEvaluator(scenario, backend)
 
 # Monitor specific patient
 patient_id = "550e8400-e29b-41d4-a716-446655440000"
-result = evaluator.evaluate_patient(
+result = evaluator.evaluate(
     patient_id=patient_id,
     reference_time=datetime.now()
 )
@@ -199,7 +201,7 @@ patients_with_creatinine = backend.search_patients_with_observation(
 # Evaluate each patient
 results = []
 for patient_id in patients_with_creatinine:
-    result = evaluator.evaluate_patient(patient_id=patient_id)
+    result = evaluator.evaluate(patient_id=patient_id)
     if result.is_triggered:
         results.append({
             "patient_id": patient_id,
@@ -224,61 +226,71 @@ config = FHIRConfig(
 )
 
 backend = FHIRBackend(config)
-evaluator = PSDLEvaluator(scenario, backend)
+evaluator = SinglePatientEvaluator(scenario, backend)
 
 # Evaluate the patient in context
-result = evaluator.evaluate_patient(patient_id=patient_id)
+result = evaluator.evaluate(patient_id=patient_id)
 ```
 
 ## Scenario Example
 
 ```yaml
 scenario: Sepsis_Early_Warning
-version: "0.1.0"
+version: "0.3.0"
 description: "Early sepsis detection using qSOFA criteria"
+
+audit:
+  intent: "Screen for sepsis using qSOFA and lactate"
+  rationale: "Early sepsis detection reduces mortality"
+  provenance: "Sepsis-3 consensus definitions (2016)"
 
 signals:
   RR:
-    source: respiratory_rate
+    ref: respiratory_rate
     unit: breaths/min
 
   SBP:
-    source: systolic_blood_pressure
+    ref: systolic_blood_pressure
     unit: mmHg
 
   GCS:
-    source: gcs
+    ref: gcs
     unit: points
 
   Lactate:
-    source: lactate
+    ref: lactate
     unit: mmol/L
 
 trends:
+  rr_val:
+    expr: last(RR)
+  sbp_val:
+    expr: last(SBP)
+  gcs_val:
+    expr: last(GCS)
+  lactate_val:
+    expr: last(Lactate)
+
+logic:
   tachypnea:
-    expr: last(RR) >= 22
+    when: rr_val >= 22
     description: "Respiratory rate >= 22"
 
   hypotension:
-    expr: last(SBP) <= 100
+    when: sbp_val <= 100
     description: "Systolic BP <= 100 mmHg"
 
   altered_mental:
-    expr: last(GCS) < 15
+    when: gcs_val < 15
     description: "GCS < 15"
 
-  lactate_elevated:
-    expr: last(Lactate) > 2.0
-    description: "Lactate > 2.0 mmol/L"
-
-logic:
   qsofa_positive:
-    expr: (tachypnea AND hypotension) OR (tachypnea AND altered_mental) OR (hypotension AND altered_mental)
+    when: (tachypnea AND hypotension) OR (tachypnea AND altered_mental) OR (hypotension AND altered_mental)
     severity: high
     description: "qSOFA >= 2 - sepsis screening positive"
 
   sepsis_likely:
-    expr: qsofa_positive AND lactate_elevated
+    when: qsofa_positive AND (lactate_val > 2.0)
     severity: critical
     description: "qSOFA positive with elevated lactate"
 ```
@@ -289,7 +301,7 @@ The backend handles errors gracefully:
 
 ```python
 # Connection errors return empty data
-result = evaluator.evaluate_patient(patient_id="nonexistent")
+result = evaluator.evaluate(patient_id="nonexistent")
 # result.trend_values will be empty, no exception raised
 
 # Check for data availability
@@ -358,12 +370,12 @@ For high-volume processing:
 # Good: Reuse backend
 backend = FHIRBackend(config)
 for patient_id in patient_ids:
-    result = evaluator.evaluate_patient(patient_id)
+    result = evaluator.evaluate(patient_id)
 
 # Bad: Create new backend each time
 for patient_id in patient_ids:
     backend = FHIRBackend(config)  # Slow!
-    result = evaluator.evaluate_patient(patient_id)
+    result = evaluator.evaluate(patient_id)
 ```
 
 ## API Reference
@@ -381,13 +393,13 @@ for patient_id in patient_ids:
 ### Convenience Functions
 
 ```python
-from reference.python.adapters import create_fhir_backend
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
 
 # Quick setup
-backend = create_fhir_backend(
+backend = FHIRBackend(FHIRConfig(
     base_url="https://fhir.hospital.org/r4",
     auth_token="your-token"
-)
+))
 ```
 
 ## Related Documentation

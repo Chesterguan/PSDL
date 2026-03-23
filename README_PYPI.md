@@ -27,8 +27,8 @@ pip install psdl-lang[full]
 ## Quick Start
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator, InMemoryBackend, DataPoint
 from psdl.examples import get_scenario, list_scenarios
+from psdl.runtimes.single import SinglePatientEvaluator, InMemoryBackend
 from datetime import datetime, timedelta
 
 # List available built-in scenarios
@@ -43,19 +43,13 @@ print(f"Loaded: {scenario.name}")
 backend = InMemoryBackend()
 now = datetime.now()
 
-backend.add_data(
-    patient_id="patient_123",
-    signal_name="Cr",
-    data=[
-        DataPoint(now - timedelta(hours=6), 1.0),
-        DataPoint(now - timedelta(hours=3), 1.3),
-        DataPoint(now, 1.8),
-    ]
-)
+backend.add_observation(123, "Cr", 1.0, now - timedelta(hours=6))
+backend.add_observation(123, "Cr", 1.3, now - timedelta(hours=3))
+backend.add_observation(123, "Cr", 1.8, now)
 
 # Evaluate
-evaluator = PSDLEvaluator(scenario, backend)
-result = evaluator.evaluate_patient(patient_id="patient_123", reference_time=now)
+evaluator = SinglePatientEvaluator(scenario, backend)
+result = evaluator.evaluate(patient_id=123, reference_time=now)
 
 if result.is_triggered:
     print(f"Alert: {result.triggered_logic}")
@@ -65,69 +59,64 @@ if result.is_triggered:
 
 ```yaml
 scenario: AKI_Early_Detection
-version: "0.1.0"
+version: "0.3.0"
+
+audit:
+  intent: "Detect early acute kidney injury using creatinine trends"
+  rationale: "Early AKI detection enables timely intervention"
+  provenance: "KDIGO Clinical Practice Guideline for AKI (2012)"
 
 signals:
   Cr:
-    source: creatinine
-    concept_id: 3016723  # OMOP concept
+    ref: creatinine        # Semantic reference (resolved via Dataset Spec)
     unit: mg/dL
 
 trends:
-  cr_rising:
-    expr: delta(Cr, 6h) > 0.3
-    description: "Creatinine rise > 0.3 mg/dL in 6 hours"
+  # v0.3: Trends produce numeric values only
+  cr_delta:
+    expr: delta(Cr, 6h)
+    description: "Creatinine change over 6 hours"
 
-  cr_high:
-    expr: last(Cr) > 1.5
-    description: "Current creatinine elevated"
+  cr_current:
+    expr: last(Cr)
+    description: "Current creatinine value"
 
 logic:
+  # v0.3: Comparisons belong in logic layer
+  cr_rising:
+    when: cr_delta > 0.3
+    description: "Rising creatinine"
+
+  cr_high:
+    when: cr_current > 1.5
+    description: "Elevated creatinine"
+
   aki_risk:
-    expr: cr_rising AND cr_high
+    when: cr_rising AND cr_high
     severity: high
     description: "Early AKI - rising and elevated creatinine"
 ```
 
 ```python
-from psdl import PSDLParser
+from psdl.core import parse_scenario
 
-parser = PSDLParser()
-scenario = parser.parse_file("my_scenario.yaml")
+scenario = parse_scenario("my_scenario.yaml")
 # or parse from string
-scenario = parser.parse(yaml_content)
+scenario = parse_scenario(yaml_content)
 ```
 
 ## Temporal Operators
 
 | Operator | Example | Description |
 |----------|---------|-------------|
-| `delta` | `delta(Cr, 6h) > 0.3` | Change over time window |
-| `slope` | `slope(HR, 1h) > 5` | Linear trend (regression) |
-| `last` | `last(Cr) > 1.5` | Most recent value |
-| `min/max` | `max(Temp, 24h) > 38.5` | Min/max in window |
-| `sma/ema` | `ema(BP, 2h) < 90` | Moving averages |
-| `count` | `count(Cr, 24h) >= 2` | Observation count |
+| `delta` | `delta(Cr, 6h)` | Change over time window |
+| `slope` | `slope(HR, 1h)` | Linear trend (regression) |
+| `last` | `last(Cr)` | Most recent value |
+| `min/max` | `max(Temp, 24h)` | Min/max in window |
+| `sma/ema` | `ema(BP, 2h)` | Moving averages |
+| `count` | `count(Cr, 24h)` | Observation count |
 
 **Window formats:** `30s`, `5m`, `6h`, `1d`, `7d`
-
-## Data Adapters
-
-### OMOP CDM
-```python
-from psdl import get_omop_adapter
-
-OMOPAdapter = get_omop_adapter()
-adapter = OMOPAdapter(connection_string="postgresql://...")
-```
-
-### FHIR R4
-```python
-from psdl import get_fhir_adapter
-
-FHIRAdapter = get_fhir_adapter()
-adapter = FHIRAdapter(base_url="https://hapi.fhir.org/baseR4")
-```
 
 ## Why PSDL?
 
@@ -143,7 +132,7 @@ adapter = FHIRAdapter(base_url="https://hapi.fhir.org/baseR4")
 - **GitHub**: [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL)
 - **Documentation**: [Whitepaper](https://github.com/Chesterguan/PSDL/blob/main/docs/WHITEPAPER_EN.md)
 - **Examples**: [Example Scenarios](https://github.com/Chesterguan/PSDL/tree/main/examples)
-- **Try in Colab**: [Interactive Notebook](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/notebooks/PSDL_Colab_Synthea.ipynb)
+- **Try in Colab**: [Interactive Notebook](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb)
 
 ## License
 

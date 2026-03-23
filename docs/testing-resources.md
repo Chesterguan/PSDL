@@ -49,7 +49,7 @@ docker-compose up -d
 
 **Connection:**
 ```python
-from psdl.adapters import OMOPBackend, OMOPConfig
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 config = OMOPConfig(
     connection_string="postgresql://postgres:password@localhost:5432/omop",
@@ -114,7 +114,7 @@ The most widely used public FHIR test server.
 
 **Usage:**
 ```python
-from psdl.adapters import FHIRBackend, FHIRConfig
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
 
 config = FHIRConfig(
     base_url="https://hapi.fhir.org/baseR4"
@@ -180,8 +180,9 @@ FHIR conformance testing and synthetic data generation.
 ### Quick Test: HAPI FHIR
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.adapters import FHIRBackend, FHIRConfig
+from psdl.core import parse_scenario
+from psdl.runtimes.single import SinglePatientEvaluator
+from psdl.adapters.fhir import FHIRBackend, FHIRConfig
 from datetime import datetime
 
 # Connect to public HAPI server
@@ -189,8 +190,8 @@ config = FHIRConfig(base_url="https://hapi.fhir.org/baseR4")
 backend = FHIRBackend(config)
 
 # Parse a scenario
-scenario = PSDLParser().parse_file("examples/aki_detection.yaml")
-evaluator = PSDLEvaluator(scenario, backend)
+scenario = parse_scenario("examples/aki_detection.yaml")
+evaluator = SinglePatientEvaluator(scenario, backend)
 
 # Find patients with creatinine data
 patients = backend.search_patients_with_observation(
@@ -202,7 +203,7 @@ print(f"Found {len(patients)} patients with creatinine data")
 
 # Evaluate each patient
 for patient_id in patients[:5]:  # First 5
-    result = evaluator.evaluate_patient(
+    result = evaluator.evaluate(
         patient_id=patient_id,
         reference_time=datetime.now()
     )
@@ -226,7 +227,7 @@ services:
 ```
 
 ```python
-from psdl.adapters import OMOPBackend, OMOPConfig
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 config = OMOPConfig(
     connection_string="postgresql://postgres:postgres@localhost:5432/omop",

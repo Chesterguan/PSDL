@@ -195,4 +195,4 @@ This clean separation enables:
 
 ---
 
-*PSDL Principles v1.0 | December 2025 | Apache 2.0 License*
+*PSDL Principles v1.0 | March 2026 | Apache 2.0 License*

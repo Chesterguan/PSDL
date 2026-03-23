@@ -322,8 +322,8 @@ psdl/
 │   ├── notebooks/         # Jupyter demos (5 notebooks, Colab-ready)
 │   └── data/              # Sample data (compressed archives)
 ├── docs/                  # Documentation + Whitepapers
-├── rfcs/                  # Design proposals (5 RFCs)
-└── tests/                 # 369 tests (all passing)
+├── rfcs/                  # Design proposals (7 RFCs)
+└── tests/                 # 539 tests (all passing)
 ```
 
 | Component | Description |
@@ -405,7 +405,7 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 424 Tests (All Passing)
+### Test Coverage: 539 Tests (All Passing)
 
 - **Unit Tests**: Parser, evaluator, operators, scenarios
 - **Integration Tests**: FHIR adapter, OMOP backend, PhysioNet adapter

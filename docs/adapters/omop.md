@@ -36,8 +36,9 @@ pip install cx_Oracle       # Oracle
 ## Quick Start
 
 ```python
-from psdl import PSDLParser, PSDLEvaluator
-from psdl.adapters import OMOPBackend, OMOPConfig
+from psdl.core import parse_scenario
+from psdl.adapters.omop import OMOPBackend, OMOPConfig
+from psdl.runtimes.single import SinglePatientEvaluator
 
 # 1. Configure connection
 config = OMOPConfig(
@@ -50,12 +51,11 @@ config = OMOPConfig(
 backend = OMOPBackend(config)
 
 # 3. Parse scenario
-parser = PSDLParser()
-scenario = parser.parse_file("examples/aki_detection.yaml")
+scenario = parse_scenario("examples/aki_detection.yaml")
 
 # 4. Evaluate
-evaluator = PSDLEvaluator(scenario, backend)
-result = evaluator.evaluate_patient(patient_id=12345)
+evaluator = SinglePatientEvaluator(scenario, backend)
+result = evaluator.evaluate(patient_id=12345)
 
 if result.is_triggered:
     print(f"Triggered: {result.triggered_logic}")
@@ -144,7 +144,7 @@ reference_time = datetime(2023, 6, 15, 12, 0, 0)
 
 results = []
 for patient_id in patients:
-    result = evaluator.evaluate_patient(
+    result = evaluator.evaluate(
         patient_id=patient_id,
         reference_time=reference_time
     )
@@ -169,7 +169,7 @@ def scan_patient_timeline(evaluator, patient_id, start, end, step_hours=6):
     current = start
 
     while current <= end:
-        result = evaluator.evaluate_patient(patient_id, current)
+        result = evaluator.evaluate(patient_id, current)
         if result.is_triggered:
             triggers.append({
                 "time": current,
@@ -200,7 +200,7 @@ with open("aki_cohort.csv", "w", newline="") as f:
     writer.writeheader()
 
     for patient_id in patients:
-        result = evaluator.evaluate_patient(patient_id, reference_time)
+        result = evaluator.evaluate(patient_id, reference_time)
         if result.is_triggered:
             writer.writerow({
                 "patient_id": patient_id,

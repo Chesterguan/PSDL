@@ -210,13 +210,13 @@ Escenario = Población + Señales + Tendencias + Lógica + Disparadores
 
 ```yaml
 scenario: AKI_Early_Detection
-version: "0.1.0"
+version: "0.3.0"
 description: "Detectar lesión renal aguda temprana basada en tendencias de creatinina"
 
-population:
-  include:
-    - age >= 18
-    - unit == "ICU"
+audit:
+  intent: "Detección temprana de AKI mediante tendencias de creatinina"
+  rationale: "La detección temprana de AKI permite intervención oportuna"
+  provenance: "Guías KDIGO AKI (2012)"
 
 signals:
   Cr:
@@ -224,26 +224,29 @@ signals:
     unit: mg/dL
 
 trends:
-  cr_rising:
-    expr: delta(Cr, 6h) > 0.3
-    description: "Creatinina aumentó >0.3 mg/dL en 6 horas"
+  # v0.3: Las tendencias producen solo valores numéricos
+  cr_delta:
+    expr: delta(Cr, 6h)
+    description: "Cambio de creatinina en 6 horas"
 
-  cr_elevated:
-    expr: last(Cr) > 1.5
-    description: "Creatinina actual por encima de lo normal"
+  cr_current:
+    expr: last(Cr)
+    description: "Valor actual de creatinina"
 
 logic:
+  # v0.3: Las comparaciones van en la capa lógica con 'when'
+  cr_rising:
+    when: cr_delta > 0.3
+    description: "Creatinina en aumento >0.3 mg/dL"
+
+  cr_elevated:
+    when: cr_current > 1.5
+    description: "Creatinina actual por encima de lo normal"
+
   aki_stage1:
-    expr: cr_rising AND cr_elevated
+    when: cr_rising AND cr_elevated
     severity: high
     description: "AKI temprano - Criterios KDIGO Etapa 1"
-
-triggers:
-  - when: aki_stage1
-    actions:
-      - type: notify_team
-        target: nephrology_consult
-        priority: high
 ```
 
 Este único archivo YAML reemplaza cientos de líneas de código Python, SQL y configuración dispersos — y es portable, auditable y con control de versiones.

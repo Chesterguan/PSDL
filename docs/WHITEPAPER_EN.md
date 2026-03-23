@@ -752,7 +752,7 @@ flowchart LR
 - YAML schema definition
 - Python reference implementation
 - OMOP CDM and FHIR R4 backends
-- Clinical validation test suite (424 tests)
+- Clinical validation test suite (539 tests)
 
 ### Phase 2: Enhanced Runtime ✓
 - **v0.3 Architecture** — RFC-0005 (Signal/Trend/Logic/Output separation)
@@ -836,10 +836,10 @@ The modern AI stack has semantic layers for data (SQL), APIs (GraphQL), ML model
 
 ```yaml
 # ICU Deterioration Detection Scenario
-# PSDL v0.2.0
+# PSDL v0.3.0
 
 scenario: ICU_Deterioration_Detection
-version: "0.2.0"
+version: "0.3.0"
 description: |
   Comprehensive monitoring for early signs of clinical deterioration
   in adult ICU patients. Combines kidney function, lactate trends,

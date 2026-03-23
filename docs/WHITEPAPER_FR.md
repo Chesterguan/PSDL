@@ -210,13 +210,13 @@ Scénario = Population + Signaux + Tendances + Logique + Déclencheurs
 
 ```yaml
 scenario: AKI_Early_Detection
-version: "0.1.0"
+version: "0.3.0"
 description: "Détecter l'insuffisance rénale aiguë précoce basée sur les tendances de créatinine"
 
-population:
-  include:
-    - age >= 18
-    - unit == "ICU"
+audit:
+  intent: "Détection précoce de l'AKI par les tendances de créatinine"
+  rationale: "La détection précoce de l'AKI permet une intervention rapide"
+  provenance: "Recommandations KDIGO AKI (2012)"
 
 signals:
   Cr:
@@ -224,26 +224,29 @@ signals:
     unit: mg/dL
 
 trends:
-  cr_rising:
-    expr: delta(Cr, 6h) > 0.3
-    description: "Créatinine augmentée >0.3 mg/dL en 6 heures"
+  # v0.3 : Les tendances produisent uniquement des valeurs numériques
+  cr_delta:
+    expr: delta(Cr, 6h)
+    description: "Variation de créatinine sur 6 heures"
 
-  cr_elevated:
-    expr: last(Cr) > 1.5
-    description: "Créatinine actuelle au-dessus de la normale"
+  cr_current:
+    expr: last(Cr)
+    description: "Valeur actuelle de créatinine"
 
 logic:
+  # v0.3 : Les comparaisons sont dans la couche logique avec 'when'
+  cr_rising:
+    when: cr_delta > 0.3
+    description: "Créatinine en hausse >0.3 mg/dL"
+
+  cr_elevated:
+    when: cr_current > 1.5
+    description: "Créatinine actuelle au-dessus de la normale"
+
   aki_stage1:
-    expr: cr_rising AND cr_elevated
+    when: cr_rising AND cr_elevated
     severity: high
     description: "AKI précoce - Critères KDIGO Stade 1"
-
-triggers:
-  - when: aki_stage1
-    actions:
-      - type: notify_team
-        target: nephrology_consult
-        priority: high
 ```
 
 Ce seul fichier YAML remplace des centaines de lignes de code Python, SQL et de configuration dispersés — et il est portable, auditable et versionné.
