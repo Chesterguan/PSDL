@@ -38,6 +38,7 @@ from .ir import (
     PSDLScenario,
     Severity,
     Signal,
+    SignalGroup,
     StateMachine,
     StateTransition,
     TrendExpr,
@@ -110,6 +111,9 @@ class PSDLParser:
         # Parse population
         population = self._parse_population(data.get("population"))
 
+        # Parse signal groups (optional, RFC-0009)
+        signal_groups = self._parse_signal_groups(data.get("signal_groups"))
+
         # Parse signals (required)
         signals_data = self._require_field(data, "signals", dict)
         signals = self._parse_signals(signals_data)
@@ -146,6 +150,7 @@ class PSDLParser:
             state=state,
             outputs=outputs,
             mapping=mapping,
+            signal_groups=signal_groups,
         )
 
         # Validate semantic correctness
@@ -175,6 +180,55 @@ class PSDLParser:
             return None
 
         return PopulationFilter(include=data.get("include", []), exclude=data.get("exclude", []))
+
+    def _parse_signal_groups(self, data: Optional[dict]) -> Dict[str, SignalGroup]:
+        """Parse the signal_groups section (RFC-0009)."""
+        groups: Dict[str, SignalGroup] = {}
+        if not data:
+            return groups
+
+        for name, spec in data.items():
+            if not isinstance(spec, dict):
+                raise PSDLParseError(f"Invalid signal group specification for '{name}'")
+
+            description = spec.get("description")
+            if not description:
+                raise PSDLParseError(f"Signal group '{name}' missing 'description'")
+
+            domain_str = spec.get("domain")
+            members = spec.get("members")
+
+            if domain_str and members:
+                raise PSDLParseError(
+                    f"Signal group '{name}': domain and members are "
+                    f"mutually exclusive (Phase 1)"
+                )
+            if not domain_str and not members:
+                raise PSDLParseError(
+                    f"Signal group '{name}': must have either 'domain' or 'members'"
+                )
+
+            if members is not None and not isinstance(members, list):
+                raise PSDLParseError(
+                    f"Signal group '{name}': 'members' must be a list, "
+                    f"got {type(members).__name__}"
+                )
+
+            domain = None
+            if domain_str:
+                try:
+                    domain = ClinicalDomain(domain_str)
+                except ValueError:
+                    raise PSDLParseError(f"Signal group '{name}': unknown domain '{domain_str}'")
+
+            groups[name] = SignalGroup(
+                name=name,
+                description=description,
+                domain=domain,
+                members=members,
+            )
+
+        return groups
 
     def _parse_audit(self, data: Optional[dict]) -> Optional[AuditBlock]:
         """Parse audit block."""

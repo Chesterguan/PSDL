@@ -3,6 +3,7 @@
 import pytest
 
 from psdl.core.ir import ClinicalDomain, PSDLScenario, Signal, SignalGroup
+from psdl.core.parser import PSDLParseError, PSDLParser
 
 
 class TestSignalGroupDataclass:
@@ -134,3 +135,176 @@ class TestPSDLScenarioSignalGroupsField:
         scenario = PSDLScenario(**kwargs)
         errors = scenario.validate()
         assert not any("signal group" in e.lower() for e in errors)
+
+
+MINIMAL_YAML = """
+scenario: test_scenario
+version: "1.0.0"
+description: "test scenario"
+
+signals:
+  creatinine:
+    ref: creatinine
+    unit: mg/dL
+  hemoglobin:
+    ref: hemoglobin
+    unit: g/dL
+
+trends:
+  cr_current:
+    expr: last(creatinine)
+    description: "Current creatinine"
+  hgb_current:
+    expr: last(hemoglobin)
+    description: "Current hemoglobin"
+
+logic:
+  high_cr:
+    when: cr_current >= 4.0
+    description: "High creatinine"
+"""
+
+
+class TestParserSignalGroups:
+    def test_parse_without_signal_groups(self):
+        """Scenarios without signal_groups parse with an empty dict."""
+        parser = PSDLParser()
+        scenario = parser.parse_string(MINIMAL_YAML)
+        assert scenario.signal_groups == {}
+
+    def test_parse_domain_group(self):
+        """Parse a single domain-level group."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  all_labs:
+    domain: laboratory
+    description: "All lab results"
+"""
+        )
+        parser = PSDLParser()
+        scenario = parser.parse_string(yaml)
+        assert "all_labs" in scenario.signal_groups
+        group = scenario.signal_groups["all_labs"]
+        assert group.domain == ClinicalDomain.LABORATORY
+        assert group.members is None
+        assert group.description == "All lab results"
+
+    def test_parse_custom_panel(self):
+        """Parse a single custom panel."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  renal_panel:
+    members: [creatinine, hemoglobin]
+    description: "Renal panel"
+"""
+        )
+        parser = PSDLParser()
+        scenario = parser.parse_string(yaml)
+        group = scenario.signal_groups["renal_panel"]
+        assert group.domain is None
+        assert group.members == ["creatinine", "hemoglobin"]
+
+    def test_parse_multiple_groups(self):
+        """Parse a mix of domain-level and custom groups."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  all_labs:
+    domain: laboratory
+    description: "All labs"
+  renal_panel:
+    members: [creatinine, hemoglobin]
+    description: "Renal panel"
+"""
+        )
+        parser = PSDLParser()
+        scenario = parser.parse_string(yaml)
+        assert len(scenario.signal_groups) == 2
+
+    def test_parse_missing_description_fails(self):
+        """Missing description raises PSDLParseError."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  no_desc:
+    domain: laboratory
+"""
+        )
+        with pytest.raises(PSDLParseError, match="description"):
+            PSDLParser().parse_string(yaml)
+
+    def test_parse_domain_and_members_fails(self):
+        """Both domain and members raises PSDLParseError."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  hybrid:
+    domain: laboratory
+    members: [creatinine]
+    description: "Bad"
+"""
+        )
+        with pytest.raises(PSDLParseError, match="mutually exclusive"):
+            PSDLParser().parse_string(yaml)
+
+    def test_parse_neither_domain_nor_members_fails(self):
+        """Neither domain nor members raises PSDLParseError."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  empty:
+    description: "Bad"
+"""
+        )
+        with pytest.raises(PSDLParseError, match="must have either"):
+            PSDLParser().parse_string(yaml)
+
+    def test_parse_invalid_domain_fails(self):
+        """Unknown domain value raises PSDLParseError."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  bad:
+    domain: not_a_domain
+    description: "Bad"
+"""
+        )
+        with pytest.raises(PSDLParseError, match="unknown domain"):
+            PSDLParser().parse_string(yaml)
+
+    def test_parse_members_not_a_list_fails(self):
+        """Non-list members raises PSDLParseError."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  bad:
+    members: "creatinine"
+    description: "Bad"
+"""
+        )
+        with pytest.raises(PSDLParseError, match="must be a list"):
+            PSDLParser().parse_string(yaml)
+
+    def test_parse_unknown_member_signal_fails_at_parse_time(self):
+        """Groups referencing unknown signals raise PSDLParseError at parse time."""
+        yaml = (
+            MINIMAL_YAML
+            + """
+signal_groups:
+  bad:
+    members: [creatinine, nonexistent_signal]
+    description: "Bad"
+"""
+        )
+        with pytest.raises(PSDLParseError, match="nonexistent_signal"):
+            PSDLParser().parse_string(yaml)
