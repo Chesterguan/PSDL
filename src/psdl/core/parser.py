@@ -218,8 +218,10 @@ class PSDLParser:
             if domain_str:
                 try:
                     domain = ClinicalDomain(domain_str)
-                except ValueError:
-                    raise PSDLParseError(f"Signal group '{name}': unknown domain '{domain_str}'")
+                except ValueError as e:
+                    raise PSDLParseError(
+                        f"Signal group '{name}': unknown domain '{domain_str}'"
+                    ) from e
 
             groups[name] = SignalGroup(
                 name=name,
