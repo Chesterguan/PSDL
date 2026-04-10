@@ -78,6 +78,31 @@ class Severity(Enum):
     CRITICAL = "critical"
 
 
+@dataclass
+class SignalGroup:
+    """A named collection of signals or a domain-level data request (RFC-0009).
+
+    Phase 1: domain and members are mutually exclusive, and exactly one must be set.
+    - domain: bulk data request for a clinical domain (e.g. all_labs, all_meds)
+    - members: explicit list of signal names (e.g. renal_panel)
+    """
+
+    name: str
+    description: str
+    domain: Optional[ClinicalDomain] = None
+    members: Optional[List[str]] = None
+
+    def __post_init__(self):
+        if self.domain is not None and self.members:
+            raise ValueError(
+                f"SignalGroup '{self.name}': 'domain' and 'members' are mutually exclusive"
+            )
+        if self.domain is None and not self.members:
+            raise ValueError(
+                f"SignalGroup '{self.name}': must have either 'domain' or a non-empty 'members'"
+            )
+
+
 class TrendType(Enum):
     """Return type of trend expressions (v0.3: NO boolean)."""
 
