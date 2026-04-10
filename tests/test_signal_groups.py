@@ -308,3 +308,13 @@ signal_groups:
         )
         with pytest.raises(PSDLParseError, match="nonexistent_signal"):
             PSDLParser().parse_string(yaml)
+
+
+class TestPublicAPI:
+    def test_import_signal_group_from_psdl_package(self):
+        """SignalGroup is re-exported at the package root."""
+        import psdl
+
+        assert hasattr(psdl, "SignalGroup")
+        assert psdl.SignalGroup is SignalGroup
+        assert "SignalGroup" in psdl.__all__

@@ -51,6 +51,7 @@ from .core.ir import (
     OutputDefinitions,
     OutputType,
     Signal,
+    SignalGroup,
     TrendExpr,
 )
 
@@ -129,6 +130,7 @@ __all__ = [
     "FilterPredicateSet",
     # v0.3 IR types
     "Signal",
+    "SignalGroup",
     "TrendExpr",
     "LogicExpr",
     "EvaluationResult",
