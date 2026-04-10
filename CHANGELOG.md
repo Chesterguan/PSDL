@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-10
+
+### Added
+
+#### RFC-0009: Signal Groups
+- **SignalGroup dataclass** (`psdl.core.ir.SignalGroup`): Named collection of signals for bulk data extraction, modeled after OHDSI Concept Sets
+- **Two group types**:
+  - **Domain-level groups** (e.g., `all_labs: { domain: laboratory }`) request every concept in a ClinicalDomain for the cohort
+  - **Custom panels** (e.g., `renal_panel: { members: [creatinine, hemoglobin] }`) are author-defined named subsets of signals
+- **`PSDLScenario.signal_groups`**: New optional `Dict[str, SignalGroup]` field, defaults to empty dict
+- **Parser support**: `PSDLParser._parse_signal_groups()` parses the optional top-level `signal_groups:` YAML section
+- **Validation**: Custom group members must reference defined signals; invalid references raise `PSDLParseError` at parse time
+- **Mutual exclusivity**: Phase 1 enforces `domain` and `members` are mutually exclusive; hybrid validation-constrained panels deferred to Phase 2
+- **Backward compatibility**: `signal_groups` section is fully optional; existing scenarios remain valid
+
+#### Testing
+- Added 21 signal_groups tests (`tests/test_signal_groups.py`): 6 dataclass construction tests, 5 scenario field/validation tests, 10 parser tests
+
+### Documentation
+- New RFC: `rfcs/0009-signal-groups.md` — full design spec with problem statement, prior art (OHDSI Concept Sets, FHIR ValueSets, TriNetX), schema, validation rules, and Phase 2 roadmap
+
+### Notes
+- Signal groups are **data extraction declarations only** — they do NOT feed into trends or logic. Only individually defined signals participate in the detection chain. The datasetSpec layer consumes `signal_groups` to fulfill bulk data requests.
+
 ## [0.4.0] - 2026-03-11
 
 ### Added
