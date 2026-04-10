@@ -93,11 +93,16 @@ class SignalGroup:
     members: Optional[List[str]] = None
 
     def __post_init__(self):
-        if self.domain is not None and self.members:
+        # members=[] is treated as a members specification (just an empty one),
+        # so domain + [] is still mutually exclusive.  After validation, normalise
+        # [] → None so downstream callers only ever see None or a non-empty list.
+        if self.domain is not None and self.members is not None:
             raise ValueError(
                 f"SignalGroup '{self.name}': 'domain' and 'members' are mutually exclusive"
             )
-        if self.domain is None and not self.members:
+        if self.members == []:
+            self.members = None
+        if self.domain is None and self.members is None:
             raise ValueError(
                 f"SignalGroup '{self.name}': must have either 'domain' or a non-empty 'members'"
             )

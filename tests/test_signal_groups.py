@@ -1,12 +1,8 @@
 """Tests for signal_groups (RFC-0009)."""
+
 import pytest
 
-from psdl.core.ir import (
-    ClinicalDomain,
-    PSDLScenario,
-    Signal,
-    SignalGroup,
-)
+from psdl.core.ir import ClinicalDomain, SignalGroup
 
 
 class TestSignalGroupDataclass:
@@ -51,3 +47,13 @@ class TestSignalGroupDataclass:
         """Empty members list is treated as no members and raises."""
         with pytest.raises(ValueError, match="must have either"):
             SignalGroup(name="empty_list", description="Bad", members=[])
+
+    def test_domain_with_empty_members_raises(self):
+        """Domain set together with an empty members list is still rejected."""
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            SignalGroup(
+                name="bad",
+                description="Bad",
+                domain=ClinicalDomain.LABORATORY,
+                members=[],
+            )
