@@ -308,6 +308,7 @@ class PSDLScenario:
     state: Optional[StateMachine] = None
     outputs: Optional[OutputDefinitions] = None  # v0.3: new
     mapping: Optional[Dict[str, Any]] = None
+    signal_groups: Dict[str, SignalGroup] = field(default_factory=dict)
 
     def get_signal(self, name: str) -> Optional[Signal]:
         """Get a signal by name."""
@@ -361,6 +362,16 @@ class PSDLScenario:
             for term in logic.terms:
                 if term not in self.trends and term not in self.logic:
                     errors.append(f"Logic '{logic_name}' references unknown term '{term}'")
+
+        # Check signal groups reference valid signals (RFC-0009).
+        # Domain-level groups have no members and skip this loop.
+        for group_name, group in self.signal_groups.items():
+            if group.members:
+                for signal_name in group.members:
+                    if signal_name not in self.signals:
+                        errors.append(
+                            f"Signal group '{group_name}' references unknown signal '{signal_name}'"
+                        )
 
         return errors
 
