@@ -79,16 +79,41 @@ class PSDLParser:
         self.errors: List[str] = []
         self.warnings: List[str] = []
 
-    def parse_file(self, filepath: str) -> PSDLScenario:
-        """Parse a PSDL scenario from a YAML file."""
+    def parse_file(self, filepath: str, strict: bool = False) -> PSDLScenario:
+        """Parse a PSDL scenario from a YAML file.
+
+        Args:
+            filepath: path to the YAML file
+            strict: when True, validate against spec/schema.json before parsing.
+        """
         with open(filepath, "r") as f:
             content = f.read()
-        return self.parse_string(content, source=filepath)
+        return self.parse_string(content, source=filepath, strict=strict)
 
-    def parse_string(self, content: str, source: str = "<string>") -> PSDLScenario:
-        """Parse a PSDL scenario from a YAML string."""
+    def parse_string(
+        self, content: str, source: str = "<string>", strict: bool = False
+    ) -> PSDLScenario:
+        """Parse a PSDL scenario from a YAML string.
+
+        Args:
+            content: YAML text
+            source: path/name shown in error messages
+            strict: when True, validate against spec/schema.json before parsing.
+                Strict mode enforces the schema shape (e.g. scenario:{name,version}
+                object form, required audit/outputs blocks, psdl_version: "0.5").
+                Default is False for developer-friendly loose parsing.
+        """
         self.errors = []
         self.warnings = []
+
+        if strict:
+            from psdl._generated.validate import ValidationError as _SchemaError
+            from psdl._generated.validate import validate_yaml
+
+            try:
+                validate_yaml(content, source=source)
+            except _SchemaError as e:
+                raise PSDLParseError(f"Strict schema validation failed: {e}")
 
         # Use normalized YAML parsing for deterministic type handling
         from psdl.core.normalize import PSDLYAMLError, normalize_yaml
@@ -101,12 +126,29 @@ class PSDLParser:
         if not isinstance(data, dict):
             raise PSDLParseError("PSDL document must be a YAML mapping")
 
-        # Parse required fields
-        name = self._require_field(data, "scenario", str)
-        version = self._require_field(data, "version", str)
-
-        # Parse optional fields
-        description = data.get("description")
+        # Accept two top-level shapes for identity fields:
+        #   flat form:     scenario: my_name, version: "1.0"
+        #   schema form:   scenario: {name: my_name, version: "1.0", description?, tags?}
+        raw_scenario = data.get("scenario")
+        if raw_scenario is None:
+            raise PSDLParseError("Missing required field: 'scenario'")
+        if isinstance(raw_scenario, dict):
+            name = raw_scenario.get("name")
+            if not isinstance(name, str) or not name:
+                raise PSDLParseError("scenario.name must be a non-empty string")
+            version = raw_scenario.get("version")
+            if not isinstance(version, str) or not version:
+                raise PSDLParseError("scenario.version must be a non-empty string")
+            description = raw_scenario.get("description") or data.get("description")
+        elif isinstance(raw_scenario, str):
+            name = raw_scenario
+            version = self._require_field(data, "version", str)
+            description = data.get("description")
+        else:
+            raise PSDLParseError(
+                "Field 'scenario' must be a string (flat form) or object (schema form), "
+                f"got {type(raw_scenario).__name__}"
+            )
 
         # Parse population
         population = self._parse_population(data.get("population"))
@@ -540,12 +582,13 @@ class PSDLParser:
         return ast, terms, operators
 
 
-def parse_scenario(source: str) -> PSDLScenario:
+def parse_scenario(source: str, strict: bool = False) -> PSDLScenario:
     """
     Convenience function to parse a PSDL scenario.
 
     Args:
         source: Either a file path (ending in .yaml/.yml) or YAML content string
+        strict: when True, validate against spec/schema.json before parsing.
 
     Returns:
         Parsed PSDLScenario object
@@ -553,6 +596,6 @@ def parse_scenario(source: str) -> PSDLScenario:
     parser = PSDLParser()
 
     if source.endswith(".yaml") or source.endswith(".yml"):
-        return parser.parse_file(source)
+        return parser.parse_file(source, strict=strict)
     else:
-        return parser.parse_string(source)
+        return parser.parse_string(source, strict=strict)

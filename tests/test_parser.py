@@ -502,5 +502,104 @@ class TestExampleScenarios:
             assert "sepsis_screen_positive" in scenario.logic
 
 
+class TestStrictMode:
+    """Tests for opt-in strict JSON Schema validation (#7)."""
+
+    _VALID_MINIMAL = """
+psdl_version: "0.5"
+scenario:
+  name: strict_test
+  version: "1.0.0"
+audit:
+  intent: Detect a specific clinical condition for regulatory testing.
+  rationale: Strict-mode schema validation requires realistic audit text.
+  provenance: test_parser.py::TestStrictMode
+signals:
+  cr:
+    ref: creatinine
+trends:
+  cr_last:
+    expr: last(cr)
+logic:
+  triggered:
+    when: cr_last > 1.0
+outputs:
+  decision:
+    triggered:
+      type: boolean
+      from: logic.triggered
+"""
+
+    def test_strict_accepts_valid_scenario(self):
+        """A schema-valid scenario parses cleanly in strict mode."""
+        parser = PSDLParser()
+        scenario = parser.parse_string(self._VALID_MINIMAL, strict=True)
+        assert scenario.name == "strict_test"
+
+    def test_strict_rejects_missing_audit(self):
+        """Schema requires 'audit'; strict mode rejects scenarios without it."""
+        yaml_without_audit = """
+psdl_version: "0.5"
+scenario:
+  name: no_audit
+  version: "1.0.0"
+signals:
+  cr:
+    ref: creatinine
+trends:
+  cr_last:
+    expr: last(cr)
+logic:
+  triggered:
+    when: cr_last > 1.0
+outputs:
+  decision:
+    triggered:
+      type: boolean
+      from: logic.triggered
+"""
+        parser = PSDLParser()
+        with pytest.raises(PSDLParseError, match="audit"):
+            parser.parse_string(yaml_without_audit, strict=True)
+
+    def test_strict_rejects_psdl_version_0_3(self):
+        """Strict mode rejects deprecated psdl_version values."""
+        yaml_old = self._VALID_MINIMAL.replace('psdl_version: "0.5"', 'psdl_version: "0.3"')
+        parser = PSDLParser()
+        with pytest.raises(PSDLParseError):
+            parser.parse_string(yaml_old, strict=True)
+
+    def test_non_strict_mode_is_default_and_accepts_loose_yaml(self):
+        """Default parse_string still accepts YAML that the strict schema rejects.
+
+        The parser has always been more permissive than the schema for developer
+        convenience (e.g., flat top-level 'scenario: name' shorthand, optional
+        audit/outputs blocks).
+        """
+        loose = """
+scenario: loose_test
+version: "1.0.0"
+signals:
+  cr:
+    ref: creatinine
+trends:
+  cr_last:
+    expr: last(cr)
+logic:
+  alert:
+    when: cr_last > 1.5
+"""
+        parser = PSDLParser()
+        scenario = parser.parse_string(loose)  # no strict
+        assert scenario.name == "loose_test"
+
+    def test_parse_scenario_convenience_threads_strict(self):
+        """parse_scenario() convenience accepts and threads the strict kwarg."""
+        from psdl.core.parser import parse_scenario
+
+        scenario = parse_scenario(self._VALID_MINIMAL, strict=True)
+        assert scenario.name == "strict_test"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
