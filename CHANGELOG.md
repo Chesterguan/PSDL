@@ -7,29 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-04-10
+## [0.5.0] - 2026-04-13
+
+### BREAKING
+
+- `psdl_version` accepts only `"0.5"` (and patch suffixes); `"0.3"` and `"0.4"` are rejected by both `spec/schema.json` and `spec/dataset_schema.json`. All bundled examples, conformance tests, and unit-test fixtures bumped accordingly.
 
 ### Added
 
 #### RFC-0009: Signal Groups
-- **SignalGroup dataclass** (`psdl.core.ir.SignalGroup`): Named collection of signals for bulk data extraction, modeled after OHDSI Concept Sets
-- **Two group types**:
-  - **Domain-level groups** (e.g., `all_labs: { domain: laboratory }`) request every concept in a ClinicalDomain for the cohort
-  - **Custom panels** (e.g., `renal_panel: { members: [creatinine, hemoglobin] }`) are author-defined named subsets of signals
-- **`PSDLScenario.signal_groups`**: New optional `Dict[str, SignalGroup]` field, defaults to empty dict
-- **Parser support**: `PSDLParser._parse_signal_groups()` parses the optional top-level `signal_groups:` YAML section
-- **Validation**: Custom group members must reference defined signals; invalid references raise `PSDLParseError` at parse time
-- **Mutual exclusivity**: Phase 1 enforces `domain` and `members` are mutually exclusive; hybrid validation-constrained panels deferred to Phase 2
-- **Backward compatibility**: `signal_groups` section is fully optional; existing scenarios remain valid
+- **`SignalGroup` dataclass** (`psdl.core.ir.SignalGroup`, also re-exported as `psdl.SignalGroup`): named collection of signals for bulk data extraction, modeled after OHDSI Concept Sets.
+- **Two group shapes** (mutually exclusive in Phase 1):
+  - Domain-level: `all_labs: { domain: laboratory, description: ... }` requests every concept in a `ClinicalDomain` for the cohort.
+  - Custom panel: `renal_panel: { members: [creatinine, hemoglobin], description: ... }` is an author-defined named subset of declared signals.
+- **`PSDLScenario.signal_groups`**: optional `Dict[str, SignalGroup]` field defaulting to empty.
+- **Parser**: `PSDLParser._parse_signal_groups()` reads the optional top-level `signal_groups:` YAML section. Group members must reference declared signals; unknown references raise `PSDLParseError` at parse time.
+- **JSON Schema**: new `SignalGroupDefinitions` and `SignalGroup` `$def`s with a `oneOf` enforcing the domain/members XOR; new optional top-level `signal_groups` property.
+- **Backward compatibility**: the `signal_groups:` section is fully optional. Scenarios that omit it parse and compile identically to v0.4.
 
-#### Testing
-- Added 21 signal_groups tests (`tests/test_signal_groups.py`): 6 dataclass construction tests, 5 scenario field/validation tests, 10 parser tests
+#### Compiler diagnostics (issue #7)
+- **W104 `TRANSITIVELY_UNUSED_SIGNAL`**: signals referenced only by unused trends now surface a dedicated warning rather than being silently treated as "used". `DependencyAnalysis` gains a matching `transitively_unused_signals: Set[str]` field.
+
+#### Parser
+- **`strict=True` mode** on `PSDLParser.parse_string`, `PSDLParser.parse_file`, and the `parse_scenario` convenience function. When set, the YAML is validated against `spec/schema.json` via `_generated/validate.py` before parsing; schema violations surface as `PSDLParseError`. Default remains `False` (loose, developer-friendly parsing).
+- **Schema-form scenario object**: the parser now accepts both top-level shapes — flat `scenario: name, version: "1.0"` (legacy) and schema-form `scenario: { name, version, description?, tags? }` (used by all bundled examples). Removes a long-standing mismatch where the parser silently could not load its own examples.
+
+### Testing
+- 575 tests passing (up from 539 baseline).
+- New `tests/test_signal_groups.py` (28 tests): 6 dataclass construction, 5 scenario field/validation, 10 parser, 1 public-API export, 6 schema-level validation.
+- New `TestStrictMode` (5 tests) and `TestExampleScenarios::test_all_bundled_examples_parse` in `tests/test_parser.py`.
+- `TestExampleScenarios` now points at `src/psdl/examples/` and runs unconditionally (previously no-opped on a wrong path).
+
+### Schema and spec
+- `spec/schema.json` → v0.5.0; `$id` → `.../schema/v0.5/scenario`; `PSDLVersion` pattern tightened to `^0\.5(\.\d+)?$`.
+- `spec/dataset_schema.json` → v0.5.0 with the same tightened pattern.
+- `spec/VERSION` → `0.5.0`.
+- `src/psdl/_generated/schema_types.py` regenerated against the updated schema.
+- `src/psdl/_generated/` synced with `operators.yaml` and `ast-nodes.yaml` (pre-existing March drift now caught by `codegen --check`).
 
 ### Documentation
-- New RFC: `rfcs/0009-signal-groups.md` — full design spec with problem statement, prior art (OHDSI Concept Sets, FHIR ValueSets, TriNetX), schema, validation rules, and Phase 2 roadmap
+- New RFC `rfcs/0009-signal-groups.md` — full design spec with problem statement, prior art comparison (OHDSI Concept Sets, FHIR ValueSets, TriNetX), schema, validation rules, and Phase 2 roadmap.
 
 ### Notes
-- Signal groups are **data extraction declarations only** — they do NOT feed into trends or logic. Only individually defined signals participate in the detection chain. The datasetSpec layer consumes `signal_groups` to fulfill bulk data requests.
+- Signal groups are **data extraction declarations only** — they do not feed into trends or logic. Only individually defined signals participate in the detection chain. The Dataset Spec layer consumes `signal_groups` to fulfill bulk data requests.
 
 ## [0.4.0] - 2026-03-11
 
