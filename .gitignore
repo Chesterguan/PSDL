@@ -73,3 +73,6 @@ localDocs/
 /examples/data/physionet.org/
 /examples/data/sepsis_sample_500/
 docs/DEMO_PLANNING.md
+
+# Superpowers workflow scaffolding (plans, specs) — kept local-only
+docs/superpowers/
