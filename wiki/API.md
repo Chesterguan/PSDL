@@ -18,7 +18,10 @@ pip install psdl-lang[full]    # All adapters
 ```python
 from psdl import (
     # Parsing
-    PSDLParser, PSDLScenario,
+    PSDLParser, PSDLScenario, parse_scenario,
+
+    # IR types
+    Signal, SignalGroup, ClinicalDomain, TrendExpr, LogicExpr,
 
     # Compilation (v0.3)
     compile_scenario, ScenarioCompiler, ScenarioIR,
@@ -57,22 +60,52 @@ parser = PSDLParser()
 # Parse from file
 scenario = parser.parse_file("scenario.yaml")
 
-# Parse from string
+# Parse from string (loose mode — default)
 yaml_content = """
 scenario: MyScenario
 version: "1.0"
 signals:
   HR:
     ref: heart_rate
+logic:
+  alert: { when: HR > 120 }
 """
-scenario = parser.parse(yaml_content)
+scenario = parser.parse_string(yaml_content)
+
+# Strict mode — also validate against spec/schema.json before parsing
+scenario = parser.parse_string(yaml_content, strict=True)
+scenario = parser.parse_file("scenario.yaml", strict=True)
 ```
 
 **Methods:**
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `parse(yaml_str)` | `PSDLScenario` | Parse YAML string |
-| `parse_file(path)` | `PSDLScenario` | Parse YAML file |
+| `parse_string(yaml, source="<string>", strict=False)` | `PSDLScenario` | Parse a YAML string. With `strict=True`, validates against `spec/schema.json` first; schema violations surface as `PSDLParseError`. |
+| `parse_file(path, strict=False)` | `PSDLScenario` | Parse a YAML file. Same `strict=` semantics. |
+
+**Top-level scenario shape:** the parser accepts both forms.
+
+```yaml
+# Flat form (legacy, still supported)
+scenario: MyScenario
+version: "1.0"
+
+# Schema form (used by all bundled examples)
+scenario:
+  name: MyScenario
+  version: "1.0"
+  description: "Optional"
+  tags: ["aki", "nephrology"]
+```
+
+**Convenience function:**
+
+```python
+from psdl import parse_scenario
+
+scenario = parse_scenario("scenario.yaml")          # loose
+scenario = parse_scenario(yaml_content, strict=True)  # strict
+```
 
 ---
 
@@ -100,8 +133,44 @@ print(scenario.audit)          # Audit metadata (intent, rationale, provenance)
 | `signals` | `Dict[str, Signal]` | Signal definitions |
 | `trends` | `Dict[str, TrendExpr]` | Trend definitions |
 | `logic` | `Dict[str, LogicExpr]` | Logic rules |
+| `signal_groups` | `Dict[str, SignalGroup]` | Bulk data-request groups and custom panels (RFC-0009). Defaults to empty. |
 | `population` | `Optional[PopulationCriteria]` | Population filters |
 | `audit` | `Optional[AuditBlock]` | Audit metadata |
+
+---
+
+### `SignalGroup` (RFC-0009)
+
+Optional, per-scenario named collections of signals — either a domain-level bulk request or an author-defined custom panel. Groups are a **data-extraction declaration only**: they are consumed by the Dataset Spec layer to fulfill bulk data requests and have **zero interaction with trends or logic**.
+
+```yaml
+signal_groups:
+  # Domain-level: pull every laboratory concept for the cohort
+  all_labs:
+    domain: laboratory
+    description: "All lab results for cohort patients"
+
+  # Custom panel: author-defined subset of declared signals
+  renal_panel:
+    members: [creatinine, hemoglobin, dialysis_active]
+    description: "Renal function monitoring panel"
+```
+
+```python
+from psdl import SignalGroup, ClinicalDomain
+
+g = SignalGroup(
+    name="all_labs",
+    description="All lab results",
+    domain=ClinicalDomain.LABORATORY,
+)
+```
+
+**Validation rules (Phase 1):**
+- `description` is required.
+- `domain` and `members` are mutually exclusive — exactly one must be set.
+- `members` entries must reference signals declared in the same scenario; unknown references raise `PSDLParseError` at parse time.
+- `domain` must be a valid `ClinicalDomain` enum value.
 
 ---
 
@@ -187,6 +256,42 @@ ir = compiler.compile(scenario)
 # Access diagnostics
 for warning in ir.diagnostics.warnings:
     print(f"Warning: {warning.message}")
+```
+
+---
+
+### Compiler diagnostic codes
+
+Each diagnostic carries a stable code (see `psdl.core.compile.DiagnosticCode`) so callers can filter or escalate selectively.
+
+| Code | Severity | Meaning |
+|------|----------|---------|
+| `S100` | error | Signal not found |
+| `S101` | error | Duplicate signal name |
+| `S102` | error | Invalid signal ref |
+| `T100` | error | Trend expression invalid |
+| `T101` | error | Trend references unknown signal |
+| `T102` | error | Trend uses unknown operator |
+| `T103` | error | Trend has invalid window |
+| `T104` | error | Trend contains comparison (v0.3+ rejects this; comparisons belong in logic) |
+| `L100` | error | Logic expression invalid |
+| `L101` | error | Logic references unknown trend or logic term |
+| `L102` | error | Logic has circular reference |
+| `L103` | error | Logic type mismatch |
+| `D100` | error | DAG circular dependency |
+| `D101` | error | DAG unreachable node |
+| `W100` | warning | Signal defined but never used |
+| `W101` | warning | Trend defined but never used in logic |
+| `W102` | warning | Deprecated syntax |
+| `W103` | warning | Performance hint |
+| `W104` | warning | **Transitively unused signal** — referenced by a trend, but every trend that references it is itself unused (RFC #7) |
+
+The `DependencyAnalysis` attached to each `ScenarioIR` carries `unused_signals`, `unused_trends`, and `transitively_unused_signals` for programmatic access:
+
+```python
+ir = compile_scenario("scenario.yaml")
+dep = ir.compilation.dependency_analysis
+dead_in_eval_graph = dep.transitively_unused_signals  # set[str]
 ```
 
 ---

@@ -31,7 +31,7 @@ Structure:
 __version__ = "0.5.0"
 
 # Core components
-from .core import PSDLParser, PSDLScenario
+from .core import PSDLParser, PSDLScenario, parse_scenario
 from .core.compile import ScenarioCompiler, ScenarioIR, compile_scenario
 from .core.dataset import (
     Binding,
@@ -113,6 +113,7 @@ __all__ = [
     # Core
     "PSDLParser",
     "PSDLScenario",
+    "parse_scenario",
     "DataPoint",
     "TemporalOperators",
     # v0.3 Compiler (RFC-0006)
