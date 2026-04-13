@@ -464,42 +464,41 @@ logic:
 
 
 class TestExampleScenarios:
-    """Test parsing of example scenario files."""
+    """Test parsing of bundled example scenario files in src/psdl/examples/."""
 
     @pytest.fixture
     def examples_dir(self):
-        return Path(__file__).parent.parent / "examples"
+        # Bundled examples ship inside the package, not at repo root.
+        return Path(__file__).parent.parent / "src" / "psdl" / "examples"
 
     def test_parse_icu_deterioration(self, examples_dir):
         filepath = examples_dir / "icu_deterioration.yaml"
-        if filepath.exists():
-            parser = PSDLParser()
-            scenario = parser.parse_file(str(filepath))
-
-            assert scenario.name == "ICU_Deterioration_v1"
-            assert len(scenario.signals) >= 5
-            assert len(scenario.trends) >= 5
-            assert len(scenario.logic) >= 3
+        scenario = PSDLParser().parse_file(str(filepath))
+        assert scenario.name == "ICU_Deterioration_v1"
+        assert len(scenario.signals) >= 5
+        assert len(scenario.trends) >= 5
+        assert len(scenario.logic) >= 3
 
     def test_parse_aki_detection(self, examples_dir):
         filepath = examples_dir / "aki_detection.yaml"
-        if filepath.exists():
-            parser = PSDLParser()
-            scenario = parser.parse_file(str(filepath))
-
-            assert scenario.name == "AKI_KDIGO_Detection"
-            assert "Cr" in scenario.signals
-            assert "aki_stage1" in scenario.logic
+        scenario = PSDLParser().parse_file(str(filepath))
+        assert scenario.name == "AKI_KDIGO_Detection"
+        assert "Cr" in scenario.signals
+        assert "aki_stage1" in scenario.logic
 
     def test_parse_sepsis_screening(self, examples_dir):
         filepath = examples_dir / "sepsis_screening.yaml"
-        if filepath.exists():
-            parser = PSDLParser()
-            scenario = parser.parse_file(str(filepath))
+        scenario = PSDLParser().parse_file(str(filepath))
+        assert scenario.name == "Sepsis_Screening_v1"
+        assert "qsofa_2" in scenario.logic
+        assert "sepsis_screen_positive" in scenario.logic
 
-            assert scenario.name == "Sepsis_Screening_v1"
-            assert "qsofa_2" in scenario.logic
-            assert "sepsis_screen_positive" in scenario.logic
+    def test_all_bundled_examples_parse(self, examples_dir):
+        """Every YAML in src/psdl/examples/ must parse without error."""
+        yamls = sorted(examples_dir.glob("*.yaml"))
+        assert len(yamls) >= 7, f"expected at least 7 bundled examples, found {len(yamls)}"
+        for filepath in yamls:
+            PSDLParser().parse_file(str(filepath))
 
 
 class TestStrictMode:
