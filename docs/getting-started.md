@@ -58,13 +58,14 @@ print(f"Signals: {list(scenario.signals.keys())}")
 print(f"Logic rules: {list(scenario.logic.keys())}")
 ```
 
-## Your First Scenario (v0.3 Syntax)
+## Your First Scenario
 
 Create a file called `my_scenario.yaml`:
 
 ```yaml
+psdl_version: "0.5"
 scenario: My_First_Scenario
-version: "0.3.0"
+version: "1.0.0"
 description: "Detect elevated creatinine"
 
 audit:
@@ -102,7 +103,7 @@ scenario = parse_scenario("my_scenario.yaml")
 # Or parse from string
 yaml_content = """
 scenario: Quick_Test
-version: "0.3.0"
+version: "1.0.0"
 signals:
   Cr:
     ref: creatinine
@@ -266,7 +267,7 @@ print(binding.filter_predicates)  # FilterPredicateSet (vendor-neutral)
 **Dataset Spec YAML format:**
 
 ```yaml
-psdl_version: "0.3"
+psdl_version: "0.5"
 dataset:
   name: "My Hospital OMOP"
   version: "1.0.0"

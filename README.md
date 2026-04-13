@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml"><img src="https://github.com/Chesterguan/PSDL/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
-  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.3.0-blue?style=flat-square" alt="Spec Version"></a>
+  <a href="#specification"><img src="https://img.shields.io/badge/Spec-0.5.0-blue?style=flat-square" alt="Spec Version"></a>
   <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" alt="License"></a>
   <a href="#contributing"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
   <img src="https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.8-3.12">
@@ -110,9 +110,10 @@ PSDL (Patient Scenario Definition Language) is a declarative, vendor-neutral lan
 ## Quick Example
 
 ```yaml
-# Detect early kidney injury (v0.3 syntax)
+# Detect early kidney injury
+psdl_version: "0.5"
 scenario: AKI_Early_Detection
-version: "0.3.0"
+version: "1.0.0"
 
 audit:
   intent: "Detect early acute kidney injury using creatinine trends"
