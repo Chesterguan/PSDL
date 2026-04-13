@@ -456,6 +456,66 @@ class TestCompilationDiagnostics:
         assert "UnusedSignal" in dep_analysis.unused_signals
         assert "unused_trend" in dep_analysis.unused_trends
 
+    def test_diagnostics_detects_transitively_unused_signal(self):
+        """A signal only referenced by an unused trend is flagged W104, not W100."""
+        yaml = """
+scenario: TransitiveUnusedTest
+version: "1.0"
+description: Signal BUN is only used by an unused trend
+
+signals:
+  Cr:
+    ref: creatinine
+    unit: mg/dL
+  BUN:
+    ref: blood_urea_nitrogen
+    unit: mg/dL
+
+trends:
+  cr_delta:
+    expr: delta(Cr, 48h)
+  bun_unused:
+    expr: sma(BUN, 24h)
+
+logic:
+  alert:
+    when: cr_delta > 0.3
+"""
+        scenario = parse_scenario(yaml)
+        compiler = ScenarioCompiler()
+        ir = compiler.compile(scenario, yaml)
+
+        dep = ir.compilation.dependency_analysis
+        assert "BUN" in dep.unused_signals
+        assert "BUN" in dep.transitively_unused_signals
+        assert "Cr" not in dep.unused_signals
+        assert "bun_unused" in dep.unused_trends
+
+        diagnostics = ir.compilation.diagnostics
+        w104 = [d for d in diagnostics if d.code == DiagnosticCode.TRANSITIVELY_UNUSED_SIGNAL]
+        assert any("BUN" in d.message for d in w104), [d.message for d in diagnostics]
+        # BUN must NOT appear under a plain W100 unused-signal warning
+        w100 = [d for d in diagnostics if d.code == DiagnosticCode.UNUSED_SIGNAL]
+        assert not any("BUN" in d.message for d in w100)
+
+    def test_diagnostics_plain_unused_vs_transitively_unused(
+        self, scenario_with_unused_entities_yaml
+    ):
+        """The existing fixture's UnusedSignal is plain-unused (W100), not W104."""
+        scenario = parse_scenario(scenario_with_unused_entities_yaml)
+        compiler = ScenarioCompiler()
+        ir = compiler.compile(scenario, scenario_with_unused_entities_yaml)
+
+        dep = ir.compilation.dependency_analysis
+        assert "UnusedSignal" in dep.unused_signals
+        assert "UnusedSignal" not in dep.transitively_unused_signals
+
+        diagnostics = ir.compilation.diagnostics
+        w100 = [d for d in diagnostics if d.code == DiagnosticCode.UNUSED_SIGNAL]
+        w104 = [d for d in diagnostics if d.code == DiagnosticCode.TRANSITIVELY_UNUSED_SIGNAL]
+        assert any("UnusedSignal" in d.message for d in w100)
+        assert not any("UnusedSignal" in d.message for d in w104)
+
     def test_diagnostics_type_analysis(self, simple_scenario_yaml):
         """Compiler should include type analysis."""
         scenario = parse_scenario(simple_scenario_yaml)

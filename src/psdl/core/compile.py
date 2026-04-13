@@ -172,6 +172,7 @@ class DiagnosticCode:
     UNUSED_TREND = "W101"
     DEPRECATED_SYNTAX = "W102"
     PERFORMANCE_HINT = "W103"
+    TRANSITIVELY_UNUSED_SIGNAL = "W104"  # Signal only referenced by unused trends
 
 
 @dataclass
@@ -230,6 +231,9 @@ class DependencyAnalysis:
     # Unused entities
     unused_signals: Set[str] = field(default_factory=set)
     unused_trends: Set[str] = field(default_factory=set)
+    # Signals that are referenced by at least one trend, but every trend that
+    # references them is itself unused (transitive W104 warning).
+    transitively_unused_signals: Set[str] = field(default_factory=set)
 
     # Circular references detected
     circular_refs: List[List[str]] = field(default_factory=list)
@@ -960,24 +964,20 @@ class ScenarioCompiler:
         dep_analysis: DependencyAnalysis,
         diagnostics: CompilationDiagnostics,
     ) -> None:
-        """Detect unused signals and trends (warnings)."""
-        # Check for unused signals
-        used_signals = set()
-        for trend in trends.values():
-            used_signals.update(trend.signals_used)
-        for signal_name in signals:
-            if signal_name not in used_signals:
-                dep_analysis.unused_signals.add(signal_name)
-                diagnostics.add_warning(
-                    code=DiagnosticCode.UNUSED_SIGNAL,
-                    message=f"Signal '{signal_name}' is defined but never used",
-                    location=SourceLocation(node_path=f"signals.{signal_name}"),
-                )
+        """Detect unused signals and trends (warnings).
 
-        # Check for unused trends
+        Two-pass analysis:
+        1. A trend is used iff it is referenced by logic.
+        2. A signal is used iff it is referenced by a used trend.
+
+        Signals referenced only by unused trends get the dedicated W104
+        (TRANSITIVELY_UNUSED_SIGNAL) warning so authors can see that the
+        signal is live in the YAML but dead in the evaluation graph.
+        """
         used_trends = set()
         for lg in logic.values():
             used_trends.update(lg.trends_used)
+
         for trend_name in trends:
             if trend_name not in used_trends:
                 dep_analysis.unused_trends.add(trend_name)
@@ -985,6 +985,35 @@ class ScenarioCompiler:
                     code=DiagnosticCode.UNUSED_TREND,
                     message=f"Trend '{trend_name}' is defined but never used in logic",
                     location=SourceLocation(node_path=f"trends.{trend_name}"),
+                )
+
+        used_signals = set()
+        for trend_name, trend in trends.items():
+            if trend_name in used_trends:
+                used_signals.update(trend.signals_used)
+
+        for signal_name in signals:
+            if signal_name in used_signals:
+                continue
+            dep_analysis.unused_signals.add(signal_name)
+            referenced_by_any_trend = any(
+                signal_name in trend.signals_used for trend in trends.values()
+            )
+            if referenced_by_any_trend:
+                dep_analysis.transitively_unused_signals.add(signal_name)
+                diagnostics.add_warning(
+                    code=DiagnosticCode.TRANSITIVELY_UNUSED_SIGNAL,
+                    message=(
+                        f"Signal '{signal_name}' is only used by unused trends — "
+                        "it will not influence any logic output"
+                    ),
+                    location=SourceLocation(node_path=f"signals.{signal_name}"),
+                )
+            else:
+                diagnostics.add_warning(
+                    code=DiagnosticCode.UNUSED_SIGNAL,
+                    message=f"Signal '{signal_name}' is defined but never used",
+                    location=SourceLocation(node_path=f"signals.{signal_name}"),
                 )
 
     # =========================================================================
