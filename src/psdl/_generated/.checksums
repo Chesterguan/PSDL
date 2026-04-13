@@ -1,4 +1,6 @@
 {
   "schema.json": "831aea5b08ff30b383c239169e80b169",
+  "operators.yaml": "40470c2e8b5592ef63929b09e6a6bb85",
+  "ast-nodes.yaml": "70b8d6c8537a8b6726b62a842d846bb3",
   "VERSION": "81b7ee5ce7df955bad631aada4875d17"
 }

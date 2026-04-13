@@ -1,6 +1,6 @@
 """
 Auto-generated SQL templates from spec/operators.yaml
-Generated: 2025-12-15T12:01:47.799507
+Generated: 2026-04-13T11:57:06.871799
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --sql
 """

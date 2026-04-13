@@ -1,6 +1,6 @@
 """
 Auto-generated AST types from spec/ast-nodes.yaml
-Generated: 2025-12-15T12:25:43.173116
+Generated: 2026-04-13T11:57:06.891958
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --ast
 """
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 # SPEC VERSION
 # =============================================================================
 
-AST_SPEC_VERSION = "0.3.0"
+AST_SPEC_VERSION = "0.4.0"
 
 
 # =============================================================================

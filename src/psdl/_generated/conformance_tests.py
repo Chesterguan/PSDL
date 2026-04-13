@@ -1,6 +1,6 @@
 """
 Auto-generated conformance tests from spec/conformance/
-Generated: 2025-12-15T12:25:43.201249
+Generated: 2026-04-13T11:57:06.922824
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --conformance
 """
@@ -256,7 +256,7 @@ def test_valid_logic_24(parser):
     result = parser.parse_logic("aki_stage1 AND aki_stage2")
     assert result is not None
     assert isinstance(result, AndExpr)
-    assert set(extract_terms(result)) == {"aki_stage2", "aki_stage1"}
+    assert set(extract_terms(result)) == {"aki_stage1", "aki_stage2"}
 
 
 def test_valid_logic_25(parser):
@@ -264,7 +264,7 @@ def test_valid_logic_25(parser):
     result = parser.parse_logic("aki_stage1 OR aki_stage2")
     assert result is not None
     assert isinstance(result, OrExpr)
-    assert set(extract_terms(result)) == {"aki_stage2", "aki_stage1"}
+    assert set(extract_terms(result)) == {"aki_stage1", "aki_stage2"}
 
 
 def test_valid_logic_26(parser):
@@ -279,14 +279,14 @@ def test_valid_logic_27(parser):
     """Combined AND and NOT"""
     result = parser.parse_logic("aki_stage1 AND NOT recovering")
     assert result is not None
-    assert set(extract_terms(result)) == {"recovering", "aki_stage1"}
+    assert set(extract_terms(result)) == {"aki_stage1", "recovering"}
 
 
 def test_valid_logic_28(parser):
     """Parenthesized expression"""
     result = parser.parse_logic("(fever OR hypothermia) AND tachycardia")
     assert result is not None
-    assert set(extract_terms(result)) == {"fever", "tachycardia", "hypothermia"}
+    assert set(extract_terms(result)) == {"tachycardia", "fever", "hypothermia"}
 
 
 def test_valid_logic_29(parser):

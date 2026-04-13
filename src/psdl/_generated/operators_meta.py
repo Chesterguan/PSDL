@@ -1,13 +1,13 @@
 """
 Auto-generated operator metadata from spec/operators.yaml
-Generated: 2025-12-15T12:01:47.781774
+Generated: 2026-04-13T11:57:06.847695
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --operators
 """
 
 from typing import Dict, List, Literal, Optional, TypedDict
 
-SPEC_VERSION = "0.3.0"
+SPEC_VERSION = "0.4.0"
 
 
 class OperatorMeta(TypedDict, total=False):

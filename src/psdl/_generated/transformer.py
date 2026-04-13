@@ -1,6 +1,6 @@
 """
 Auto-generated Lark Transformer from spec/ast-nodes.yaml grammar_mappings
-Generated: 2025-12-15T12:25:43.187958
+Generated: 2026-04-13T11:57:06.908901
 
 DO NOT EDIT - Regenerate with: python tools/codegen.py --transformer
 """
@@ -32,7 +32,7 @@ class PSDLExprTransformer(Transformer):
     Transform Lark parse tree into PSDL AST objects.
 
     Auto-generated from spec/ast-nodes.yaml grammar_mappings.
-    Version: 0.3.0
+    Version: 0.4.0
     """
 
     @v_args(inline=True)
@@ -56,10 +56,7 @@ class PSDLExprTransformer(Transformer):
     def percentile_call(self, *args) -> TrendExpression:
         """Transform 'percentile_call' grammar rule."""
         temporal = TemporalCall(
-            operator="percentile",
-            signal=str(args[0]),
-            window=args[1],
-            percentile=int(args[2]),
+            operator="percentile", signal=str(args[0]), window=args[1], percentile=int(args[2])
         )
         return TrendExpression(temporal=temporal)
 
