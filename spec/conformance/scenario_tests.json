@@ -17,7 +17,7 @@
           "id": "doc_001",
           "name": "Valid minimal scenario",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "minimal_test",
               "version": "1.0.0"
@@ -72,7 +72,7 @@
           "id": "doc_003",
           "name": "Missing audit block",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -88,7 +88,7 @@
           "id": "doc_004",
           "name": "Missing signals",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -108,7 +108,7 @@
           "id": "doc_005",
           "name": "Missing logic",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -149,7 +149,7 @@
           "id": "doc_007",
           "name": "Physical binding in signal (forbidden)",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -175,7 +175,7 @@
           "id": "doc_008",
           "name": "Audit intent too short",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -195,7 +195,7 @@
           "id": "doc_009",
           "name": "Comparison operator in trend expression (v0.3 violation)",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -230,7 +230,7 @@
           "id": "doc_010",
           "name": "State transition 'when' with inline expression",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -270,7 +270,7 @@
           "id": "doc_011",
           "name": "Decision output missing required 'from' field",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -306,7 +306,7 @@
           "id": "doc_012",
           "name": "Feature output with neither 'from' nor 'expr'",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -342,7 +342,7 @@
           "id": "doc_013",
           "name": "Invalid decision output 'from' reference format",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -385,7 +385,7 @@
           "id": "sem_001",
           "name": "Undefined signal in trend",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -419,7 +419,7 @@
           "id": "sem_002",
           "name": "Undefined trend in logic",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -453,7 +453,7 @@
           "id": "sem_003",
           "name": "Circular logic reference",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -498,7 +498,7 @@
           "id": "e2e_001",
           "name": "AKI Stage 1 detection - positive",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "aki_simple",
               "version": "1.0.0"
@@ -552,7 +552,7 @@
           "id": "e2e_002",
           "name": "AKI Stage 1 detection - negative",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "aki_simple",
               "version": "1.0.0"
@@ -606,7 +606,7 @@
           "id": "e2e_003",
           "name": "Compound logic - AND",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "compound_test",
               "version": "1.0.0"
@@ -656,7 +656,7 @@
           "id": "e2e_004",
           "name": "Compound logic - OR",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "compound_test",
               "version": "1.0.0"
@@ -702,7 +702,7 @@
           "id": "e2e_005",
           "name": "Missing data handling",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "missing_test",
               "version": "1.0.0"
@@ -752,7 +752,7 @@
           "id": "sm_001",
           "name": "Valid state machine definition",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "state_machine_test",
               "version": "1.0.0"
@@ -790,7 +790,7 @@
           "id": "sm_002",
           "name": "State machine - initial state not in states list",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -820,7 +820,7 @@
           "id": "sm_003",
           "name": "State machine - transition from undefined state",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -852,7 +852,7 @@
           "id": "sm_004",
           "name": "State machine - transition to undefined state",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -884,7 +884,7 @@
           "id": "sm_005",
           "name": "State machine - transition references undefined logic",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -915,7 +915,7 @@
           "id": "sm_006",
           "name": "State machine evaluation - transition triggered",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "sm_eval_test",
               "version": "1.0.0"
@@ -965,7 +965,7 @@
           "id": "sm_007",
           "name": "State machine evaluation - no transition",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "sm_eval_test",
               "version": "1.0.0"
@@ -1023,7 +1023,7 @@
           "id": "pop_001",
           "name": "Valid population filter - include only",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "population_test",
               "version": "1.0.0"
@@ -1050,7 +1050,7 @@
           "id": "pop_002",
           "name": "Valid population filter - exclude only",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "population_test",
               "version": "1.0.0"
@@ -1077,7 +1077,7 @@
           "id": "pop_003",
           "name": "Valid population filter - include and exclude",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "population_test",
               "version": "1.0.0"
@@ -1105,7 +1105,7 @@
           "id": "pop_004",
           "name": "Population filter evaluation - included patient",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "pop_eval_test",
               "version": "1.0.0"
@@ -1150,7 +1150,7 @@
           "id": "pop_005",
           "name": "Population filter evaluation - excluded patient",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "pop_eval_test",
               "version": "1.0.0"
@@ -1195,7 +1195,7 @@
           "id": "pop_006",
           "name": "Population filter evaluation - failed include",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "pop_eval_test",
               "version": "1.0.0"
@@ -1247,7 +1247,7 @@
           "id": "out_001",
           "name": "Valid output definitions - all types",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "output_test",
               "version": "1.0.0"
@@ -1295,7 +1295,7 @@
           "id": "out_002",
           "name": "Output from undefined logic",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -1327,7 +1327,7 @@
           "id": "out_003",
           "name": "Output from undefined trend",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "test",
               "version": "1.0.0"
@@ -1362,7 +1362,7 @@
           "id": "out_004",
           "name": "Decision output with enum type",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "enum_output_test",
               "version": "1.0.0"
@@ -1400,7 +1400,7 @@
           "id": "out_005",
           "name": "Output evaluation - full result",
           "scenario": {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "scenario": {
               "name": "output_eval_test",
               "version": "1.0.0"

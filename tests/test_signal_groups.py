@@ -1,5 +1,9 @@
 """Tests for signal_groups (RFC-0009)."""
 
+import json
+from pathlib import Path
+
+import jsonschema
 import pytest
 
 from psdl.core.ir import ClinicalDomain, PSDLScenario, Signal, SignalGroup
@@ -291,3 +295,97 @@ class TestPublicAPI:
         assert hasattr(psdl, "SignalGroup")
         assert psdl.SignalGroup is SignalGroup
         assert "SignalGroup" in psdl.__all__
+
+
+def _load_scenario_schema():
+    """Load spec/schema.json from the repo root."""
+    repo_root = Path(__file__).resolve().parents[1]
+    return json.loads((repo_root / "spec" / "schema.json").read_text())
+
+
+_BASE_SCENARIO_DICT = {
+    "psdl_version": "0.5",
+    "scenario": {"name": "test", "version": "1.0.0"},
+    "audit": {
+        "intent": "test intent",
+        "rationale": "test rationale",
+        "provenance": "test provenance",
+    },
+    "signals": {
+        "creatinine": {"ref": "creatinine"},
+    },
+    "logic": {
+        "dummy": {"when": "true"},
+    },
+    "outputs": {
+        "decision": {
+            "triggered": {"type": "boolean", "from": "logic.dummy"},
+        },
+    },
+}
+
+
+class TestSchemaSignalGroups:
+    def test_reject_psdl_version_0_3(self):
+        """psdl_version '0.3' is rejected by the tightened schema."""
+        schema = _load_scenario_schema()
+        doc = dict(_BASE_SCENARIO_DICT)
+        doc["psdl_version"] = "0.3"
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(doc, schema)
+
+    def test_reject_psdl_version_0_4(self):
+        """psdl_version '0.4' is rejected by the tightened schema."""
+        schema = _load_scenario_schema()
+        doc = dict(_BASE_SCENARIO_DICT)
+        doc["psdl_version"] = "0.4"
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(doc, schema)
+
+    def test_accept_psdl_version_0_5_without_signal_groups(self):
+        """psdl_version '0.5' without signal_groups validates."""
+        schema = _load_scenario_schema()
+        jsonschema.validate(_BASE_SCENARIO_DICT, schema)
+
+    def test_accept_valid_signal_groups_section(self):
+        """A scenario with one domain group and one custom panel validates."""
+        schema = _load_scenario_schema()
+        doc = dict(_BASE_SCENARIO_DICT)
+        doc["signal_groups"] = {
+            "all_labs": {
+                "domain": "laboratory",
+                "description": "All labs",
+            },
+            "renal_panel": {
+                "members": ["creatinine"],
+                "description": "Renal panel",
+            },
+        }
+        jsonschema.validate(doc, schema)
+
+    def test_reject_signal_group_with_both_domain_and_members(self):
+        """A group with both domain and members fails schema validation."""
+        schema = _load_scenario_schema()
+        doc = dict(_BASE_SCENARIO_DICT)
+        doc["signal_groups"] = {
+            "hybrid": {
+                "domain": "laboratory",
+                "members": ["creatinine"],
+                "description": "Bad",
+            }
+        }
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(doc, schema)
+
+    def test_reject_signal_group_with_empty_members(self):
+        """A group with an empty members array fails schema validation."""
+        schema = _load_scenario_schema()
+        doc = dict(_BASE_SCENARIO_DICT)
+        doc["signal_groups"] = {
+            "empty": {
+                "members": [],
+                "description": "Bad",
+            }
+        }
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(doc, schema)

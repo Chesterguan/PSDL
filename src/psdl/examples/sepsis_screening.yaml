@@ -11,7 +11,7 @@
 #
 # Reference: Singer et al. JAMA 2016 (Sepsis-3)
 
-psdl_version: "0.3"
+psdl_version: "0.5"
 
 scenario:
   name: Sepsis_Screening_v1

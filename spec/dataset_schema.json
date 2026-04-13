@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://psdl-lang.org/schema/v0.3/dataset",
-  "$comment": "Schema version 0.3.0 (2025-12-14). Companion schema for Dataset Spec documents.",
-  "title": "PSDL Dataset Specification Schema v0.3",
+  "$id": "https://psdl-lang.org/schema/v0.5/dataset",
+  "$comment": "Schema version 0.5.0 (2026-04-13). Companion schema for Dataset Spec documents. Tightened psdl_version pattern (RFC-0009).",
+  "title": "PSDL Dataset Specification Schema v0.5",
   "description": "JSON Schema for PSDL Dataset Specification documents. Dataset Specs define WHERE to find data (physical bindings) for PSDL scenarios. Scenarios define WHAT to detect (intent), Dataset Specs define WHERE to find it (binding). See RFC-0004.",
-  "x-psdl-schema-version": "0.3.0",
-  "x-psdl-last-updated": "2025-12-14",
+  "x-psdl-schema-version": "0.5.0",
+  "x-psdl-last-updated": "2026-04-13",
   "type": "object",
   "required": ["psdl_version", "dataset", "data_model", "elements"],
   "additionalProperties": false,
@@ -60,9 +60,9 @@
   "$defs": {
     "PSDLVersion": {
       "type": "string",
-      "pattern": "^0\\.3(\\.\\d+)?$",
-      "description": "PSDL specification version (currently 0.3.x)",
-      "examples": ["0.3", "0.3.0"]
+      "pattern": "^0\\.5(\\.\\d+)?$",
+      "description": "PSDL specification version (currently 0.5.x)",
+      "examples": ["0.5", "0.5.0"]
     },
 
     "DatasetName": {

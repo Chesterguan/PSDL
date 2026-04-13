@@ -217,7 +217,7 @@ class TestFilterSpecToPredicates:
 
         fs = FilterSpec(concept_id=3016723)
         spec = DatasetSpec(
-            psdl_version="0.4",
+            psdl_version="0.5",
             name="test",
             version="1.0",
             data_model="omop",
@@ -266,7 +266,7 @@ class TestBindingFilterPredicates:
         from psdl.core.dataset import DatasetSpec, ElementSpec, FilterSpec
 
         spec = DatasetSpec(
-            psdl_version="0.4",
+            psdl_version="0.5",
             name="test",
             version="1.0",
             data_model="omop",

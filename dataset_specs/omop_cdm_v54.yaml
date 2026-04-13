@@ -7,7 +7,7 @@
 # Use this as a starting point for your institution's dataset spec.
 # Customize concept_ids based on your local mappings.
 
-psdl_version: "0.3"
+psdl_version: "0.5"
 
 dataset:
   name: omop_cdm_v54

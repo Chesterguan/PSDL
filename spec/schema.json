@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://psdl-lang.org/schema/v0.3/scenario",
-  "$comment": "Schema version 0.3.0 (2025-12-14). Breaking change from v0.2: trends cannot contain comparison operators.",
-  "title": "PSDL Scenario Schema v0.3",
-  "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.3 scenario documents. Scenarios define WHAT to detect (clinical intent) using abstract signal references. Physical data bindings belong in Dataset Spec (see dataset_schema.json). See RFC-0004 and RFC-0005.",
-  "x-psdl-schema-version": "0.3.0",
-  "x-psdl-last-updated": "2025-12-14",
+  "$id": "https://psdl-lang.org/schema/v0.5/scenario",
+  "$comment": "Schema version 0.5.0 (2026-04-13). Adds signal_groups section (RFC-0009). Breaking change from v0.3/0.4: psdl_version must be \"0.5\".",
+  "title": "PSDL Scenario Schema v0.5",
+  "description": "JSON Schema for Patient Scenario Definition Language (PSDL) v0.5 scenario documents. Scenarios define WHAT to detect (clinical intent) using abstract signal references. Physical data bindings belong in Dataset Spec (see dataset_schema.json). See RFC-0004, RFC-0005, RFC-0009.",
+  "x-psdl-schema-version": "0.5.0",
+  "x-psdl-last-updated": "2026-04-13",
   "type": "object",
   "required": ["psdl_version", "scenario", "signals", "logic", "audit", "outputs"],
   "additionalProperties": false,
@@ -57,6 +57,10 @@
       "$ref": "#/$defs/SignalDefinitions",
       "description": "Abstract signal references (semantic names only, NO physical bindings)"
     },
+    "signal_groups": {
+      "$ref": "#/$defs/SignalGroupDefinitions",
+      "description": "Optional bulk data-request groups and custom panels (RFC-0009)"
+    },
     "trends": {
       "$ref": "#/$defs/TrendDefinitions",
       "description": "Computed numeric trends over signals (NO boolean comparisons)"
@@ -82,9 +86,9 @@
   "$defs": {
     "PSDLVersion": {
       "type": "string",
-      "pattern": "^0\\.3(\\.\\d+)?$",
-      "description": "PSDL specification version (currently 0.3.x)",
-      "examples": ["0.3", "0.3.0", "0.3.1"]
+      "pattern": "^0\\.5(\\.\\d+)?$",
+      "description": "PSDL specification version (currently 0.5.x)",
+      "examples": ["0.5", "0.5.0", "0.5.1"]
     },
 
     "ScenarioName": {
@@ -169,6 +173,52 @@
       "propertyNames": {
         "$ref": "#/$defs/Identifier"
       }
+    },
+
+    "SignalGroupDefinitions": {
+      "type": "object",
+      "description": "Map of signal group names to their definitions (RFC-0009).",
+      "additionalProperties": {
+        "$ref": "#/$defs/SignalGroup"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/Identifier"
+      }
+    },
+
+    "SignalGroup": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "description": "A bulk data request (by domain) or a named custom panel (by members). Phase 1 (RFC-0009): domain and members are mutually exclusive.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the group's purpose"
+        },
+        "domain": {
+          "enum": [
+            "laboratory",
+            "vital_sign",
+            "condition",
+            "medication",
+            "procedure",
+            "observation",
+            "demographic"
+          ],
+          "description": "ClinicalDomain value for a domain-level bulk request"
+        },
+        "members": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Explicit signal names for a custom panel"
+        }
+      },
+      "oneOf": [
+        { "required": ["domain"], "not": { "required": ["members"] } },
+        { "required": ["members"], "not": { "required": ["domain"] } }
+      ]
     },
 
     "SignalSpec": {

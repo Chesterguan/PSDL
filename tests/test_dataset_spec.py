@@ -30,7 +30,7 @@ from psdl.core.dataset import (
 def minimal_spec_yaml():
     """Minimal valid dataset spec YAML."""
     return """
-psdl_version: "0.3"
+psdl_version: "0.5"
 
 dataset:
   name: test_minimal
@@ -52,7 +52,7 @@ elements:
 def full_spec_yaml():
     """Full dataset spec YAML with all features."""
     return """
-psdl_version: "0.3"
+psdl_version: "0.5"
 
 dataset:
   name: test_full
@@ -209,7 +209,7 @@ class TestValidateDatasetSpec:
     def test_valid_spec(self):
         """Valid spec returns empty error list."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "omop",
             "elements": {"creatinine": {"table": "measurement", "value_field": "value_as_number"}},
@@ -230,7 +230,7 @@ class TestValidateDatasetSpec:
     def test_missing_dataset(self):
         """Missing dataset section is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "data_model": "omop",
             "elements": {"cr": {"table": "t", "value_field": "v"}},
         }
@@ -240,7 +240,7 @@ class TestValidateDatasetSpec:
     def test_missing_elements(self):
         """Missing elements section is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "omop",
         }
@@ -250,7 +250,7 @@ class TestValidateDatasetSpec:
     def test_empty_elements(self):
         """Empty elements section is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "omop",
             "elements": {},
@@ -261,7 +261,7 @@ class TestValidateDatasetSpec:
     def test_invalid_data_model(self):
         """Invalid data_model is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "invalid",
             "elements": {"cr": {"table": "t", "value_field": "v"}},
@@ -272,7 +272,7 @@ class TestValidateDatasetSpec:
     def test_element_missing_table(self):
         """Element missing table is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "omop",
             "elements": {"cr": {"value_field": "v"}},
@@ -283,7 +283,7 @@ class TestValidateDatasetSpec:
     def test_element_missing_value_field(self):
         """Element missing value_field is an error."""
         data = {
-            "psdl_version": "0.3",
+            "psdl_version": "0.5",
             "dataset": {"name": "test", "version": "1.0.0"},
             "data_model": "omop",
             "elements": {"cr": {"table": "t"}},
@@ -464,7 +464,7 @@ class TestDataTypes:
         """FilterSpec.to_filter_expr generates correct SQL."""
         # Create a validated spec for testing (using _validated=True for internal test)
         spec = DatasetSpec(
-            psdl_version="0.3",
+            psdl_version="0.5",
             name="test",
             version="1.0.0",
             data_model="omop",
@@ -503,7 +503,7 @@ class TestMandatoryValidation:
 
         # Direct construction - bypasses load_dataset_spec()
         spec = DatasetSpec(
-            psdl_version="0.3",
+            psdl_version="0.5",
             name="test",
             version="1.0.0",
             data_model="omop",
@@ -533,7 +533,7 @@ class TestMandatoryValidation:
         """is_validated property reflects validation state."""
         # Unvalidated
         unvalidated = DatasetSpec(
-            psdl_version="0.3",
+            psdl_version="0.5",
             name="test",
             version="1.0.0",
             data_model="omop",
