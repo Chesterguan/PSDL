@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-31T15:59:55.953974",
+  "generated_at": "2026-08-31T17:44:01.386798",
   "protocol": {
     "anchor": "per-patient peak creatinine time",
     "baseline": "min(Cr, 7d) before anchor (KDIGO retrospective surrogate)",
     "scenario": "src/psdl/examples/aki_detection.yaml",
     "dataset_spec": "dataset_specs/omop_cdm_v54.yaml"
   },
-  "compile_seconds": 0.0018,
+  "compile_seconds": 0.0012,
   "data": {
     "creatinine_rows": 4849711,
     "creatinine_patients": 294788,
@@ -14,18 +14,18 @@
   },
   "cohort": {
     "patients_evaluated": 294788,
-    "aki_stage1": 16955,
-    "aki_stage2": 5375,
-    "aki_stage3": 11917,
-    "aki_present": 34247,
-    "aki_prevalence": 0.1162,
-    "prerenal_likely": 11651,
-    "aki_recovering": 0,
-    "execution_seconds": 392.8
+    "aki_stage1": 16958,
+    "aki_stage2": 5372,
+    "aki_stage3": 8122,
+    "aki_present": 30452,
+    "aki_prevalence": 0.1033,
+    "prerenal_likely": 6437,
+    "aki_recovering": 10,
+    "execution_seconds": 326.4
   },
   "consistency": {
     "patients_checked": 200,
-    "logic_outputs_compared": 1800,
+    "logic_outputs_compared": 2000,
     "mismatches": 0,
     "mismatch_detail": [],
     "seed": 42

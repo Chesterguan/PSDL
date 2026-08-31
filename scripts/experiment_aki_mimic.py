@@ -41,24 +41,12 @@ SCHEMA = "omop_cdm"
 CREATININE_CONCEPT = 3016723
 BUN_CONCEPT = 3013682
 
-LOGIC_COLS = [
-    "cr_rise_flag",
-    "aki_stage3",
-    "aki_stage2",
-    "aki_stage1",
-    "aki_present",
-    "cr_falling",
-    "aki_recovering",
-    "bun_elevated",
-    "prerenal_likely",
-]
-
 REF_CTE = f"""ref AS (
     SELECT DISTINCT ON (person_id) person_id, measurement_datetime AS ref_time
     FROM {SCHEMA}.measurement
     WHERE measurement_concept_id = {CREATININE_CONCEPT}
       AND value_as_number IS NOT NULL
-    ORDER BY person_id, value_as_number DESC, measurement_datetime
+    ORDER BY person_id, value_as_number DESC, measurement_datetime, measurement_id
 )"""
 
 
@@ -88,6 +76,7 @@ def main() -> None:
     }}
 
     scenario = parse_scenario(SCENARIO)
+    logic_cols = list(scenario.logic.keys())
     ds = load_dataset_spec(DATASET_SPEC, schema=SCHEMA)
 
     t0 = time.time()
@@ -175,7 +164,7 @@ def main() -> None:
         ev = SinglePatientEvaluator(scenario, be)
         r = ev.evaluate(pid, reference_time=ref_time)
         checked += 1
-        for col in LOGIC_COLS:
+        for col in logic_cols:
             py, sq = bool(r.logic_results.get(col)), bool(rec[col])
             if py != sq:
                 mismatches.append({
@@ -186,12 +175,12 @@ def main() -> None:
 
     results["consistency"] = {
         "patients_checked": checked,
-        "logic_outputs_compared": checked * len(LOGIC_COLS),
+        "logic_outputs_compared": checked * len(logic_cols),
         "mismatches": len(mismatches),
         "mismatch_detail": mismatches[:10],
         "seed": args.seed,
     }
-    print(f"consistency: {checked} patients x {len(LOGIC_COLS)} logic outputs, "
+    print(f"consistency: {checked} patients x {len(logic_cols)} logic outputs, "
           f"{len(mismatches)} mismatches")
 
     with open(args.out, "w") as f:

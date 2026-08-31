@@ -45,6 +45,35 @@ check with zero mismatches).
   `unit`, and `raw_expr`; `--json` serializes severity as its string value.
 - **`expected_unit` was silently dropped**: the parser only read `unit:`;
   it now accepts `expected_unit:` (the documented key) with `unit:` fallback.
+- **Pointwise operators were window-bounded in the Python runtime**:
+  `last(X)`/`first(X)` are unbounded in the spec and the SQL runtime, but
+  `SinglePatientEvaluator` only fetched data within the largest windowed
+  trend's window, silently returning `None` for older values (caught by the
+  MIMIC SQL-vs-Python consistency check). Scenarios containing a windowless
+  call now fetch effectively unbounded history.
+
+### Clinical correctness (bundled scenarios reviewed against their cited guidelines)
+
+- **KDIGO (aki_detection v2.1.0)**: Stage 3's absolute criterion is gated on
+  the KDIGO AKI definition (see the Changed entry below); the prerenal marker
+  now uses the classic BUN:creatinine ratio >20:1 instead of an absolute
+  BUN >20 mg/dL; the recovery slope threshold is expressed in the operator's
+  actual per-second units.
+- **qSOFA (sepsis_screening v1.1.0)**: "qSOFA >=2" previously required
+  tachypnea (`RR AND (BP OR AMS)`), missing hypotension+AMS presentations;
+  now any 2 of 3. SIRS was a triple-AND across criterion groups; now any
+  2 of the 4 criteria with the correct SIRS thresholds (temp >38.0C,
+  RR >20). The septic-shock rule is documented as a surrogate (Sepsis-3
+  defines shock via vasopressor requirement, which is not modeled). The
+  undeliverable `qsofa_score` output (PSDL has no criterion-counting
+  primitive) was removed. `lactate_rising` used an impossible threshold
+  (0.5 mmol/L per *second*); slope() is per-second and the threshold is
+  now 1e-4 (~0.36 mmol/L/h).
+- **physionet_sepsis**: SIRS thresholds corrected (temp >38.0C, RR >20).
+- **Notebooks**: the MIMIC demo's lactate-only rule is renamed
+  hyperlactatemia (lactic acidosis requires acidemia); the streaming
+  demo's Cr >=4.0 rule is annotated as the KDIGO absolute criterion
+  requiring an acute rise; demo/perioperative labels corrected.
 
 ### Changed
 
@@ -52,12 +81,15 @@ check with zero mismatches).
   scenario YAMLs at the repository root (`examples/*.yaml`) were removed;
   `comprehensive_demo.yaml` and `perioperative_cohort.yaml` moved into
   `src/psdl/examples/`; all tests now exercise the packaged examples.
-- **`aki_detection.yaml` rewritten (v2.0.0)**: baseline creatinine is computed
+- **`aki_detection.yaml` rewritten (v2.1.0)**: baseline creatinine is computed
   in-language (`min(Cr, 7d)`) instead of referencing a phantom
   `creatinine_baseline` signal; the 48h criterion uses
   `last(Cr) - min(Cr, 48h)`; KDIGO stages are mutually exclusive
-  (highest stage wins) via `NOT`; adds a `signal_groups` renal panel and
-  strict-mode (`psdl_version: "0.5"`) metadata; documents operationalization
+  (highest stage wins) via `NOT`; the Stage 3 absolute criterion
+  (`Cr >= 4.0`) is gated on the KDIGO AKI definition (an acute change),
+  so a chronically elevated creatinine alone is no longer misclassified
+  as Stage 3; adds a `signal_groups` renal panel and strict-mode
+  (`psdl_version: "0.5"`) metadata; documents operationalization
   choices and limitations (urine output, RRT) in the header.
 
 ### Added
