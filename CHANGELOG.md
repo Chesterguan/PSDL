@@ -7,7 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-04-13
+## [0.5.1] - 2026-08-31
+
+Correctness release: arithmetic trend expressions now execute correctly in every
+runtime, and the cohort SQL path is verified end-to-end against a real
+MIMIC-IV/OMOP database (294,788 patients; 200-patient Python-vs-SQL consistency
+check with zero mismatches).
+
+### Fixed
+
+- **Arithmetic trends silently mis-compiled to SQL** (critical): expressions
+  like `last(Cr) / min(Cr, 7d)` were compiled as plain `last(Cr)` because the
+  cohort compiler's regex parser used `re.match` (prefix-anchored) instead of
+  `re.fullmatch`. Compound expressions now compile each operator call to its own
+  component CTE and combine them arithmetically (division guarded with
+  `NULLIF`). Unparseable expressions raise `ValueError` instead of silently
+  degrading.
+- **Arithmetic trends returned `None` in the single-patient runtime**:
+  `SinglePatientEvaluator` now evaluates the full expression AST (RFC-0006),
+  including nested arithmetic, with missing data and division-by-zero
+  propagating as `None`. Signal fetch windows now account for windows nested
+  inside arithmetic expressions.
+- **Logic layer compiled to invalid SQL**: comparisons like
+  `cr_ratio >= 2.0` referenced CTE names (not columns) and logic-on-logic
+  references (`NOT aki_stage3`) referenced same-SELECT aliases. Logic is now
+  compiled from the parsed AST over a `trend_values` CTE, with logic-to-logic
+  references inlined along the DAG and every comparison wrapped in
+  `COALESCE(..., FALSE)` to match the Python runtime's `None -> False`
+  semantics exactly.
+- **Dataset Spec semantic filter keys rendered as physical columns**:
+  `filter: concept_id:` produced `concept_id IN (...)` SQL; on OMOP the
+  physical column is per-table (`measurement_concept_id`, ...).
+  `DatasetSpec.resolve()` now maps semantic filter fields to physical columns
+  for the OMOP data model.
+- **`psdl parse` crashed on any scenario** (#11): the CLI referenced pre-v0.3
+  fields (`Signal.source`, `Signal.type`, `Trend.expr`). Now uses `ref`,
+  `unit`, and `raw_expr`; `--json` serializes severity as its string value.
+- **`expected_unit` was silently dropped**: the parser only read `unit:`;
+  it now accepts `expected_unit:` (the documented key) with `unit:` fallback.
+
+### Changed
+
+- **Bundled examples are the single source of truth**: the stale duplicate
+  scenario YAMLs at the repository root (`examples/*.yaml`) were removed;
+  `comprehensive_demo.yaml` and `perioperative_cohort.yaml` moved into
+  `src/psdl/examples/`; all tests now exercise the packaged examples.
+- **`aki_detection.yaml` rewritten (v2.0.0)**: baseline creatinine is computed
+  in-language (`min(Cr, 7d)`) instead of referencing a phantom
+  `creatinine_baseline` signal; the 48h criterion uses
+  `last(Cr) - min(Cr, 48h)`; KDIGO stages are mutually exclusive
+  (highest stage wins) via `NOT`; adds a `signal_groups` renal panel and
+  strict-mode (`psdl_version: "0.5"`) metadata; documents operationalization
+  choices and limitations (urine output, RRT) in the header.
+
+### Added
+
+- **`load_dataset_spec(path, schema=...)`**: optional override for
+  `conventions.schema`, so the standard OMOP spec can target databases with a
+  different schema name.
+- **`scripts/experiment_aki_mimic.py`**: reproducible AKI experiment against a
+  MIMIC-IV -> OMOP database with per-patient reference times (peak creatinine
+  anchor), KDIGO stage aggregation, and an SQL-vs-Python consistency check.
+- **`tests/test_arith_trends.py`**: runtime evaluation and SQL-structure tests
+  for arithmetic trends, exclusive staging logic, and the
+  no-silent-degradation guarantee (587 tests total).
 
 ### BREAKING
 

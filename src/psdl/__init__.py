@@ -28,7 +28,7 @@ Structure:
 - adapters/: Data source adapters (OMOP, FHIR)
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 # Core components
 from .core import PSDLParser, PSDLScenario, parse_scenario

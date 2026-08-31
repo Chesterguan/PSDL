@@ -324,7 +324,7 @@ psdl/
 │   └── data/              # Sample data (compressed archives)
 ├── docs/                  # Documentation + Whitepapers
 ├── rfcs/                  # Design proposals (7 RFCs)
-└── tests/                 # 539 tests (all passing)
+└── tests/                 # 587 tests (all passing)
 ```
 
 | Component | Description |
@@ -406,7 +406,7 @@ pytest tests/ -v
 pytest tests/ -v -s
 ```
 
-### Test Coverage: 539 Tests (All Passing)
+### Test Coverage: 587 Tests (All Passing)
 
 - **Unit Tests**: Parser, evaluator, operators, scenarios
 - **Integration Tests**: FHIR adapter, OMOP backend, PhysioNet adapter

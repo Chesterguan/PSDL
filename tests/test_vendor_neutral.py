@@ -498,10 +498,10 @@ class TestExports:
 
         assert FilterPredicateSet is not None
 
-    def test_version_is_0_5_0(self):
+    def test_version_is_0_5_1(self):
         import psdl
 
-        assert psdl.__version__ == "0.5.0"
+        assert psdl.__version__ == "0.5.1"
 
 
 # =============================================================================
