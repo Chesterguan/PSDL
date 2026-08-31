@@ -395,8 +395,22 @@ class SinglePatientEvaluator:
         for trend in self.scenario.trends.values():
             if trend.window:
                 max_window = max(max_window, trend.window.seconds)
+            if trend.operator == "arith" and trend.ast is not None:
+                max_window = max(max_window, self._max_ast_window(trend.ast))
 
         return max_window
+
+    def _max_ast_window(self, node: Any) -> int:
+        """Largest window (seconds) referenced anywhere in a trend AST."""
+        from psdl._generated.ast_types import ArithExpr, TemporalCall, TrendExpression
+
+        if isinstance(node, TrendExpression):
+            return self._max_ast_window(node.temporal)
+        if isinstance(node, TemporalCall):
+            return node.window.seconds if node.window else 0
+        if isinstance(node, ArithExpr):
+            return max(self._max_ast_window(node.left), self._max_ast_window(node.right))
+        return 0
 
     def _fetch_all_signals(
         self, patient_id: Any, reference_time: datetime
@@ -427,6 +441,13 @@ class SinglePatientEvaluator:
         Returns:
             Tuple of (computed_value, threshold_result)
         """
+        # Compound arithmetic expression (RFC-0006): evaluate the AST
+        if trend.operator == "arith":
+            if trend.ast is None:
+                return None, False
+            value = self._eval_ast(trend.ast, signal_data, reference_time)
+            return value, bool(value) if value is not None else False
+
         data = signal_data.get(trend.signal, [])
 
         if not data:
@@ -455,6 +476,58 @@ class SinglePatientEvaluator:
 
         # No threshold - return raw value (truthy if non-zero)
         return value, bool(value)
+
+    def _eval_ast(
+        self,
+        node: Any,
+        signal_data: Dict[str, List[DataPoint]],
+        reference_time: datetime,
+    ) -> Optional[float]:
+        """Recursively evaluate a trend AST node (ArithExpr and friends).
+
+        Missing data and division by zero propagate as None, which logic
+        evaluation treats as False — the same semantics as simple trends.
+        """
+        from psdl._generated.ast_types import (
+            ArithExpr,
+            NumberLiteral,
+            TemporalCall,
+            TrendExpression,
+        )
+
+        if isinstance(node, (int, float)):
+            return float(node)
+        if isinstance(node, NumberLiteral):
+            return float(node.value)
+        if isinstance(node, TrendExpression):
+            return self._eval_ast(node.temporal, signal_data, reference_time)
+        if isinstance(node, TemporalCall):
+            data = signal_data.get(node.signal, [])
+            if not data:
+                return None
+            window_seconds = node.window.seconds if node.window else self._max_window_seconds
+            return apply_operator(
+                operator=node.operator,
+                data=data,
+                window_seconds=window_seconds,
+                reference_time=reference_time,
+                percentile_value=node.percentile,
+            )
+        if isinstance(node, ArithExpr):
+            left = self._eval_ast(node.left, signal_data, reference_time)
+            right = self._eval_ast(node.right, signal_data, reference_time)
+            if left is None or right is None:
+                return None
+            if node.operator == "+":
+                return left + right
+            if node.operator == "-":
+                return left - right
+            if node.operator == "*":
+                return left * right
+            if node.operator == "/":
+                return left / right if right != 0 else None
+            raise ValueError(f"Unknown arithmetic operator: {node.operator}")
+        raise ValueError(f"Cannot evaluate trend AST node: {type(node).__name__}")
 
     def _evaluate_logic(
         self,

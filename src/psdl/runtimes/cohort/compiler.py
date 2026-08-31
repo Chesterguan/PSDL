@@ -173,43 +173,50 @@ def parse_trend_expression(
         For pointwise operators, window is None.
         For expressions without threshold, threshold and comparison_op are None.
     """
+    # NOTE: all patterns use re.fullmatch. re.match only anchors the start,
+    # which silently swallowed compound expressions like
+    # "last(Cr) / min(Cr, 7d)" as plain "last(Cr)" — a wrong-values bug.
+    # Compound arithmetic expressions are handled by the AST path in
+    # CohortCompiler._compile_trend, not here.
+
+    # Pattern for percentile: percentile(signal, window, p) cmp value
+    # (checked first: the generic windowed pattern would misread it)
+    percentile_pattern = (
+        r"percentile\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*,\s*([\d.]+)\s*\)"
+        r"\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
+    )
+    match = re.fullmatch(percentile_pattern, expr.strip())
+    if match:
+        signal, window, p_value, cmp_op, threshold = match.groups()
+        # Store percentile value in operator name for later extraction
+        return (f"percentile:{p_value}", signal, window, float(threshold), cmp_op)
+
     # Pattern for windowed operators with comparison: op(signal, window) cmp value
     windowed_pattern = (
         r"(\w+)\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*\)\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
     )
-    match = re.match(windowed_pattern, expr.strip())
+    match = re.fullmatch(windowed_pattern, expr.strip())
     if match:
         op, signal, window, cmp_op, threshold = match.groups()
         return (op, signal, window, float(threshold), cmp_op)
 
     # Pattern for windowed operators without comparison: op(signal, window)
     windowed_no_cmp = r"(\w+)\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*\)"
-    match = re.match(windowed_no_cmp, expr.strip())
+    match = re.fullmatch(windowed_no_cmp, expr.strip())
     if match:
         op, signal, window = match.groups()
         return (op, signal, window, None, None)
 
-    # Pattern for percentile: percentile(signal, window, p) cmp value
-    percentile_pattern = (
-        r"percentile\s*\(\s*(\w+)\s*,\s*(\d+[smhdw])\s*,\s*([\d.]+)\s*\)"
-        r"\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
-    )
-    match = re.match(percentile_pattern, expr.strip())
-    if match:
-        signal, window, p_value, cmp_op, threshold = match.groups()
-        # Store percentile value in operator name for later extraction
-        return (f"percentile:{p_value}", signal, window, float(threshold), cmp_op)
-
     # Pattern for pointwise operators with comparison: op(signal) cmp value
     pointwise_pattern = r"(\w+)\s*\(\s*(\w+)\s*\)\s*(>=|<=|>|<|==|!=)\s*([\d.\-]+)"
-    match = re.match(pointwise_pattern, expr.strip())
+    match = re.fullmatch(pointwise_pattern, expr.strip())
     if match:
         op, signal, cmp_op, threshold = match.groups()
         return (op, signal, None, float(threshold), cmp_op)
 
     # Pattern for pointwise operators without comparison: op(signal)
     pointwise_no_cmp = r"(\w+)\s*\(\s*(\w+)\s*\)"
-    match = re.match(pointwise_no_cmp, expr.strip())
+    match = re.fullmatch(pointwise_no_cmp, expr.strip())
     if match:
         op, signal = match.groups()
         return (op, signal, None, None, None)
@@ -369,8 +376,32 @@ class CohortCompiler(SQLBatchRuntime):
             Tuple of (cte_sql, comparison_tuple)
             comparison_tuple is (comparison_op, threshold) or None
         """
-        op, signal_name, window_str, threshold, cmp_op = parse_trend_expression(trend_expr)
+        try:
+            op, signal_name, window_str, threshold, cmp_op = parse_trend_expression(trend_expr)
+        except ValueError:
+            # Not a simple operator call — try the full AST path
+            # (compound arithmetic like "last(Cr) / min(Cr, 7d)").
+            return (self._compile_arith_trend(trend_name, trend_expr, signals), None)
 
+        window_seconds = parse_window(window_str) if window_str else None
+        cte_sql = self._render_operator_cte(
+            trend_name, op, signal_name, signals, window_seconds=window_seconds
+        )
+
+        # Return comparison info if present
+        comparison = (cmp_op, threshold) if cmp_op and threshold is not None else None
+        return (cte_sql, comparison)
+
+    def _render_operator_cte(
+        self,
+        cte_name: str,
+        op: str,
+        signal_name: str,
+        signals: Dict[str, Any],
+        window_seconds: Optional[int] = None,
+    ) -> str:
+        """Render one temporal operator call as a CTE named {cte_name}
+        exposing (person_id, {cte_name}_value)."""
         # Handle percentile special case
         percentile_value = None
         if op.startswith("percentile:"):
@@ -394,64 +425,223 @@ class CohortCompiler(SQLBatchRuntime):
         resolved = self._resolve_signal_binding(signal_name, signal_def)
 
         params = {
-            "trend_name": trend_name,
+            "trend_name": cte_name,
             **resolved,
         }
 
-        if window_str:
-            params["window_seconds"] = parse_window(window_str)
+        if window_seconds is not None:
+            params["window_seconds"] = window_seconds
 
         if percentile_value is not None:
             params["percentile_value"] = percentile_value
 
-        # Format template
-        cte_sql = template["cte_template"].format(**params)
+        return template["cte_template"].format(**params)
 
-        # Return comparison info if present
-        comparison = (cmp_op, threshold) if cmp_op and threshold is not None else None
-        return (cte_sql, comparison)
+    def _compile_arith_trend(
+        self, trend_name: str, trend_expr: str, signals: Dict[str, Any]
+    ) -> str:
+        """Compile a compound arithmetic trend expression.
+
+        Each temporal operator call becomes its own component CTE
+        ({trend_name}__cN); a combining CTE joins them per person_id and
+        computes the arithmetic. Division guards zero with NULLIF, so SQL
+        NULL mirrors the Python runtime's None semantics.
+        """
+        from psdl._generated.ast_types import (
+            ArithExpr,
+            NumberLiteral,
+            TemporalCall,
+            TrendExpression,
+        )
+        from psdl.expression_parser import PSDLExpressionError
+        from psdl.expression_parser import parse_trend_expression as parse_trend_ast
+
+        try:
+            ast = parse_trend_ast(trend_expr)
+        except PSDLExpressionError as e:
+            raise ValueError(f"Cannot parse trend expression: {trend_expr}") from e
+        if not isinstance(ast, ArithExpr):
+            raise ValueError(f"Cannot compile trend expression: {trend_expr}")
+
+        # Collect temporal calls left-to-right (deterministic component order)
+        calls: List[Any] = []
+
+        def collect(node: Any) -> None:
+            if isinstance(node, TrendExpression):
+                collect(node.temporal)
+            elif isinstance(node, TemporalCall):
+                calls.append(node)
+            elif isinstance(node, ArithExpr):
+                collect(node.left)
+                collect(node.right)
+
+        collect(ast)
+        if not calls:
+            raise ValueError(f"No temporal operator calls in trend expression: {trend_expr}")
+
+        component_ctes: List[str] = []
+        names: Dict[int, str] = {}
+        for i, call in enumerate(calls):
+            comp_name = f"{trend_name}__c{i}"
+            names[id(call)] = comp_name
+            window_seconds = call.window.seconds if call.window else None
+            op = call.operator
+            if call.percentile is not None:
+                op = f"percentile:{call.percentile}"
+            component_ctes.append(
+                self._render_operator_cte(
+                    comp_name, op, call.signal, signals, window_seconds=window_seconds
+                )
+            )
+
+        def render(node: Any) -> str:
+            if isinstance(node, TrendExpression):
+                return render(node.temporal)
+            if isinstance(node, TemporalCall):
+                n = names[id(node)]
+                return f"{n}.{n}_value"
+            if isinstance(node, NumberLiteral):
+                return repr(float(node.value))
+            if isinstance(node, (int, float)):
+                return repr(float(node))
+            if isinstance(node, ArithExpr):
+                left, right = render(node.left), render(node.right)
+                if node.operator == "/":
+                    return f"({left} / NULLIF({right}, 0))"
+                return f"({left} {node.operator} {right})"
+            raise ValueError(f"Cannot compile trend AST node: {type(node).__name__}")
+
+        first = names[id(calls[0])]
+        joins = "".join(
+            f"\n    LEFT JOIN {names[id(c)]} ON {first}.person_id = {names[id(c)]}.person_id"
+            for c in calls[1:]
+        )
+        combining = (
+            f"{trend_name} AS (\n"
+            f"    SELECT {first}.person_id, {render(ast)} AS {trend_name}_value\n"
+            f"    FROM {first}{joins}\n"
+            f")"
+        )
+        return ",\n".join(component_ctes + [combining])
 
     def _compile_logic(
         self,
         logic_name: str,
-        logic_expr: str,
+        logic_exprs: Dict[str, str],
+        trend_names: Set[str],
         trend_comparisons: Dict[str, Tuple[str, float]],
+        memo: Dict[str, str],
     ) -> str:
         """
-        Compile a logic expression to SQL CASE expression.
+        Compile a logic expression to a SQL CASE expression over the
+        trend_values relation (where each trend is a plain column).
 
-        Args:
-            logic_name: Name of the logic rule
-            logic_expr: Boolean expression like "cr_rising AND lactate_high"
-            trend_comparisons: Map of trend_name -> (comparison_op, threshold)
-
-        Returns:
-            SQL CASE expression
+        Logic-to-logic references are inlined recursively (the logic layer
+        is a DAG), because SQL cannot reference a SELECT alias from the
+        same SELECT. Comparisons are wrapped in COALESCE(..., FALSE) so
+        NULL trend values behave exactly like the Python runtime's
+        None -> False semantics.
         """
-        # Replace trend references with SQL conditions
-        sql_expr = logic_expr
-
-        # Handle AND/OR/NOT (case-insensitive)
-        sql_expr = re.sub(r"\bAND\b", "AND", sql_expr, flags=re.IGNORECASE)
-        sql_expr = re.sub(r"\bOR\b", "OR", sql_expr, flags=re.IGNORECASE)
-        sql_expr = re.sub(r"\bNOT\b", "NOT", sql_expr, flags=re.IGNORECASE)
-
-        # Replace trend references with their SQL conditions
-        for trend_name, comparison in trend_comparisons.items():
-            if comparison:
-                cmp_op, threshold = comparison
-                # SQL comparison
-                sql_cmp = f"{trend_name}.{trend_name}_value {cmp_op} {threshold}"
-                sql_expr = re.sub(rf"\b{trend_name}\b", f"({sql_cmp})", sql_expr)
-            else:
-                # Just check if value exists (not null)
-                sql_expr = re.sub(
-                    rf"\b{trend_name}\b",
-                    f"({trend_name}.{trend_name}_value IS NOT NULL)",
-                    sql_expr,
-                )
-
+        sql_expr = self._logic_node_sql(
+            logic_name, logic_exprs, trend_names, trend_comparisons, memo, set()
+        )
         return f"CASE WHEN {sql_expr} THEN TRUE ELSE FALSE END AS {logic_name}"
+
+    def _logic_node_sql(
+        self,
+        name: str,
+        logic_exprs: Dict[str, str],
+        trend_names: Set[str],
+        trend_comparisons: Dict[str, Tuple[str, float]],
+        memo: Dict[str, str],
+        stack: Set[str],
+    ) -> str:
+        """SQL boolean expression for one named logic node (memoized)."""
+        if name in memo:
+            return memo[name]
+        if name in stack:
+            raise ValueError(f"Circular logic reference involving '{name}'")
+        stack.add(name)
+
+        from psdl.expression_parser import parse_logic_expression
+
+        ast = parse_logic_expression(logic_exprs[name])
+        sql = self._logic_ast_sql(ast, logic_exprs, trend_names, trend_comparisons, memo, stack)
+
+        stack.discard(name)
+        memo[name] = sql
+        return sql
+
+    def _logic_ast_sql(
+        self,
+        node: Any,
+        logic_exprs: Dict[str, str],
+        trend_names: Set[str],
+        trend_comparisons: Dict[str, Tuple[str, float]],
+        memo: Dict[str, str],
+        stack: Set[str],
+    ) -> str:
+        """Render a logic AST node as a SQL boolean expression."""
+        from psdl._generated.ast_types import (
+            AndExpr,
+            ComparisonExpr,
+            NotExpr,
+            NumberLiteral,
+            OrExpr,
+            TermRef,
+        )
+
+        cmp_ops = {"==": "=", "!=": "<>"}
+
+        def operand_sql(operand: Any) -> str:
+            if isinstance(operand, TermRef):
+                if operand.name in trend_names:
+                    return operand.name
+                raise ValueError(f"Comparison references unknown trend: {operand.name}")
+            if isinstance(operand, NumberLiteral):
+                return repr(float(operand.value))
+            if isinstance(operand, (int, float)):
+                return repr(float(operand))
+            raise ValueError(f"Unsupported comparison operand: {type(operand).__name__}")
+
+        if isinstance(node, TermRef):
+            if node.name in logic_exprs:
+                inner = self._logic_node_sql(
+                    node.name, logic_exprs, trend_names, trend_comparisons, memo, stack
+                )
+                return f"({inner})"
+            if node.name in trend_comparisons:
+                cmp_op, threshold = trend_comparisons[node.name]
+                cmp_op = cmp_ops.get(cmp_op, cmp_op)
+                return f"COALESCE(({node.name} {cmp_op} {threshold}), FALSE)"
+            if node.name in trend_names:
+                # Bare trend reference: truthy iff present and non-zero
+                # (matches Python bool(value) with None -> False)
+                return f"COALESCE(({node.name} <> 0), FALSE)"
+            raise ValueError(f"Unknown reference in logic expression: {node.name}")
+        if isinstance(node, ComparisonExpr):
+            op = cmp_ops.get(node.operator, node.operator)
+            left = operand_sql(node.left)
+            right = operand_sql(node.right)
+            return f"COALESCE(({left} {op} {right}), FALSE)"
+        if isinstance(node, NotExpr):
+            inner = self._logic_ast_sql(
+                node.operand, logic_exprs, trend_names, trend_comparisons, memo, stack
+            )
+            return f"(NOT {inner})"
+        if isinstance(node, AndExpr):
+            parts = [
+                self._logic_ast_sql(op, logic_exprs, trend_names, trend_comparisons, memo, stack)
+                for op in node.operands
+            ]
+            return "(" + " AND ".join(parts) + ")"
+        if isinstance(node, OrExpr):
+            parts = [
+                self._logic_ast_sql(op, logic_exprs, trend_names, trend_comparisons, memo, stack)
+                for op in node.operands
+            ]
+            return "(" + " OR ".join(parts) + ")"
+        raise ValueError(f"Cannot compile logic AST node: {type(node).__name__}")
 
     def compile(self, scenario: Any, dataset_spec: Any = None) -> CompiledSQL:
         """
@@ -498,10 +688,10 @@ class CohortCompiler(SQLBatchRuntime):
                 ctes.append(cte_sql)
                 if comparison:
                     trend_comparisons[trend_name] = comparison
-                trend_columns.append(f"{trend_name}.{trend_name}_value AS {trend_name}")
+                trend_columns.append(trend_name)
 
-        # Build SELECT columns for logic
-        logic_selects: List[str] = []
+        # Collect logic expressions (compiled below, over trend_values)
+        logic_exprs: Dict[str, str] = {}
         if hasattr(scenario, "logic") and scenario.logic:
             for logic_name, logic_def in scenario.logic.items():
                 # Get expression from logic definition
@@ -511,43 +701,59 @@ class CohortCompiler(SQLBatchRuntime):
                     expr = logic_def
                 else:
                     expr = str(logic_def)
-
-                logic_sql = self._compile_logic(logic_name, expr, trend_comparisons)
-                logic_selects.append(logic_sql)
-                logic_columns.append(logic_name)
-
-        # Build final query
-        cte_block = ",\n".join(ctes)
+                logic_exprs[logic_name] = expr
 
         # Get list of all trend names (order matters for JOINs)
         all_trend_names = list(scenario.trends.keys()) if scenario.trends else []
-
-        # Join all trend CTEs
-        trend_joins = ""
         first_trend_name = all_trend_names[0] if all_trend_names else None
-        for trend_name in all_trend_names[1:]:
-            trend_joins += (
-                f"\nLEFT JOIN {trend_name} ON {first_trend_name}.person_id = {trend_name}.person_id"
+
+        # trend_values CTE: one row per person, one plain column per trend.
+        # Logic is computed over these columns in the final SELECT — SQL
+        # cannot compare CTE names or reference same-SELECT aliases.
+        if first_trend_name:
+            trend_joins = ""
+            for trend_name in all_trend_names[1:]:
+                trend_joins += (
+                    f"\n    LEFT JOIN {trend_name}"
+                    f" ON {first_trend_name}.person_id = {trend_name}.person_id"
+                )
+            value_cols = "".join(f",\n           {t}.{t}_value AS {t}" for t in all_trend_names)
+            ctes.append(
+                f"trend_values AS (\n"
+                f"    SELECT {first_trend_name}.person_id{value_cols}\n"
+                f"    FROM {first_trend_name}{trend_joins}\n"
+                f")"
             )
 
-        # Build SELECT - use first trend CTE for person_id reference
-        if first_trend_name:
-            select_cols = [f"{first_trend_name}.person_id"]
-        else:
-            select_cols = ["person_id"]
-        select_cols.extend(trend_columns)
+        # Compile logic over trend_values columns
+        logic_selects: List[str] = []
+        memo: Dict[str, str] = {}
+        trend_name_set = set(all_trend_names)
+        for logic_name in logic_exprs:
+            logic_sql = self._compile_logic(
+                logic_name, logic_exprs, trend_name_set, trend_comparisons, memo
+            )
+            logic_selects.append(logic_sql)
+            logic_columns.append(logic_name)
+
+        # Build final query
+        select_cols = ["person_id"]
+        select_cols.extend(all_trend_names)
         select_cols.extend(logic_selects)
 
-        # Build FROM clause
         if first_trend_name:
-            from_clause = f"{first_trend_name}"
-        else:
-            from_clause = f"{self.schema}.person"
-
-        sql = f"""WITH {cte_block}
+            from_clause = "trend_values"
+            cte_block = ",\n".join(ctes)
+            sql = f"""WITH {cte_block}
 
 SELECT {', '.join(select_cols)}
-FROM {from_clause}{trend_joins}
+FROM {from_clause}
+"""
+        else:
+            # No trends: nothing to join; logic (if any) has nothing to
+            # reference, so this is a bare person scan.
+            sql = f"""SELECT {', '.join(select_cols)}
+FROM {self.schema}.person
 """
 
         return CompiledSQL(
