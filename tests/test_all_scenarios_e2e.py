@@ -183,12 +183,12 @@ class TestAKIScenarioComplete:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def test_scenario_metadata(self, scenario):
         """Verify scenario is parsed correctly."""
         assert scenario.name == "AKI_KDIGO_Detection"
-        assert scenario.version == "1.0.0"
+        assert scenario.version == "2.0.0"
         assert "Cr" in scenario.signals
         assert "aki_stage1" in scenario.logic
         assert "aki_stage3" in scenario.logic
@@ -270,7 +270,7 @@ class TestICUScenarioComplete:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/icu_deterioration.yaml")
+        return parser.parse_file("src/psdl/examples/icu_deterioration.yaml")
 
     def test_scenario_metadata(self, scenario):
         """Verify scenario is parsed correctly."""
@@ -332,7 +332,7 @@ class TestSepsisScenarioComplete:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/sepsis_screening.yaml")
+        return parser.parse_file("src/psdl/examples/sepsis_screening.yaml")
 
     def test_scenario_metadata(self, scenario):
         """Verify scenario is parsed correctly."""
@@ -394,9 +394,9 @@ class TestAllScenariosIntegration:
         """Load all example scenarios."""
         parser = PSDLParser()
         return {
-            "AKI": parser.parse_file("examples/aki_detection.yaml"),
-            "ICU": parser.parse_file("examples/icu_deterioration.yaml"),
-            "Sepsis": parser.parse_file("examples/sepsis_screening.yaml"),
+            "AKI": parser.parse_file("src/psdl/examples/aki_detection.yaml"),
+            "ICU": parser.parse_file("src/psdl/examples/icu_deterioration.yaml"),
+            "Sepsis": parser.parse_file("src/psdl/examples/sepsis_screening.yaml"),
         }
 
     def test_multi_scenario_cohort(self, all_scenarios):
@@ -509,7 +509,7 @@ class TestAlertGeneration:
     def test_generate_clinical_alert(self):
         """Generate a complete clinical alert from evaluation."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
         backend = InMemoryBackend()
         now = datetime.now()

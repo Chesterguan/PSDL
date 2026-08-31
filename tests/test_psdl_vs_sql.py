@@ -194,13 +194,13 @@ class TestPSDLvsSQLEquivalence:
     def aki_scenario(self):
         """Load AKI detection scenario."""
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     @pytest.fixture
     def icu_scenario(self):
         """Load ICU deterioration scenario."""
         parser = PSDLParser()
-        return parser.parse_file("examples/icu_deterioration.yaml")
+        return parser.parse_file("src/psdl/examples/icu_deterioration.yaml")
 
     def create_test_patient_aki_stage1(self) -> Tuple[str, Dict, datetime]:
         """Create a patient with AKI Stage 1 pattern."""
@@ -417,7 +417,7 @@ class TestBatchComparison:
     @pytest.fixture
     def aki_scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def generate_random_patients(self, n: int) -> List[Tuple[str, Dict, datetime]]:
         """Generate n patients with random creatinine patterns."""
@@ -522,7 +522,7 @@ class TestSQLGenerationPreview:
     def test_generate_aki_sql(self):
         """Show what SQL would be generated from AKI scenario."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
         # This is a preview of SQL generation (not actual implementation)
         sql_preview = """
@@ -568,4 +568,5 @@ SELECT * FROM aki_detection WHERE aki_stage IS NOT NULL;
 
         # Verify the scenario has the expected structure
         assert "Cr" in scenario.signals
-        assert any("delta" in t.operator for t in scenario.trends.values())
+        # v2.0.0: KDIGO criteria are arithmetic expressions (last - min, last / min)
+        assert any(t.operator == "arith" for t in scenario.trends.values())

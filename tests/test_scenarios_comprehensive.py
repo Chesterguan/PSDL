@@ -28,7 +28,7 @@ class TestAKIDetectionScenario:
     def scenario(self):
         """Load the AKI detection scenario."""
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     @pytest.fixture
     def backend(self):
@@ -157,7 +157,7 @@ class TestICUDeteriorationScenario:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/icu_deterioration.yaml")
+        return parser.parse_file("src/psdl/examples/icu_deterioration.yaml")
 
     @pytest.fixture
     def backend(self):
@@ -255,7 +255,7 @@ class TestSepsisScreeningScenario:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/sepsis_screening.yaml")
+        return parser.parse_file("src/psdl/examples/sepsis_screening.yaml")
 
     @pytest.fixture
     def backend(self):
@@ -479,7 +479,7 @@ class TestBatchEvaluation:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def test_evaluate_multiple_patients(self, scenario):
         """Test evaluating a cohort of patients."""

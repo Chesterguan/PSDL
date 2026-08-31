@@ -1,24 +1,37 @@
-# PSDL Example: Acute Kidney Injury (AKI) Detection
+# PSDL Example: Acute Kidney Injury (AKI) Detection & Staging
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Implements KDIGO (Kidney Disease: Improving Global Outcomes)
-# criteria for AKI staging based on creatinine changes.
+# Implements the creatinine arm of the KDIGO (Kidney Disease:
+# Improving Global Outcomes) criteria for AKI staging, with
+# mutually exclusive stage assignment (highest stage wins).
 #
-# KDIGO AKI Staging:
-# - Stage 1: Cr increase ≥0.3 mg/dL within 48h OR 1.5-1.9x baseline
-# - Stage 2: Cr increase 2.0-2.9x baseline
-# - Stage 3: Cr increase ≥3.0x baseline OR ≥4.0 mg/dL OR dialysis
+# KDIGO AKI Staging (2012):
+# - Stage 1: Cr increase >=0.3 mg/dL within 48h OR 1.5-1.9x baseline
+# - Stage 2: Cr 2.0-2.9x baseline
+# - Stage 3: Cr >=3.0x baseline OR Cr >=4.0 mg/dL OR RRT initiation
+#
+# Operationalization choices (stated explicitly for auditability):
+# - Baseline creatinine = min(Cr, 7d): the lowest creatinine in the
+#   trailing 7-day window, a standard retrospective surrogate when no
+#   pre-admission baseline is recorded.
+# - "Rise >=0.3 mg/dL within 48h" = last(Cr) - min(Cr, 48h), i.e. any
+#   rise from the lowest value in the trailing 48h window.
+# - Not covered by this scenario (documented limitations): the urine
+#   output criteria (<0.5 mL/kg/h, requires weight-normalized rates)
+#   and RRT initiation (a procedure event, not a lab signal).
 #
 # Reference: KDIGO Clinical Practice Guideline for Acute Kidney Injury
 # https://kdigo.org/guidelines/acute-kidney-injury/
 
-scenario: AKI_KDIGO_Detection
-version: "1.0.0"
-description: "Detect and stage Acute Kidney Injury using KDIGO criteria"
+psdl_version: "0.5"
+scenario:
+  name: AKI_KDIGO_Detection
+  version: "2.0.0"
+  description: "Detect and stage Acute Kidney Injury using KDIGO creatinine criteria"
 
 # ── Audit Block ──────────────────────────────────
 audit:
-  intent: "Detect and stage Acute Kidney Injury using KDIGO criteria"
+  intent: "Detect and stage Acute Kidney Injury using KDIGO creatinine criteria"
   rationale: "Early AKI detection enables timely intervention to prevent progression to renal failure"
   provenance:
     type: guideline
@@ -34,176 +47,101 @@ population:
     - dialysis_status == "chronic"
     - kidney_transplant == true
 
-# ── Signal References (v0.3: abstract refs only) ─
-# Physical bindings (concept_id, table, etc.) are in Dataset Spec
+# ── Signal Groups (v0.5, RFC-0009) ───────────────
+# Extraction declaration only: request the renal panel as a unit for
+# downstream review. Groups never feed trends or logic.
+signal_groups:
+  renal_panel:
+    members: [Cr, BUN]
+    description: "Renal function monitoring panel"
+
+# ── Signal References (abstract refs only) ───────
+# Physical bindings (concept_id, table, etc.) live in the Dataset Spec.
 signals:
   Cr:
     ref: creatinine
     expected_unit: mg/dL
     description: "Serum creatinine"
 
-  Cr_baseline:
-    ref: creatinine_baseline
-    expected_unit: mg/dL
-    description: "Baseline creatinine (pre-admission or stable)"
-
-  UOP:
-    ref: urine_output
-    expected_unit: mL/kg/hr
-    description: "Urine output rate"
-
   BUN:
     ref: blood_urea_nitrogen
     expected_unit: mg/dL
     description: "Blood urea nitrogen"
 
-# ── Trends (v0.3: numeric values only) ───────────
+# ── Trends (numeric values only) ─────────────────
 trends:
-  # Absolute creatinine changes
-  cr_delta_48h:
-    type: float
-    unit: mg/dL
-    expr: delta(Cr, 48h)
-    description: "Creatinine change over 48 hours"
-
-  cr_delta_7d:
-    type: float
-    unit: mg/dL
-    expr: delta(Cr, 7d)
-    description: "Creatinine change over 7 days"
-
-  # Current values
   cr_current:
     type: float
     unit: mg/dL
     expr: last(Cr)
     description: "Current creatinine level"
 
-  # Baseline creatinine
-  cr_baseline:
-    type: float
-    unit: mg/dL
-    expr: last(Cr_baseline)
-    description: "Baseline creatinine (known pre-illness or stable value)"
-
-  # KDIGO Ratio: current / baseline (core KDIGO criterion)
   cr_ratio:
     type: float
     unit: ratio
-    expr: last(Cr) / last(Cr_baseline)
-    description: "Current/baseline creatinine ratio for KDIGO staging"
+    expr: last(Cr) / min(Cr, 7d)
+    description: "Current/baseline creatinine ratio (core KDIGO criterion)"
 
-  # Creatinine trajectory
+  cr_rise_48h:
+    type: float
+    unit: mg/dL
+    expr: last(Cr) - min(Cr, 48h)
+    description: "Creatinine rise from the lowest value within 48 hours"
+
   cr_slope_24h:
     type: float
     unit: mg/dL/h
     expr: slope(Cr, 24h)
-    description: "Creatinine slope over 24 hours"
+    description: "Creatinine trajectory over 24 hours"
 
-  cr_slope_12h:
-    type: float
-    unit: mg/dL/h
-    expr: slope(Cr, 12h)
-    description: "Creatinine slope over 12 hours"
-
-  # BUN level
   bun_current:
     type: float
     unit: mg/dL
     expr: last(BUN)
     description: "Current BUN level"
 
-# ── Logic (v0.3: 'when' with comparisons) ────────
+# ── Logic ────────────────────────────────────────
 logic:
-  # ═══════════════════════════════════════════════════
-  # KDIGO AKI Criteria (2012 Guidelines)
-  # https://kdigo.org/guidelines/acute-kidney-injury/
-  # ═══════════════════════════════════════════════════
-
-  # ─── KDIGO Stage 1 Criteria ───
-  # Official: Cr rise >=0.3 mg/dL within 48h OR 1.5-1.9x baseline
-  cr_rise_48h:
-    when: cr_delta_48h >= 0.3
+  # ─── KDIGO component criteria ───
+  cr_rise_flag:
+    when: cr_rise_48h >= 0.3
     description: "KDIGO: Cr rise >=0.3 mg/dL within 48 hours"
 
-  cr_ratio_1_5x:
-    when: cr_ratio >= 1.5 AND cr_ratio < 2.0
-    description: "KDIGO: Cr 1.5-1.9x baseline"
+  # ─── Mutually exclusive staging (highest stage wins) ───
+  aki_stage3:
+    when: cr_ratio >= 3.0 OR cr_current >= 4.0
+    severity: critical
+    description: "KDIGO Stage 3: Cr >=3.0x baseline OR Cr >=4.0 mg/dL"
 
-  # ─── KDIGO Stage 2 Criteria ───
-  # Official: Cr 2.0-2.9x baseline
-  cr_ratio_2x:
-    when: cr_ratio >= 2.0 AND cr_ratio < 3.0
-    description: "KDIGO: Cr 2.0-2.9x baseline"
-
-  # ─── KDIGO Stage 3 Criteria ───
-  # Official: Cr >=3.0x baseline OR >=4.0 mg/dL OR RRT initiation
-  cr_ratio_3x:
-    when: cr_ratio >= 3.0
-    description: "KDIGO: Cr >=3.0x baseline"
-
-  cr_elevated_absolute:
-    when: cr_current >= 4.0
-    description: "KDIGO Stage 3: Absolute Cr >=4.0 mg/dL"
-
-  # ─── Trajectory Indicators ───
-  cr_rising_trend:
-    when: cr_slope_24h > 0.000001
-    description: "Upward creatinine trajectory"
-
-  cr_falling:
-    when: cr_slope_24h < -0.000001
-    description: "Creatinine trending down (recovery)"
-
-  bun_elevated:
-    when: bun_current > 20
-    description: "BUN elevated (may indicate prerenal)"
-
-  # ═══════════════════════════════════════════════════
-  # KDIGO AKI Staging (Official Criteria)
-  # ═══════════════════════════════════════════════════
-
-  # KDIGO Stage 1:
-  #   - Cr rise >=0.3 mg/dL within 48h, OR
-  #   - Cr 1.5-1.9x baseline within 7 days
-  aki_stage1:
-    when: cr_rise_48h OR cr_ratio_1_5x
-    severity: medium
-    description: "KDIGO Stage 1: Cr >=0.3 in 48h OR 1.5-1.9x baseline"
-
-  # KDIGO Stage 2:
-  #   - Cr 2.0-2.9x baseline
   aki_stage2:
-    when: cr_ratio_2x
+    when: cr_ratio >= 2.0 AND NOT aki_stage3
     severity: high
     description: "KDIGO Stage 2: Cr 2.0-2.9x baseline"
 
-  # KDIGO Stage 3:
-  #   - Cr >=3.0x baseline, OR
-  #   - Cr >=4.0 mg/dL, OR
-  #   - Initiation of RRT (not detectable from signals)
-  aki_stage3:
-    when: cr_ratio_3x OR cr_elevated_absolute
-    severity: critical
-    description: "KDIGO Stage 3: Cr >=3.0x baseline OR >=4.0 mg/dL"
+  aki_stage1:
+    when: (cr_rise_flag OR cr_ratio >= 1.5) AND NOT aki_stage2 AND NOT aki_stage3
+    severity: medium
+    description: "KDIGO Stage 1: Cr rise >=0.3 in 48h OR 1.5-1.9x baseline"
 
-  # ═══════════════════════════════════════════════════
-  # Composite Rules
-  # ═══════════════════════════════════════════════════
-
-  # Any AKI present (highest stage applies)
   aki_present:
     when: aki_stage1 OR aki_stage2 OR aki_stage3
     severity: medium
     description: "AKI detected at any stage"
 
-  # Recovery indicator
+  # ─── Trajectory & context ───
+  cr_falling:
+    when: cr_slope_24h < -0.001
+    description: "Creatinine trending down (recovery)"
+
   aki_recovering:
     when: aki_present AND cr_falling
     severity: low
     description: "AKI with signs of recovery (Cr trending down)"
 
-  # Prerenal pattern
+  bun_elevated:
+    when: bun_current > 20
+    description: "BUN elevated (may indicate prerenal cause)"
+
   prerenal_likely:
     when: aki_stage1 AND bun_elevated
     severity: medium
@@ -215,22 +153,30 @@ outputs:
     has_aki:
       type: boolean
       from: logic.aki_present
-      description: "Whether patient has AKI"
-    aki_stage:
-      type: enum
-      values: ["none", "stage1", "stage2", "stage3"]
-      description: "Current AKI stage per KDIGO criteria"
+      description: "Whether patient has AKI at any stage"
+    aki_stage1:
+      type: boolean
+      from: logic.aki_stage1
+      description: "KDIGO Stage 1 (exclusive)"
+    aki_stage2:
+      type: boolean
+      from: logic.aki_stage2
+      description: "KDIGO Stage 2 (exclusive)"
+    aki_stage3:
+      type: boolean
+      from: logic.aki_stage3
+      description: "KDIGO Stage 3"
   features:
-    cr_delta_48h:
-      type: float
-      from: trends.cr_delta_48h
-      unit: mg/dL
-      description: "Creatinine change over 48 hours"
     cr_ratio:
       type: float
       from: trends.cr_ratio
       unit: ratio
       description: "Current/baseline creatinine ratio"
+    cr_rise_48h:
+      type: float
+      from: trends.cr_rise_48h
+      unit: mg/dL
+      description: "Creatinine rise within 48 hours"
     cr_slope_24h:
       type: float
       from: trends.cr_slope_24h

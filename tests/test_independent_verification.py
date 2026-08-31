@@ -191,7 +191,7 @@ class TestManualAKITriggerVerification:
     @pytest.fixture
     def aki_scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def test_aki_stage1_manual_verification(self, aki_scenario):
         """
@@ -430,7 +430,7 @@ class TestClinicalReferenceCases:
     @pytest.fixture
     def aki_scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def test_kdigo_stage1_example(self, aki_scenario):
         """

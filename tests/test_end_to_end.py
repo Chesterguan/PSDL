@@ -28,7 +28,7 @@ class TestFullWorkflow:
         """End-to-end test of AKI detection workflow."""
         # Step 1: Parse scenario from file
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
         assert scenario.name == "AKI_KDIGO_Detection"
         assert "Cr" in scenario.signals
@@ -100,7 +100,7 @@ Triggered Rules:
     def test_complete_sepsis_workflow(self):
         """End-to-end test of sepsis screening workflow."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/sepsis_screening.yaml")
+        scenario = parser.parse_file("src/psdl/examples/sepsis_screening.yaml")
 
         backend = InMemoryBackend()
         now = datetime.now()
@@ -241,9 +241,9 @@ logic:
 
         # Load and evaluate multiple scenarios
         scenarios = [
-            "examples/aki_detection.yaml",
-            "examples/icu_deterioration.yaml",
-            "examples/sepsis_screening.yaml",
+            "src/psdl/examples/aki_detection.yaml",
+            "src/psdl/examples/icu_deterioration.yaml",
+            "src/psdl/examples/sepsis_screening.yaml",
         ]
 
         results = {}
@@ -267,7 +267,7 @@ class TestCohortEvaluation:
     def test_cohort_screening(self):
         """Evaluate a scenario across a cohort and identify at-risk patients."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
         now = datetime.now()
 
@@ -328,7 +328,7 @@ class TestCohortEvaluation:
     def test_cohort_with_severity_stratification(self):
         """Stratify cohort by alert severity."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/icu_deterioration.yaml")
+        scenario = parser.parse_file("src/psdl/examples/icu_deterioration.yaml")
         backend = InMemoryBackend()
         now = datetime.now()
 
@@ -386,7 +386,7 @@ class TestTimeSeriesEvaluation:
     def test_rolling_evaluation(self):
         """Evaluate scenario at multiple time points to track progression."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
 
         # Create a patient with progressive AKI over 3 days
@@ -435,7 +435,7 @@ class TestErrorRecovery:
     def test_missing_signal_data(self):
         """Test handling of missing signal data."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/icu_deterioration.yaml")
+        scenario = parser.parse_file("src/psdl/examples/icu_deterioration.yaml")
         backend = InMemoryBackend()
         now = datetime.now()
 
@@ -453,7 +453,7 @@ class TestErrorRecovery:
     def test_invalid_patient_id(self):
         """Test handling of non-existent patient."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
 
         evaluator = PSDLEvaluator(scenario, backend)
@@ -468,7 +468,7 @@ class TestErrorRecovery:
     def test_future_reference_time(self):
         """Test evaluation with future reference time."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
         now = datetime.now()
 
@@ -490,7 +490,7 @@ class TestResultSerialization:
     def test_result_to_dict(self):
         """Test converting result to dictionary for JSON serialization."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
         now = datetime.now()
 

@@ -261,7 +261,7 @@ class TestAKIDetectionValidation:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     @pytest.fixture
     def generator(self):
@@ -348,7 +348,7 @@ class TestSepsisDetectionValidation:
     @pytest.fixture
     def scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/sepsis_screening.yaml")
+        return parser.parse_file("src/psdl/examples/sepsis_screening.yaml")
 
     @pytest.fixture
     def generator(self):
@@ -401,7 +401,7 @@ class TestCohortValidation:
     def test_aki_cohort_sensitivity_specificity(self, generator):
         """Calculate sensitivity and specificity for AKI detection."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
 
         # Generate a cohort with known outcomes
@@ -478,7 +478,7 @@ class TestCohortValidation:
     def test_mixed_cohort_validation(self, generator):
         """Test with a realistic mixed cohort."""
         parser = PSDLParser()
-        scenario = parser.parse_file("examples/aki_detection.yaml")
+        scenario = parser.parse_file("src/psdl/examples/aki_detection.yaml")
         backend = InMemoryBackend()
 
         cohort = []
@@ -535,7 +535,7 @@ class TestEdgeCases:
     @pytest.fixture
     def aki_scenario(self):
         parser = PSDLParser()
-        return parser.parse_file("examples/aki_detection.yaml")
+        return parser.parse_file("src/psdl/examples/aki_detection.yaml")
 
     def test_borderline_creatinine_rise(self, aki_scenario):
         """Test borderline creatinine rise (exactly at threshold)."""
