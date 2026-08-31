@@ -410,7 +410,7 @@ class PSDLParser:
                     name=name,
                     ref=ref,
                     concept_id=concept_id,
-                    unit=spec.get("unit"),
+                    unit=spec.get("expected_unit") or spec.get("unit"),
                     domain=domain,
                     clinical_domain=clinical_domain,
                 )

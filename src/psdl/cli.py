@@ -132,12 +132,12 @@ def parse_scenario(file_path: Path, output_json: bool = False) -> int:
                 "version": scenario.version,
                 "description": getattr(scenario, "description", None),
                 "signals": {
-                    name: {"source": sig.source, "type": sig.type}
+                    name: {"ref": sig.ref, "unit": sig.unit}
                     for name, sig in scenario.signals.items()
                 },
                 "trends": {
                     name: {
-                        "expr": trend.expr,
+                        "expr": trend.raw_expr,
                         "description": getattr(trend, "description", None),
                     }
                     for name, trend in scenario.trends.items()
@@ -145,7 +145,7 @@ def parse_scenario(file_path: Path, output_json: bool = False) -> int:
                 "logic": {
                     name: {
                         "expr": logic.expr,
-                        "severity": getattr(logic, "severity", None),
+                        "severity": getattr(getattr(logic, "severity", None), "value", None),
                     }
                     for name, logic in scenario.logic.items()
                 },
@@ -161,18 +161,19 @@ def parse_scenario(file_path: Path, output_json: bool = False) -> int:
 
             print("Signals:")
             for name, sig in scenario.signals.items():
-                print(f"  {name}: {sig.source} ({sig.type})")
+                unit_str = f" ({sig.unit})" if sig.unit else ""
+                print(f"  {name}: {sig.ref}{unit_str}")
             print()
 
             print("Trends:")
             for name, trend in scenario.trends.items():
-                print(f"  {name}: {trend.expr}")
+                print(f"  {name}: {trend.raw_expr}")
             print()
 
             print("Logic:")
             for name, logic in scenario.logic.items():
                 severity = getattr(logic, "severity", None)
-                sev_str = f" [{severity}]" if severity else ""
+                sev_str = f" [{getattr(severity, 'value', severity)}]" if severity else ""
                 print(f"  {name}: {logic.expr}{sev_str}")
 
         return 0
