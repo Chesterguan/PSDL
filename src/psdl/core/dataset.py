@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, Literal, Protocol
@@ -462,6 +462,8 @@ class DatasetSpec:
 
         # Build filter predicates and expression
         filter_preds = elem.filter.to_predicates(self) if elem.filter else None
+        if filter_preds is not None:
+            filter_preds = self._map_predicate_fields(filter_preds, elem.table)
         filter_expr = filter_preds.to_sql() if filter_preds else "1=1"
 
         # Prepend schema if configured
@@ -479,6 +481,46 @@ class DatasetSpec:
             value_type=elem.value_type,
             transform=elem.transform,
             filter_predicates=filter_preds,
+        )
+
+    # Semantic filter field -> physical column, per OMOP CDM table.
+    # Filter keys in a Dataset Spec are semantic (schema-enforced):
+    # "concept_id" means "the concept column of this element's table".
+    _OMOP_FILTER_FIELDS = {
+        "measurement": {
+            "concept_id": "measurement_concept_id",
+            "source_value": "measurement_source_value",
+        },
+        "observation": {
+            "concept_id": "observation_concept_id",
+            "source_value": "observation_source_value",
+        },
+        "condition_occurrence": {
+            "concept_id": "condition_concept_id",
+            "source_value": "condition_source_value",
+        },
+        "drug_exposure": {
+            "concept_id": "drug_concept_id",
+            "source_value": "drug_source_value",
+        },
+        "procedure_occurrence": {
+            "concept_id": "procedure_concept_id",
+            "source_value": "procedure_source_value",
+        },
+    }
+
+    def _map_predicate_fields(self, preds: FilterPredicateSet, table: str) -> FilterPredicateSet:
+        """Map semantic predicate fields to physical columns for the
+        data model (currently OMOP). Unknown tables/fields pass through."""
+        if self.data_model != "omop":
+            return preds
+        mapping = self._OMOP_FILTER_FIELDS.get(table)
+        if not mapping:
+            return preds
+        return FilterPredicateSet(
+            predicates=tuple(
+                replace(p, field=mapping.get(p.field, p.field)) for p in preds.predicates
+            )
         )
 
     def get_valueset(self, name: str) -> ValuesetSpec | None:
@@ -715,12 +757,15 @@ def validate_dataset_spec(data: dict[str, Any]) -> list[str]:
     return errors
 
 
-def load_dataset_spec(path: str | Path) -> DatasetSpec:
+def load_dataset_spec(path: str | Path, schema: str | None = None) -> DatasetSpec:
     """
     Load a Dataset Specification from a YAML file.
 
     Args:
         path: Path to the dataset spec YAML file
+        schema: Optional override for conventions.schema, so a standard
+            spec can be reused against a database whose schema name
+            differs (e.g. "omop_cdm" instead of the spec's default)
 
     Returns:
         DatasetSpec object
@@ -765,13 +810,17 @@ def load_dataset_spec(path: str | Path) -> DatasetSpec:
     elements = {name: _parse_element(elem) for name, elem in data.get("elements", {}).items()}
     valuesets = {name: _parse_valueset(vs) for name, vs in data.get("valuesets", {}).items()}
 
+    conventions = _parse_conventions(data.get("conventions"))
+    if schema is not None:
+        conventions = replace(conventions, schema=schema)
+
     spec = DatasetSpec(
         psdl_version=data["psdl_version"],
         name=dataset_info.get("name", path.stem),
         version=dataset_info.get("version", "0.0.0"),
         description=dataset_info.get("description"),
         data_model=data["data_model"],
-        conventions=_parse_conventions(data.get("conventions")),
+        conventions=conventions,
         elements=elements,
         valuesets=valuesets,
         metadata=_parse_metadata(data.get("metadata")),
