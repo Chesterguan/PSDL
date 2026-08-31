@@ -348,9 +348,8 @@ Run PSDL in your browser with zero installation:
 
 | Notebook | Data | Description |
 |----------|------|-------------|
-| [Synthea Demo](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb) | Synthetic | Quick demo (2 min) |
+| [Quickstart](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Quickstart.ipynb) | Synthetic | KDIGO AKI end-to-end (2 min) |
 | [MIMIC-IV Demo](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | Real ICU | 100 patients |
-| [PhysioNet Sepsis](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_PhysioNet_Demo.ipynb) | Sepsis | 40,000+ patients |
 
 ## Next Steps
 

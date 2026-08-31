@@ -1258,10 +1258,12 @@ def compile_scenario(source: str) -> ScenarioIR:
     Returns:
         Compiled ScenarioIR with resolved dependencies and DAG
     """
+    from pathlib import Path
+
     from psdl.core.parser import parse_scenario
 
     # Determine if source is file path or YAML content
-    if source.endswith(".yaml") or source.endswith(".yml"):
+    if isinstance(source, Path) or source.endswith((".yaml", ".yml")):
         with open(source, "r") as f:
             source_yaml = f.read()
     else:

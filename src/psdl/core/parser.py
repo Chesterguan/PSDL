@@ -14,6 +14,7 @@ Version 0.3.0 (RFC-0005) - STRICT MODE:
 """
 
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from psdl.expression_parser import (
@@ -582,12 +583,12 @@ class PSDLParser:
         return ast, terms, operators
 
 
-def parse_scenario(source: str, strict: bool = False) -> PSDLScenario:
+def parse_scenario(source: "str | Path", strict: bool = False) -> PSDLScenario:
     """
     Convenience function to parse a PSDL scenario.
 
     Args:
-        source: Either a file path (ending in .yaml/.yml) or YAML content string
+        source: A file path (str or Path ending in .yaml/.yml) or YAML content string
         strict: when True, validate against spec/schema.json before parsing.
 
     Returns:
@@ -595,7 +596,7 @@ def parse_scenario(source: str, strict: bool = False) -> PSDLScenario:
     """
     parser = PSDLParser()
 
-    if source.endswith(".yaml") or source.endswith(".yml"):
-        return parser.parse_file(source, strict=strict)
+    if isinstance(source, Path) or source.endswith((".yaml", ".yml")):
+        return parser.parse_file(str(source), strict=strict)
     else:
         return parser.parse_string(source, strict=strict)

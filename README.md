@@ -72,9 +72,8 @@ Run PSDL in your browser with Google Colab - zero installation, real clinical da
 
 | Notebook | Data | Description |
 |----------|------|-------------|
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb) | **Synthetic** | Quick demo with generated patient data (2 min) |
+| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Quickstart.ipynb) | **Quickstart** | KDIGO AKI scenario, evaluation, SQL compilation (2 min) |
 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_MIMIC_Demo.ipynb) | **MIMIC-IV Demo** | 100 real ICU patients, ICD diagnoses |
-| [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_PhysioNet_Demo.ipynb) | **PhysioNet Sepsis** | 40,000+ patients with labeled sepsis |
 
 ---
 
@@ -320,7 +319,7 @@ psdl/
 │   ├── adapters/          # Data adapters (OMOP, FHIR, PhysioNet)
 │   └── examples/          # Bundled scenarios (7 scenarios)
 ├── examples/              # Demo content (not in package)
-│   ├── notebooks/         # Jupyter demos (5 notebooks, Colab-ready)
+│   ├── notebooks/         # Jupyter demos (3 notebooks, Colab-ready)
 │   └── data/              # Sample data (compressed archives)
 ├── docs/                  # Documentation + Whitepapers
 ├── rfcs/                  # Design proposals (7 RFCs)

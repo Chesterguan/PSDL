@@ -132,7 +132,7 @@ scenario = parse_scenario(yaml_content)
 - **GitHub**: [github.com/Chesterguan/PSDL](https://github.com/Chesterguan/PSDL)
 - **Documentation**: [Whitepaper](https://github.com/Chesterguan/PSDL/blob/main/docs/WHITEPAPER_EN.md)
 - **Examples**: [Example Scenarios](https://github.com/Chesterguan/PSDL/tree/main/examples)
-- **Try in Colab**: [Interactive Notebook](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Colab_Synthea.ipynb)
+- **Try in Colab**: [Interactive Notebook](https://colab.research.google.com/github/Chesterguan/PSDL/blob/main/examples/notebooks/PSDL_Quickstart.ipynb)
 
 ## License
 
