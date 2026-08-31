@@ -19,8 +19,7 @@ Requirements:
 import os
 from datetime import datetime, timedelta
 
-from psdl.parser import PSDLParser
-from psdl.execution import PSDLEvaluator
+from psdl import PSDLEvaluator, PSDLParser
 from psdl.adapters.omop import OMOPBackend, OMOPConfig
 
 

@@ -1,6 +1,6 @@
 # PSDL API Reference
 
-> Developer documentation for `psdl-lang` v0.4
+> Developer documentation for `psdl-lang` v0.5
 
 ## Installation
 
@@ -569,10 +569,13 @@ from psdl import load_dataset_spec
 # Load a dataset spec (mandatory validation)
 spec = load_dataset_spec("dataset_specs/mimic_iv_omop.yaml")
 
+# Override the schema name for your database (keeps the spec reusable)
+spec = load_dataset_spec("dataset_specs/omop_cdm_v54.yaml", schema="omop_cdm")
+
 # Resolve a signal reference to physical binding
 binding = spec.resolve("creatinine")
 print(binding.table)        # "measurement"
-print(binding.filter_expr)  # "concept_id = 3016723"
+print(binding.filter_expr)  # "measurement_concept_id IN (3016723)"
 ```
 
 **Parameters:**
@@ -829,6 +832,8 @@ path = examples.get_scenario_path("aki_detection")
 
 | Version | Changes |
 |---------|---------|
+| 0.5.1 | Arithmetic trend expressions evaluated in all runtimes; AST-based logic SQL compilation; semantic filter keys mapped to physical OMOP columns; `load_dataset_spec(schema=...)` override; CLI `psdl parse` fixed |
+| 0.5.0 | RFC-0009 Signal Groups (`signal_groups:` section), strict parse mode, W104 diagnostic |
 | 0.4.0 | RFC-0008 Vendor-Neutral Foundation: ClinicalDomain, FilterPredicate/FilterPredicateSet, BatchRuntime/SQLBatchRuntime, concept_id deprecated, DataBackend lifecycle |
 | 0.3.1 | Dataset Spec API (RFC-0004), mandatory validation |
 | 0.3.0 | v0.3 architecture, compile_scenario(), AST exposure |
@@ -837,4 +842,4 @@ path = examples.get_scenario_path("aki_detection")
 
 ---
 
-*Last updated: March 9, 2026*
+*Last updated: August 31, 2026*

@@ -752,7 +752,7 @@ flowchart LR
 - YAML schema definition
 - Python reference implementation
 - OMOP CDM and FHIR R4 backends
-- Clinical validation test suite (539 tests)
+- Clinical validation test suite (587 tests)
 
 ### Phase 2: Enhanced Runtime ✓
 - **v0.3 Architecture** — RFC-0005 (Signal/Trend/Logic/Output separation)

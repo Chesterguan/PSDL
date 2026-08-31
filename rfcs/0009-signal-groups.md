@@ -5,7 +5,7 @@
 | RFC | 0009 |
 | Title | Signal Groups - Bulk Data Requests and Custom Panels |
 | Author | PSDL Team |
-| Status | **PROPOSED** |
+| Status | **IMPLEMENTED** |
 | Priority | MEDIUM |
 | Created | 2026-04-10 |
 | Target Version | v0.5.0 |
@@ -374,3 +374,4 @@ New file `tests/test_signal_groups.py`:
 | Date | Status | Notes |
 |------|--------|-------|
 | 2026-04-10 | PROPOSED | RFC drafted for v0.5.0 port from psdl-inspector prototype |
+| 2026-04-13 | IMPLEMENTED | Phase 1 shipped in v0.5.0 (parser, schema, SignalGroup type) |
