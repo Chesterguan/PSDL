@@ -164,3 +164,16 @@ class TestCohortSQLArith:
         scenario.trends["cr_ratio"].raw_expr = "last(Cr) @@ bogus"
         with pytest.raises(ValueError):
             self.compile_sql(scenario)
+
+
+class TestPointwiseUnboundedWindow:
+    def test_last_sees_data_older_than_max_trend_window(self, scenario, t0):
+        # Pointwise last(X) is unbounded (matches SQL semantics): a value
+        # older than the largest windowed trend (7d) must still resolve.
+        be = InMemoryBackend()
+        be.add_observation("p1", "Cr", 1.5, t0 - timedelta(days=30))
+        be.add_observation("p1", "Cr", 1.5, t0)
+        r = SinglePatientEvaluator(scenario, be).evaluate("p1", reference_time=t0)
+        assert r.trend_values["cr_current"] == pytest.approx(1.5)
+        # min(Cr, 7d) only sees the recent point -> ratio 1.0, not None
+        assert r.trend_values["cr_ratio"] == pytest.approx(1.0)

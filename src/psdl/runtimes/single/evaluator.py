@@ -346,6 +346,13 @@ class SinglePatientEvaluator:
 
         # Calculate max window needed for data fetching
         self._max_window_seconds = self._calculate_max_window()
+        # Pointwise calls (last(X), first(X)) are unbounded in the spec and
+        # in the SQL runtime ("most recent value up to reference time").
+        # If any exist, fetching only the max trend window would silently
+        # diverge from SQL for values older than that window — so widen the
+        # fetch to an effectively unbounded 100 years.
+        if self._has_unwindowed_call():
+            self._max_window_seconds = 100 * 365 * 24 * 3600
 
         # Extract DAG order if IR is provided
         self._trend_order: Optional[List[str]] = None
@@ -399,6 +406,27 @@ class SinglePatientEvaluator:
                 max_window = max(max_window, self._max_ast_window(trend.ast))
 
         return max_window
+
+    def _has_unwindowed_call(self) -> bool:
+        """True if any trend contains a windowless (pointwise) operator call."""
+        from psdl._generated.ast_types import ArithExpr, TemporalCall, TrendExpression
+
+        def walk(node: Any) -> bool:
+            if isinstance(node, TrendExpression):
+                return walk(node.temporal)
+            if isinstance(node, TemporalCall):
+                return node.window is None
+            if isinstance(node, ArithExpr):
+                return walk(node.left) or walk(node.right)
+            return False
+
+        for trend in self.scenario.trends.values():
+            if trend.operator == "arith":
+                if trend.ast is not None and walk(trend.ast):
+                    return True
+            elif trend.window is None:
+                return True
+        return False
 
     def _max_ast_window(self, node: Any) -> int:
         """Largest window (seconds) referenced anywhere in a trend AST."""
