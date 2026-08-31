@@ -161,9 +161,9 @@ logic:
     when: cr_delta_48h >= 0.3
     description: "AKI by absolute creatinine rise (KDIGO Stage 1)"
 
-  aki_by_ratio:
+  cr_above_normal:
     when: cr_current >= 1.5
-    description: "Creatinine elevated above normal"
+    description: "Creatinine >= 1.5 mg/dL (above typical normal range)"
 
   cr_rapidly_rising:
     when: cr_slope_24h > 0.000002
@@ -211,7 +211,7 @@ logic:
 
   # Boolean logic: AND, OR, NOT
   aki_present:
-    when: aki_by_delta OR aki_by_ratio
+    when: aki_by_delta OR cr_above_normal
     severity: medium
     description: "AKI detected by any criterion"
 

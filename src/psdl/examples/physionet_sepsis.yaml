@@ -160,16 +160,16 @@ logic:
     description: "Tachycardia (HR > 90)"
 
   temp_abnormal:
-    when: temp_current > 38.3
-    description: "Fever (Temp > 38.3C)"
+    when: temp_current > 38.0
+    description: "Fever (Temp > 38.0C, SIRS threshold)"
 
   temp_low:
     when: temp_current < 36
     description: "Hypothermia (Temp < 36C)"
 
   resp_elevated:
-    when: resp_current > 22
-    description: "Tachypnea (RR > 22)"
+    when: resp_current > 20
+    description: "Tachypnea (RR > 20, SIRS threshold)"
 
   wbc_abnormal_high:
     when: wbc_current > 12

@@ -187,7 +187,7 @@ logic:
   postop_cr_critical:
     when: cr_current >= 4.0
     severity: critical
-    description: "Creatinine >= 4.0 mg/dL (KDIGO Stage 3 threshold)"
+    description: "Creatinine >= 4.0 mg/dL (critical value; KDIGO Stage 3 additionally requires an acute rise)"
 
   # ═══ Post-Op Bleeding ═══
   postop_hgb_drop:

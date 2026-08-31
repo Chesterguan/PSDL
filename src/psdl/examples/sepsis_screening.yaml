@@ -15,7 +15,7 @@ psdl_version: "0.5"
 
 scenario:
   name: Sepsis_Screening_v1
-  version: "1.0.0"
+  version: "1.1.0"
   description: "Sepsis screening using qSOFA criteria and lactate"
   tags:
     - sepsis
@@ -122,8 +122,9 @@ trends:
 
   lact_slope_2h:
     type: float
+    unit: mmol/L/s
     expr: slope(Lact, 2h)
-    description: "Lactate slope over 2 hours"
+    description: "Lactate slope over 2 hours (slope is per second)"
 
   wbc_current:
     type: float
@@ -164,30 +165,36 @@ logic:
     when: lact_current > 4.0
     description: "Lactate >4.0 mmol/L (severe)"
 
+  # slope() is per second: 1e-4 mmol/L/s ~= 0.36 mmol/L/h
   lactate_rising:
-    when: lact_slope_2h > 0.5
-    description: "Rapidly rising lactate"
+    when: lact_slope_2h > 0.0001
+    description: "Rapidly rising lactate (>~0.36 mmol/L/h)"
 
-  # SIRS criteria
+  # SIRS criteria (Bone et al. 1992: temp >38.0 or <36.0, HR >90,
+  # RR >20, WBC >12 or <4 x10^9/L; positive = any 2 of the 4)
   fever:
-    when: temp_current > 38.3
-    description: "Temperature >38.3C"
+    when: temp_current > 38.0
+    description: "Temperature >38.0C (SIRS)"
 
   hypothermia:
     when: temp_current < 36.0
-    description: "Temperature <36.0C"
+    description: "Temperature <36.0C (SIRS)"
 
   tachycardia:
     when: hr_current > 90
-    description: "Heart rate >90 bpm"
+    description: "Heart rate >90 bpm (SIRS)"
+
+  tachypnea_sirs:
+    when: rr_current > 20
+    description: "Respiratory rate >20/min (SIRS threshold, distinct from qSOFA >=22)"
 
   leukocytosis:
     when: wbc_current > 12.0
-    description: "WBC >12.0 x10^9/L"
+    description: "WBC >12.0 x10^9/L (SIRS)"
 
   leukopenia:
     when: wbc_current < 4.0
-    description: "WBC <4.0 x10^9/L"
+    description: "WBC <4.0 x10^9/L (SIRS)"
 
   # Organ dysfunction markers
   thrombocytopenia:
@@ -198,27 +205,36 @@ logic:
     when: cr_delta_24h > 0.5
     description: "Creatinine rise >0.5 in 24h"
 
-  # qSOFA scoring
+  # qSOFA scoring: any 1 / any 2 / all 3 of the three criteria
   qsofa_1:
-    when: tachypnea
+    when: tachypnea OR hypotension OR altered_mental_status
     severity: low
-    description: "qSOFA: 1 criterion (tachypnea)"
+    description: "qSOFA >=1 criterion"
 
   qsofa_2:
-    when: tachypnea AND (hypotension OR altered_mental_status)
+    when: (tachypnea AND hypotension) OR (tachypnea AND altered_mental_status) OR (hypotension AND altered_mental_status)
     severity: medium
-    description: "qSOFA >=2 criteria - positive screen"
+    description: "qSOFA >=2 of 3 criteria - positive screen"
 
   qsofa_3:
     when: tachypnea AND hypotension AND altered_mental_status
     severity: high
     description: "qSOFA 3/3 criteria - high risk"
 
-  # SIRS positive
+  # SIRS positive: any 2 of the 4 criterion groups
+  # (temperature, heart rate, respiratory rate, WBC)
+  sirs_temp:
+    when: fever OR hypothermia
+    description: "SIRS temperature criterion"
+
+  sirs_wbc:
+    when: leukocytosis OR leukopenia
+    description: "SIRS WBC criterion"
+
   sirs_positive:
-    when: (fever OR hypothermia) AND (tachycardia OR tachypnea) AND (leukocytosis OR leukopenia)
+    when: (sirs_temp AND tachycardia) OR (sirs_temp AND tachypnea_sirs) OR (sirs_temp AND sirs_wbc) OR (tachycardia AND tachypnea_sirs) OR (tachycardia AND sirs_wbc) OR (tachypnea_sirs AND sirs_wbc)
     severity: medium
-    description: "SIRS criteria positive"
+    description: "SIRS positive: >=2 of 4 criteria"
 
   # Combined sepsis screening
   sepsis_screen_positive:
@@ -226,11 +242,14 @@ logic:
     severity: high
     description: "Sepsis screen positive - qSOFA >=2 + elevated lactate"
 
-  # Septic shock
+  # Septic shock surrogate. Sepsis-3 defines septic shock as vasopressor
+  # requirement to keep MAP >=65 plus lactate >2 despite adequate fluid
+  # resuscitation; medication and fluid signals are not modeled here, so
+  # persistent hypotension + severe hyperlactatemia serves as a surrogate.
   septic_shock:
     when: sepsis_screen_positive AND hypotension AND lactate_high
     severity: critical
-    description: "Septic shock - vasopressor requirement + lactate >4"
+    description: "Septic shock surrogate: positive screen + hypotension + lactate >4"
 
   # Deteriorating sepsis
   sepsis_worsening:
@@ -266,6 +285,6 @@ outputs:
       type: float
       from: trends.lact_current
       unit: mmol/L
-    qsofa_score:
-      type: int
-      description: "qSOFA score (0-3)"
+    # Note: a numeric qSOFA score (0-3) is intentionally NOT declared —
+    # PSDL logic composes booleans and has no criterion-counting
+    # primitive; the qsofa_1/2/3 decision nodes cover the score bands.

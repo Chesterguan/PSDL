@@ -6,9 +6,13 @@
 # mutually exclusive stage assignment (highest stage wins).
 #
 # KDIGO AKI Staging (2012):
+# - AKI definition (gate for all stages): Cr rise >=0.3 mg/dL within
+#   48h OR Cr >=1.5x baseline within 7 days
 # - Stage 1: Cr increase >=0.3 mg/dL within 48h OR 1.5-1.9x baseline
 # - Stage 2: Cr 2.0-2.9x baseline
 # - Stage 3: Cr >=3.0x baseline OR Cr >=4.0 mg/dL OR RRT initiation
+#   (the >=4.0 criterion applies only when the AKI definition is met —
+#   a chronically elevated creatinine alone is not AKI)
 #
 # Operationalization choices (stated explicitly for auditability):
 # - Baseline creatinine = min(Cr, 7d): the lowest creatinine in the
@@ -26,7 +30,7 @@
 psdl_version: "0.5"
 scenario:
   name: AKI_KDIGO_Detection
-  version: "2.0.0"
+  version: "2.1.0"
   description: "Detect and stage Acute Kidney Injury using KDIGO creatinine criteria"
 
 # ── Audit Block ──────────────────────────────────
@@ -90,28 +94,36 @@ trends:
 
   cr_slope_24h:
     type: float
-    unit: mg/dL/h
+    unit: mg/dL/s
     expr: slope(Cr, 24h)
-    description: "Creatinine trajectory over 24 hours"
+    description: "Creatinine trajectory over 24 hours (slope is per second)"
 
-  bun_current:
+  bun_cr_ratio:
     type: float
-    unit: mg/dL
-    expr: last(BUN)
-    description: "Current BUN level"
+    unit: ratio
+    expr: last(BUN) / last(Cr)
+    description: "BUN:creatinine ratio (>20 suggests prerenal azotemia)"
 
 # ── Logic ────────────────────────────────────────
 logic:
-  # ─── KDIGO component criteria ───
+  # ─── KDIGO AKI definition ───
+  # AKI is present iff: Cr rise >=0.3 mg/dL within 48h, OR
+  # Cr >=1.5x baseline within 7 days. The staging table below applies
+  # ONLY to patients meeting this definition — in particular, a chronic
+  # (CKD) creatinine >=4.0 mg/dL with no acute change is NOT Stage 3.
   cr_rise_flag:
     when: cr_rise_48h >= 0.3
     description: "KDIGO: Cr rise >=0.3 mg/dL within 48 hours"
 
+  aki_definition_met:
+    when: cr_rise_flag OR cr_ratio >= 1.5
+    description: "KDIGO AKI definition: acute rise OR >=1.5x baseline"
+
   # ─── Mutually exclusive staging (highest stage wins) ───
   aki_stage3:
-    when: cr_ratio >= 3.0 OR cr_current >= 4.0
+    when: cr_ratio >= 3.0 OR (cr_current >= 4.0 AND aki_definition_met)
     severity: critical
-    description: "KDIGO Stage 3: Cr >=3.0x baseline OR Cr >=4.0 mg/dL"
+    description: "KDIGO Stage 3: Cr >=3.0x baseline OR Cr >=4.0 mg/dL with acute rise"
 
   aki_stage2:
     when: cr_ratio >= 2.0 AND NOT aki_stage3
@@ -119,7 +131,7 @@ logic:
     description: "KDIGO Stage 2: Cr 2.0-2.9x baseline"
 
   aki_stage1:
-    when: (cr_rise_flag OR cr_ratio >= 1.5) AND NOT aki_stage2 AND NOT aki_stage3
+    when: aki_definition_met AND NOT aki_stage2 AND NOT aki_stage3
     severity: medium
     description: "KDIGO Stage 1: Cr rise >=0.3 in 48h OR 1.5-1.9x baseline"
 
@@ -129,23 +141,27 @@ logic:
     description: "AKI detected at any stage"
 
   # ─── Trajectory & context ───
+  # slope() is in units PER SECOND. Recovering AKI typically clears
+  # >=0.3 mg/dL/day = 3.5e-6 mg/dL/s; -3e-6/s sits just below that.
   cr_falling:
-    when: cr_slope_24h < -0.001
-    description: "Creatinine trending down (recovery)"
+    when: cr_slope_24h < -0.000003
+    description: "Creatinine trending down >=~0.26 mg/dL/day (recovery)"
 
   aki_recovering:
     when: aki_present AND cr_falling
     severity: low
     description: "AKI with signs of recovery (Cr trending down)"
 
-  bun_elevated:
-    when: bun_current > 20
-    description: "BUN elevated (may indicate prerenal cause)"
+  # Classic prerenal azotemia marker: BUN rises out of proportion to
+  # creatinine (BUN:Cr > 20:1), unlike intrinsic renal injury.
+  prerenal_pattern:
+    when: bun_cr_ratio > 20
+    description: "BUN:Cr ratio >20:1 (prerenal pattern)"
 
   prerenal_likely:
-    when: aki_stage1 AND bun_elevated
+    when: aki_stage1 AND prerenal_pattern
     severity: medium
-    description: "Stage 1 AKI with elevated BUN - consider prerenal cause"
+    description: "Stage 1 AKI with BUN:Cr >20:1 - consider prerenal cause"
 
 # ── Outputs ──────────────────────────────────────
 outputs:
@@ -180,5 +196,5 @@ outputs:
     cr_slope_24h:
       type: float
       from: trends.cr_slope_24h
-      unit: mg/dL/h
+      unit: mg/dL/s
       description: "Creatinine trajectory"
