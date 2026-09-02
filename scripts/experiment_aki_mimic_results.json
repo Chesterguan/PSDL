@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-31T17:44:01.386798",
+  "generated_at": "2026-09-01T11:27:00.378062",
   "protocol": {
     "anchor": "per-patient peak creatinine time",
     "baseline": "min(Cr, 7d) before anchor (KDIGO retrospective surrogate)",
@@ -14,20 +14,44 @@
   },
   "cohort": {
     "patients_evaluated": 294788,
-    "aki_stage1": 16958,
+    "aki_stage1": 16961,
     "aki_stage2": 5372,
-    "aki_stage3": 8122,
+    "aki_stage3": 8119,
     "aki_present": 30452,
     "aki_prevalence": 0.1033,
-    "prerenal_likely": 6437,
+    "prerenal_likely": 6435,
     "aki_recovering": 10,
-    "execution_seconds": 326.4
+    "execution_seconds": 485.0
   },
   "consistency": {
-    "patients_checked": 200,
-    "logic_outputs_compared": 2000,
+    "patients_checked": 2000,
+    "logic_outputs_compared": 20000,
     "mismatches": 0,
+    "mismatch_rate_upper_95ci": 0.0001844269639619256,
     "mismatch_detail": [],
     "seed": 42
+  },
+  "icd_agreement": {
+    "reference": "ICD-9-CM 584.x / ICD-10-CM N17.x coded at any time",
+    "tp": 18588,
+    "fp": 11876,
+    "fn": 23965,
+    "tn": 240359,
+    "sensitivity_vs_icd": 0.4368,
+    "specificity_vs_icd": 0.9529,
+    "ppv_vs_icd": 0.6102,
+    "npv_vs_icd": 0.9093
+  },
+  "by_sex": {
+    "male": {
+      "n": 137392,
+      "aki": 16981,
+      "rate": 0.1236
+    },
+    "female": {
+      "n": 157414,
+      "aki": 13476,
+      "rate": 0.0856
+    }
   }
 }

@@ -173,15 +173,72 @@ def main() -> None:
                     "trend_values": {k: v for k, v in r.trend_values.items()},
                 })
 
+    n_compared = checked * len(logic_cols)
+    # Exact one-sided 97.5% Clopper-Pearson upper bound on the per-output
+    # mismatch rate; closed form for x=0 is 1 - alpha^(1/n).
+    if len(mismatches) == 0 and n_compared:
+        ub = 1.0 - 0.025 ** (1.0 / n_compared)
+    else:
+        ub = None
     results["consistency"] = {
         "patients_checked": checked,
-        "logic_outputs_compared": checked * len(logic_cols),
+        "logic_outputs_compared": n_compared,
         "mismatches": len(mismatches),
+        "mismatch_rate_upper_95ci": ub,
         "mismatch_detail": mismatches[:10],
         "seed": args.seed,
     }
     print(f"consistency: {checked} patients x {len(logic_cols)} logic outputs, "
-          f"{len(mismatches)} mismatches")
+          f"{len(mismatches)} mismatches"
+          + (f" (95% CI upper bound on mismatch rate: {ub:.2e})" if ub else ""))
+
+    # ── ICD agreement: PSDL aki_present vs coded AKI diagnoses ────
+    # ICD-9-CM 584.x and ICD-10-CM N17.x via condition source concepts.
+    # ICD coding is an imperfect reference (AKI is under-coded), so this
+    # is agreement with coding practice, not diagnostic accuracy.
+    icd_sql = (
+        f"WITH icd AS ("
+        f"  SELECT DISTINCT co.person_id"
+        f"  FROM {SCHEMA}.condition_occurrence co"
+        f"  JOIN {SCHEMA}.concept c ON c.concept_id = co.condition_source_concept_id"
+        f"  WHERE (c.vocabulary_id = 'ICD10CM' AND c.concept_code LIKE 'N17%%')"
+        f"     OR (c.vocabulary_id = 'ICD9CM'  AND c.concept_code LIKE '584%%')"
+        f"), q AS ({cohort_sql})"
+        f" SELECT count(*) FILTER (WHERE q.aki_present AND icd.person_id IS NOT NULL),"
+        f"        count(*) FILTER (WHERE q.aki_present AND icd.person_id IS NULL),"
+        f"        count(*) FILTER (WHERE NOT q.aki_present AND icd.person_id IS NOT NULL),"
+        f"        count(*) FILTER (WHERE NOT q.aki_present AND icd.person_id IS NULL)"
+        f" FROM q LEFT JOIN icd ON icd.person_id = q.person_id"
+    )
+    cur.execute(icd_sql)
+    tp, fp, fn, tn = cur.fetchone()
+    results["icd_agreement"] = {
+        "reference": "ICD-9-CM 584.x / ICD-10-CM N17.x coded at any time",
+        "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+        "sensitivity_vs_icd": round(tp / (tp + fn), 4) if tp + fn else None,
+        "specificity_vs_icd": round(tn / (tn + fp), 4) if tn + fp else None,
+        "ppv_vs_icd": round(tp / (tp + fp), 4) if tp + fp else None,
+        "npv_vs_icd": round(tn / (tn + fn), 4) if tn + fn else None,
+    }
+    print(f"icd: tp={tp} fp={fp} fn={fn} tn={tn} "
+          f"sens={tp/(tp+fn):.3f} spec={tn/(tn+fp):.3f} ppv={tp/(tp+fp):.3f}")
+
+    # ── Detection rate by sex (bias/equity snapshot) ──────────────
+    sex_sql = (
+        f"WITH q AS ({cohort_sql})"
+        f" SELECT p.gender_concept_id, count(*),"
+        f"        count(*) FILTER (WHERE q.aki_present)"
+        f" FROM q JOIN {SCHEMA}.person p ON p.person_id = q.person_id"
+        f" GROUP BY p.gender_concept_id"
+    )
+    cur.execute(sex_sql)
+    sex_names = {8507: "male", 8532: "female"}
+    results["by_sex"] = {}
+    for gid, total, aki in cur.fetchall():
+        name = sex_names.get(gid, f"gender_{gid}")
+        results["by_sex"][name] = {"n": total, "aki": aki,
+                                   "rate": round(aki / total, 4) if total else None}
+        print(f"sex {name}: n={total} aki={aki} ({aki/total:.1%})")
 
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2, default=str)
