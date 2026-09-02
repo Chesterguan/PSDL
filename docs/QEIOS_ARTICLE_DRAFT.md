@@ -1,6 +1,6 @@
 # PSDL: A Portable, Auditable Scenario Definition Language for Clinical Decision Logic
 
-**Ziyuan Guan** — [affiliation to be added]
+**Ziyuan Guan** — Independent Researcher (chesterfield199512@gmail.com)
 
 *Submitted to Qeios, September 2026. Corresponds to psdl-lang v0.5.1.*
 
